@@ -1,2 +1,264 @@
 <!DOCTYPE html>
-<html><head><meta charset='UTF-8'><title>Leaderboard</title></head><body><h1>Leaderboard Page</h1><script src='leaderboard.js'></script></body></html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Leaderboard Somnia</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            background: radial-gradient(circle at center, #0a001a, #00000a);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+        }
+
+        h1 {
+            font-family: 'Press Start 2P', cursive;
+            color: #00ff7f; /* Hijau neon */
+            text-shadow: 0 0 10px #00ff7f;
+            font-size: clamp(24px, 6vw, 36px);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .leaderboard-container {
+            width: 100%;
+            max-width: 600px;
+            background: rgba(20, 0, 30, 0.9);
+            border: 3px solid #ff8c00;
+            border-radius: 15px;
+            box-shadow: 0 0 25px rgba(128, 0, 128, 0.7);
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Inter', sans-serif;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            color: #ff8c00;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+
+        td {
+            color: #c77dff;
+            font-size: 16px;
+        }
+
+        tr:hover {
+            background-color: rgba(255, 140, 0, 0.1);
+        }
+
+        .rank-1, .rank-2, .rank-3 {
+            font-family: 'Press Start 2P', cursive;
+            font-weight: normal;
+        }
+
+        .rank-1 td { color: gold; text-shadow: 0 0 5px gold; }
+        .rank-2 td { color: silver; }
+        .rank-3 td { color: #cd7f32; }
+        
+        .loading-message {
+            color: #ff8c00;
+            text-align: center;
+            padding: 30px;
+            font-size: 18px;
+        }
+        
+        .back-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(90deg, #ff8c00, #800080); 
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .back-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px #ff8c00;
+        }
+        
+    </style>
+</head>
+<body>
+
+<div class="leaderboard-container">
+    <h1>GLOBAL LEADERBOARD</h1>
+    <p class="text-center mb-4 text-sm text-yellow-400" id="dbStatus">Menghubungkan ke Database...</p>
+    
+    <table id="leaderboardTable">
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th class="text-right">Score</th>
+                <th>Wallet (ID)</th>
+            </tr>
+        </thead>
+        <tbody id="scoreList">
+            <!-- Data skor akan dimasukkan di sini oleh JavaScript -->
+            <tr>
+                <td colspan="4" class="loading-message" id="loadingRow">Memuat data skor (Pastikan Firebase sudah terhubung)...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<button class="back-button" onclick="window.location.href='index.html'">KEMBALI KE MENU</button>
+
+
+<!-- Logika Firebase dan Leaderboard -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    setLogLevel('Debug');
+
+    // ====================================================================
+    // --- 1. KONFIGURASI FIREBASE ---
+    // ====================================================================
+    const hardcodedFirebaseConfig = {
+      apiKey: "AIzaSyBeHjlHJSB5R0mYJmX6h5uJ7Iwqu7zNWtA",
+      authDomain: "somnia-hallowen.firebaseapp.com",
+      projectId: "somnia-hallowen",
+      storageBucket: "somnia-hallowen.firebasestorage.app",
+      messagingSenderId: "441297353260",
+      appId: "1:441297353260:web:71343e500055d10c712f89",
+      measurementId: "G-5KMBCWQ96G"
+    };
+
+    // Variabel lingkungan dari Canvas
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    
+    let db = null;
+    let auth = null;
+    let firebaseReady = false;
+    
+    // Elemen DOM
+    const scoreListEl = document.getElementById('scoreList');
+    const dbStatusEl = document.getElementById('dbStatus');
+    const loadingRowEl = document.getElementById('loadingRow');
+    
+    function formatWallet(address) {
+        if (!address) return 'N/A';
+        return `${address.substring(0, 6)}...${address.slice(-4)}`;
+    }
+    
+    // ====================================================================
+    // --- 2. FIREBASE INIT & DATA FETCH ---
+    // ====================================================================
+
+    function renderLeaderboard(scores) {
+        // 1. Sort Scores (Descending)
+        // Kita sorting di client-side untuk menghindari error index Firestore (orderBy)
+        scores.sort((a, b) => b.score - a.score);
+        
+        // 2. Clear current list
+        scoreListEl.innerHTML = '';
+        loadingRowEl.classList.add('hidden');
+
+        // 3. Render rows
+        if (scores.length === 0) {
+            scoreListEl.innerHTML = '<tr><td colspan="4" class="loading-message">Belum ada skor yang tercatat!</td></tr>';
+            return;
+        }
+
+        scores.forEach((data, index) => {
+            const rank = index + 1;
+            let rankClass = '';
+            if (rank === 1) rankClass = 'rank-1';
+            else if (rank === 2) rankClass = 'rank-2';
+            else if (rank === 3) rankClass = 'rank-3';
+
+            const row = document.createElement('tr');
+            row.className = rankClass;
+            row.innerHTML = `
+                <td>#${rank}</td>
+                <td>${data.displayName || 'Player Tanpa Nama'}</td>
+                <td class="text-right">${data.score}</td>
+                <td>${formatWallet(data.wallet)}</td>
+            `;
+            scoreListEl.appendChild(row);
+        });
+    }
+
+
+    function setupLeaderboardListener() {
+        if (!db || !firebaseReady) return;
+
+        // Jalur publik untuk Leaderboard: /artifacts/{appId}/public/data/leaderboard
+        const leaderboardCollection = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+        
+        // onSnapshot untuk pembaruan real-time
+        onSnapshot(leaderboardCollection, (snapshot) => {
+            const scores = [];
+            snapshot.forEach(doc => {
+                scores.push(doc.data());
+            });
+            dbStatusEl.textContent = `Status: Leaderboard Online. Total Skor: ${scores.length}`;
+            renderLeaderboard(scores);
+
+        }, (error) => {
+            console.error("Error fetching leaderboard data:", error);
+            dbStatusEl.textContent = `CRITICAL ERROR: Gagal memuat data. Cek log konsol atau Aturan Keamanan.`;
+            dbStatusEl.classList.add('text-red-500');
+        });
+    }
+
+    async function initializeFirebase() {
+        try {
+            const app = initializeApp(hardcodedFirebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Lakukan Autentikasi
+            if (initialAuthToken) { 
+                await signInWithCustomToken(auth, initialAuthToken); 
+            } else { 
+                await signInAnonymously(auth); // Fallback ke anonim
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    firebaseReady = true;
+                    setupLeaderboardListener(); // Mulai dengarkan data setelah auth berhasil
+                } else {
+                    dbStatusEl.textContent = `Status: Otentikasi Gagal. Harap cek Kunci API.`;
+                    dbStatusEl.classList.add('text-red-500');
+                }
+            });
+
+        } catch (error) {
+            console.error("Critical Error during Firebase Init/Auth:", error);
+            dbStatusEl.textContent = `CRITICAL ERROR: Gagal inisialisasi Firebase (${error.message})`;
+            dbStatusEl.classList.add('text-red-500');
+        }
+    }
+    
+    // Mulai inisialisasi
+    window.onload = initializeFirebase;
+</script>
+
+</body>
+</html>
