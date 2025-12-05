@@ -1,31 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Somnia Halloween - Pacman Edition</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8" />
+<title>Somnia Halloween - Pacman Edition</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <!-- ETHERS.JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<!-- ETHERS.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800;300&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    body { width: 100vw; height: 100vh; overflow: hidden; background: radial-gradient(circle at top, #2b0033, #0a0010); color: #fff; display: flex; justify-content: center; align-items: center; }
-    .bubble { position: absolute; bottom: -100px; background: rgba(255, 140, 0, 0.2); border-radius: 50%; animation: floatUp 12s infinite ease-in; }
-    @keyframes floatUp { from { transform: translateY(0); } to { transform: translateY(-120vh); } }
-    .screen { z-index: 10; position: relative; text-align: center; padding: 20px; }
-    h1 { font-size: clamp(30px, 6vw, 42px); color: #ff8c00; text-shadow: 0 0 10px #800080, 0 0 20px #800080; margin-bottom: 8px; }
-    h2 { font-size: clamp(18px, 3vw, 22px); color: #c77dff; margin-bottom: 30px; }
-    .menu-box { background: rgba(20, 0, 30, 0.8); border: 2px solid #ff8c00; border-radius: 16px; padding: 30px 40px; box-shadow: 0 0 20px #800080; min-width: 300px; max-width: 90%; }
-    .menu-box input { width: 100%; padding: 10px; border-radius: 8px; border: none; margin-bottom: 12px; text-align: center; font-size: 16px; outline: none; background-color: #333; color: white; }
-    .menu-box button { width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; background: linear-gradient(90deg, #ff8c00, #800080); color: white; transition: 0.2s; }
-    .menu-box button:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 0 15px #ff8c00; }
-    .menu-box button:disabled { background: #444; cursor: not-allowed; opacity: 0.7; box-shadow: none; transform: scale(1); }
-    .wallet-box { font-size: 14px; margin-bottom: 12px; color: #ffb703; word-break: break-all; }
-    .hidden { display: none !important; }
-    #menuTxStatus { margin-top: 10px; color: yellow; font-size: 0.9em; }
-  </style>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800;300&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+  body { width: 100vw; height: 100vh; overflow: hidden; background: radial-gradient(circle at top, #2b0033, #0a0010); color: #fff; display: flex; justify-content: center; align-items: center; }
+  .bubble { position: absolute; bottom: -100px; background: rgba(255, 140, 0, 0.2); border-radius: 50%; animation: floatUp 12s infinite ease-in; }
+  @keyframes floatUp { from { transform: translateY(0); } to { transform: translateY(-120vh); } }
+  .screen { z-index: 10; position: relative; text-align: center; padding: 20px; }
+  h1 { font-size: clamp(30px, 6vw, 42px); color: #ff8c00; text-shadow: 0 0 10px #800080, 0 0 20px #800080; margin-bottom: 8px; }
+  h2 { font-size: clamp(18px, 3vw, 22px); color: #c77dff; margin-bottom: 30px; }
+  .menu-box { background: rgba(20, 0, 30, 0.8); border: 2px solid #ff8c00; border-radius: 16px; padding: 30px 40px; box-shadow: 0 0 20px #800080; min-width: 300px; max-width: 90%; }
+  .menu-box input { width: 100%; padding: 10px; border-radius: 8px; border: none; margin-bottom: 12px; text-align: center; font-size: 16px; outline: none; background-color: #333; color: white; }
+  .menu-box button { width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; background: linear-gradient(90deg, #ff8c00, #800080); color: white; transition: 0.2s; }
+  .menu-box button:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 0 15px #ff8c00; }
+  .menu-box button:disabled { background: #444; cursor: not-allowed; opacity: 0.7; box-shadow: none; transform: scale(1); }
+  .wallet-box { font-size: 14px; margin-bottom: 12px; color: #ffb703; word-break: break-all; }
+  #menuTxStatus { margin-top: 10px; color: yellow; font-size: 0.9em; }
+</style>
 </head>
 <body>
 
@@ -56,13 +55,14 @@
   </div>
 </div>
 
-<script type="module" src="game.js"></script>
+<!-- SCRIPT MODULE -->
+<script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // -----------------------
-// Firebase Hardcoded Config
+// Firebase Config
 // -----------------------
 const firebaseConfig = {
   apiKey: "AIzaSyBeHjlHJSB5R0mYJmX6h5uJ7Iwqu7zNWtA",
@@ -89,10 +89,7 @@ const playBtn = document.getElementById('playBtn');
 const walletStatusEl = document.getElementById('walletStatus');
 const menuTxStatusEl = document.getElementById('menuTxStatus');
 
-function formatWallet(address) {
-  if (!address) return 'Disconnected';
-  return `${address.substring(0,6)}...${address.slice(-4)}`;
-}
+function formatWallet(address) { return address ? `${address.substring(0,6)}...${address.slice(-4)}` : 'Disconnected'; }
 
 function updateUI() {
   const connected = walletAddress !== null;
@@ -115,12 +112,7 @@ function updateUI() {
 // Load User Data
 // -----------------------
 async function loadUserData() {
-  if (!db || !userId) {
-    nameLoaded = true;
-    updateUI();
-    return;
-  }
-
+  if (!db || !userId) { nameLoaded = true; updateUI(); return; }
   const docRef = doc(db, 'users', userId);
   try {
     const docSnap = await getDoc(docRef);
@@ -129,13 +121,8 @@ async function loadUserData() {
       displayNameInput.value = data.displayName || '';
       walletAddress = data.wallet || null;
     }
-    nameLoaded = true;
-  } catch(e) {
-    console.error("Error loading profile:", e);
-    nameLoaded = true;
-  } finally {
-    updateUI();
-  }
+  } catch(e) { console.error("Error loading profile:", e); }
+  finally { nameLoaded = true; updateUI(); }
 }
 
 // -----------------------
@@ -143,42 +130,24 @@ async function loadUserData() {
 // -----------------------
 signInAnonymously(auth).then(() => {
   onAuthStateChanged(auth, (user) => {
-    if (user) {
-      userId = user.uid;
-      firebaseReady = true;
-      connectWalletBtn.disabled = false;
-      loadUserData();
-    }
+    if (user) { userId = user.uid; firebaseReady = true; connectWalletBtn.disabled = false; loadUserData(); }
   });
-}).catch(e => {
-  console.error("Firebase Auth failed:", e);
-  walletStatusEl.textContent = "Firebase Auth Failed. Check Console.";
-});
+}).catch(e => { console.error("Firebase Auth failed:", e); walletStatusEl.textContent = "Firebase Auth Failed."; });
 
 // -----------------------
 // Connect Wallet
 // -----------------------
 async function connectWallet() {
-  if (!window.ethereum) {
-    menuTxStatusEl.textContent = "Web3 (MetaMask) tidak terdeteksi.";
-    return;
-  }
+  if (!window.ethereum) { menuTxStatusEl.textContent = "Web3 (MetaMask) tidak terdeteksi."; return; }
   try {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
     walletAddress = accounts[0];
     menuTxStatusEl.textContent = `Wallet terhubung: ${formatWallet(walletAddress)}`;
 
     if (db && userId) {
-      await setDoc(doc(db, 'users', userId), {
-        wallet: walletAddress,
-        lastConnect: Date.now()
-      }, { merge: true });
+      await setDoc(doc(db, 'users', userId), { wallet: walletAddress, lastConnect: Date.now() }, { merge: true });
     }
-
-  } catch (error) {
-    console.error("Error connecting wallet:", error);
-    menuTxStatusEl.textContent = "Koneksi dompet dibatalkan atau gagal.";
-  }
+  } catch (error) { console.error("Error connecting wallet:", error); menuTxStatusEl.textContent = "Koneksi dompet gagal."; }
   updateUI();
 }
 
@@ -187,32 +156,15 @@ async function connectWallet() {
 // -----------------------
 async function saveDisplayName() {
   const name = displayNameInput.value.trim();
-  if (name.length < 1 || name.length > 12) {
-    menuTxStatusEl.textContent = "Nama harus 1-12 karakter.";
-    return;
-  }
-  if (!walletAddress) {
-    menuTxStatusEl.textContent = "Harap hubungkan Wallet terlebih dahulu.";
-    return;
-  }
-  if (!db || !userId) {
-    menuTxStatusEl.textContent = "Database tidak siap.";
-    return;
-  }
+  if (name.length < 1 || name.length > 12) { menuTxStatusEl.textContent = "Nama harus 1-12 karakter."; return; }
+  if (!walletAddress) { menuTxStatusEl.textContent = "Harap hubungkan Wallet terlebih dahulu."; return; }
+  if (!db || !userId) { menuTxStatusEl.textContent = "Database tidak siap."; return; }
 
-  saveNameBtn.disabled = true;
-  saveNameBtn.textContent = "Saving...";
+  saveNameBtn.disabled = true; saveNameBtn.textContent = "Saving...";
   try {
-    await setDoc(doc(db, 'users', userId), {
-      displayName: name,
-      wallet: walletAddress,
-      lastUpdate: Date.now()
-    }, { merge: true });
+    await setDoc(doc(db, 'users', userId), { displayName: name, wallet: walletAddress, lastUpdate: Date.now() }, { merge: true });
     menuTxStatusEl.textContent = "Nama berhasil disimpan!";
-  } catch(e) {
-    console.error("Error saving name:", e);
-    menuTxStatusEl.textContent = "Gagal menyimpan nama.";
-  }
+  } catch(e) { console.error("Error saving name:", e); menuTxStatusEl.textContent = "Gagal menyimpan nama."; }
   saveNameBtn.textContent = "EDIT DISPLAY NAME";
   updateUI();
 }
@@ -233,7 +185,7 @@ playBtn.addEventListener('click', redirectToGame);
 document.getElementById('leaderboardBtn').addEventListener('click', redirectToLeaderboard);
 
 updateUI();
-
 </script>
+
 </body>
 </html>
