@@ -313,13 +313,13 @@
         <div class="space-y-4 w-full">
             
             <!-- 1. DB Status/Error Button -->
-            <!-- Tombol Status sekarang Putih dengan Teks Merah/Hijau di atasnya -->
+            <!-- PERUBAHAN: Teks default sekarang menjadi "Memuat" -->
             <button id="dbStatusContainer" disabled class="btn-status" title="Status Koneksi Firebase">
                 <p id="dbStatus" class="text-sm font-bold">
-                    [CRITICAL ERROR] Gagal koneksi Firebase.
+                    Memuat Koneksi Database...
                 </p>
                 <p id="playerName" class="text-xs mt-1">
-                    Koneksi Database GAGAL. Cek Konfigurasi Firebase/Kunci API Anda.
+                    Menunggu Skrip Initialization.
                 </p>
             </button>
             
@@ -392,7 +392,6 @@
     <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
 
     <!-- Skrip Game dan Firebase -->
-    <!-- PERBAIKAN: Tambahkan type="module" untuk skrip yang menggunakan statement 'import' -->
     <script type="module" src="game_logic.js"></script>
     <script type="module" src="web3_game.js"></script>
     
