@@ -2,17 +2,106 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Somnia Pac-Man Halloween</title>
+<title>Somnia Pac-Man Halloween - Play</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ETHERS.JS - Wajib dimuat untuk interaksi Web3 -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-/* ... (Style Anda dari draf pertama di sini) ... */
+/* CSS UNTUK FIX TAMPILAN GELAP/UNSTYLED */
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: #050008;
+  font-family: 'Trebuchet MS', sans-serif;
+  overflow: hidden;
+  color: white; /* Default font color */
+}
 
-/* Tambahkan style untuk disabled button */
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== TOP HUD (Status dan Skor) ===== */
+#topBar {
+  height: 70px;
+  background: linear-gradient(90deg, #ff7a00, #7b00ff);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-weight: bold;
+  box-shadow: 0 0 15px orange;
+  z-index: 10;
+}
+
+#scoreBox {
+  background: rgba(0,0,0,0.4);
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid white;
+}
+
+/* ===== GAME AREA (Canvas Container) ===== */
+#gameArea {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle, #14001f, #000);
+}
+
+canvas {
+  background: black;
+  border: 4px solid orange;
+  border-radius: 16px;
+  box-shadow: 0 0 30px purple;
+  /* Membuat canvas responsif, tapi tetap proporsional */
+  max-width: 90%;
+  max-height: 90%;
+}
+
+/* ===== BOTTOM HUD (Tombol Kontrol) ===== */
+#bottomBar {
+  height: 90px;
+  background: #100015;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  border-top: 2px solid orange;
+  z-index: 10;
+}
+
+button {
+  padding: 12px 22px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+  background: linear-gradient(90deg, #ff8c00, #800080); /* Oranye ke Ungu */
+  box-shadow: 0 0 10px #ff8c00;
+  transition: 0.2s;
+}
+
+button:hover:not(:disabled) {
+  transform: scale(1.08);
+  box-shadow: 0 0 15px #ff8c00;
+}
+
 button:disabled {
-  opacity: 0.6;
+  background: #444;
   cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
 }
 </style>
 </head>
@@ -20,26 +109,35 @@ button:disabled {
 <body>
 <div id="root">
 
+  <!-- ✅ TOP HUD -->
   <div id="topBar">
-    <div>🎃 Player: <span id="playerName">Connecting...</span></div>
+    <div>🎃 Player: <span id="playerName">Loading...</span></div>
     <div id="scoreBox">Score: <span id="score">0</span></div>
   </div>
 
+  <!-- ✅ GAME CANVAS -->
   <div id="gameArea">
     <canvas id="game" width="800" height="600"></canvas>
   </div>
 
+  <!-- ✅ BUTTONS -->
   <div id="bottomBar">
+    <!-- ID startOnchainBtn untuk sinkronisasi di web3_game.js -->
     <button id="startOnchainBtn" onclick="startOnchain()" disabled>START GAME (0.01 SOMI)</button>
     
-    <button id="submitScoreBtn" onclick="submitFinalScore(currentScore)" disabled>SUBMIT SCORE</button>
+    <!-- ID submitScoreBtn untuk di-disable/enable oleh game_logic.js & web3_game.js -->
+    <button id="submitScoreBtn" disabled>SUBMIT SCORE (Auto)</button> 
+    
+    <!-- backMenu() ada di game_logic.js -->
     <button onclick="backMenu()">BACK</button>
   </div>
 
 </div>
 
+<!-- Memuat Skrip Logika -->
 <script src="game_logic.js"></script> 
 <script src="web3_game.js"></script>
 
 </body>
 </html>
+
