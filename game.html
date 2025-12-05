@@ -1,605 +1,176 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Pac-Man Halloween</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- ETHERS.JS (Dibutuhkan untuk koneksi wallet) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-    
+    <title>Somnia Labyrinth Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
-        /* Desain spooky/cyberpunk minimalis */
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        
         body {
-            background: #00000a; /* Background sangat gelap */
-            color: #ff8c00; /* Warna oranye terang/neon */
-            display: flex; flex-direction: column; align-items: center; 
-            min-height: 100vh; padding: 10px;
+            font-family: 'Inter', sans-serif;
+            background-color: #1a1a2e; /* Dark theme background */
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
         }
-
         .game-container {
-            width: 100%; max-width: 500px; 
-            margin: 20px auto; padding: 10px;
-            border: 4px solid #800080; /* Ungu gelap */
+            background-color: #2c004a; /* Dark purple */
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 0 20px #800080;
-            background-color: #0d001a;
-        }
-
-        h1 {
-            font-family: 'Press Start 2P', cursive;
-            font-size: clamp(20px, 5vw, 32px);
-            color: #ff8c00;
-            text-align: center;
-            margin-bottom: 10px;
-            text-shadow: 0 0 5px #ff8c00;
-        }
-
-        #scoreDisplay {
-            font-family: 'Press Start 2P', cursive;
-            color: #00ff7f; /* Hijau neon */
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: clamp(14px, 3vw, 20px);
-        }
-
-        #gameCanvas {
-            display: block;
-            background-color: #000;
-            border: 2px solid #ff8c00;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 800px;
             width: 100%;
-            touch-action: none; /* Penting untuk interaksi sentuh */
         }
-
-        .controls-panel {
-            display: flex; justify-content: space-around;
-            padding: 15px 0;
-            flex-wrap: wrap;
+        canvas {
+            display: block;
+            background-color: #000000;
+            border-radius: 8px;
+            margin: 20px auto;
+            border: 3px solid #ff0077; /* Neon pink border */
         }
-        
-        .control-button, .action-button {
-            padding: 10px 15px; margin: 5px;
-            border-radius: 8px; border: none;
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 2px solid #3c155d;
+            margin-bottom: 10px;
+        }
+        .score-box, .player-box {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ffd700; /* Gold */
+        }
+        .control-panel {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            padding-top: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            transition: 0.2s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
-            font-family: 'Inter', sans-serif;
+            transition: transform 0.1s;
         }
-
-        .control-button {
-            background-color: #800080; /* Ungu */
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        .btn-start {
+            background-color: #ff0077;
             color: white;
-            width: 80px; height: 50px;
-            font-size: 16px;
-            line-height: 1;
+            border: none;
+            box-shadow: 0 4px 0 #c2005c;
         }
-        .control-button:hover { background-color: #a020f0; }
-
-        .action-button {
-            flex: 1 1 45%; max-width: 220px;
-            margin-top: 10px;
-            background: linear-gradient(90deg, #ff8c00, #800080); /* Orange ke Ungu */
+        .btn-start:disabled {
+            background-color: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .btn-menu {
+            background-color: #333366;
             color: white;
-            font-size: 16px;
+            border: none;
+            box-shadow: 0 4px 0 #222244;
         }
-        .action-button:hover { transform: scale(1.05); box-shadow: 0 0 15px #ff8c00; }
-        .action-button:disabled { background: #444; cursor: not-allowed; opacity: 0.7; transform: scale(1); box-shadow: none; }
 
-        .message-box {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 100;
-            padding: 20px;
+        /* --- Custom Modal Styling --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none; /* Default hidden */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 12px;
             text-align: center;
-        }
-        .message-box h2 { color: #ff8c00; font-family: 'Press Start 2P', cursive; margin-bottom: 20px; font-size: 1.5em; }
-        .message-box p { color: white; margin-bottom: 15px; }
-
-        .game-status-box {
-            background-color: #2b0033;
-            border: 2px solid #ff8c00;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #ff8c00;
             max-width: 90%;
+            width: 400px;
+            box-shadow: 0 10px 30px rgba(255, 0, 119, 0.5);
+            border: 2px solid #ff0077;
         }
-
-        .d-pad {
-            display: grid;
-            grid-template-areas: ". up ." "left center right" ". down .";
-            width: 150px; /* Lebar D-Pad */
-            margin: 0 auto;
+        .modal-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 15px;
         }
-        #btnUp { grid-area: up; }
-        #btnDown { grid-area: down; }
-        #btnLeft { grid-area: left; }
-        #btnRight { grid-area: right; }
-
-        .status-msg { margin-top: 10px; color: #00ff7f; font-size: 0.9em; }
-        .error-msg { color: red; }
+        .modal-message {
+            margin-bottom: 25px;
+            font-size: 1.1rem;
+        }
+        .modal-button {
+            background-color: #ff0077;
+            color: white;
+            padding: 10px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .modal-button:hover {
+            background-color: #c2005c;
+        }
     </style>
 </head>
 <body>
+    <div class="game-container">
+        <h1 class="text-3xl font-extrabold text-center text-[#ff0077] mb-4">
+            SOMNIA LABYRINTH MASTER
+        </h1>
 
-<div class="game-container">
-    <h1>HALLOWEEN PAC-MAN</h1>
-    <div id="scoreDisplay">SCORE: 0 | HIGH SCORE: 0</div>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="controls" class="controls-panel">
-        <div class="d-pad">
-            <button id="btnUp" class="control-button">▲</button>
-            <button id="btnLeft" class="control-button">◀</button>
-            <button id="btnRight" class="control-button">▶</button>
-            <button id="btnDown" class="control-button">▼</button>
+        <!-- Info Bar -->
+        <div class="info-bar">
+            <div class="player-box">
+                <span class="text-gray-400">Player:</span> <span id="playerName">Connecting...</span>
+            </div>
+            <div class="score-box">
+                <span class="text-gray-400">SCORE:</span> <span id="score">0</span>
+            </div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 10px; min-width: 150px;">
-            <button id="startGameBtn" class="action-button">START GAME</button>
-            <button id="submitScoreBtn" class="action-button" disabled>SUBMIT SCORE</button>
-            <button id="backToMenuBtn" class="action-button" onclick="window.location.href='index.html'">BACK TO MENU</button>
+
+        <!-- Canvas Game -->
+        <canvas id="game" width="800" height="600"></canvas>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <button id="startOnchainBtn" class="btn btn-start" onclick="startOnchain()" disabled>
+                CONNECT WALLET TO START
+            </button>
+            <button id="backMenuBtn" class="btn btn-menu" onclick="backMenu()">
+                BACK TO MENU
+            </button>
+            <!-- Tombol submit score disembunyikan, karena submit dilakukan otomatis oleh endGame -->
+            <button id="submitScoreBtn" style="display:none;">SUBMIT SCORE (Auto)</button> 
+        </div>
+        
+    </div>
+
+    <!-- CUSTOM MODAL (Menggantikan alert()) -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-content">
+            <div id="modalTitle" class="modal-title"></div>
+            <div id="modalMessage" class="modal-message"></div>
+            <button id="modalCloseButton" class="modal-button" onclick="document.getElementById('customModal').style.display='none';">TUTUP</button>
         </div>
     </div>
-</div>
 
-<!-- Modal untuk Pesan (misalnya Game Over) -->
-<div id="messageModal" class="message-box hidden">
-    <div class="game-status-box">
-        <h2 id="modalTitle">GAME OVER!</h2>
-        <p id="modalMessage">Skor Anda: 0</p>
-        <p id="submitStatus" class="status-msg">Database status: Connecting...</p>
-        <button id="modalCloseBtn" class="action-button">TUTUP</button>
-    </div>
-</div>
-
-
-<!-- Logika Firebase, Game, dan Score Submission -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    setLogLevel('Debug');
-
-    // ====================================================================
-    // --- 1. KONFIGURASI FIREBASE (MENGGUNAKAN KONFIGURASI YANG ANDA BERIKAN) ---
-    // ====================================================================
-    const hardcodedFirebaseConfig = {
-      apiKey: "AIzaSyBeHjlHJSB5R0mYJmX6h5uJ7Iwqu7zNWtA",
-      authDomain: "somnia-hallowen.firebaseapp.com",
-      projectId: "somnia-hallowen",
-      storageBucket: "somnia-hallowen.firebasestorage.app",
-      messagingSenderId: "441297353260",
-      appId: "1:441297353260:web:71343e500055d10c712f89",
-      measurementId: "G-5KMBCWQ96G"
-    };
-
-    // Variabel lingkungan dari Canvas
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    
-    let db = null;
-    let auth = null;
-    let userId = null;
-    let walletAddress = null;
-    let displayName = "Player";
-    let firebaseReady = false;
-    
-    // ====================================================================
-    // --- 2. FIREBASE INIT & USER DATA LOAD ---
-    // ====================================================================
-    
-    async function loadUserProfile() {
-        if (!db || !userId) return false;
-        
-        // Cek profile pribadi (disimpan dari index.html)
-        const profileDocRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
-        
-        try {
-            const docSnap = await getDoc(profileDocRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                displayName = data.displayName || "Unknown Player";
-                walletAddress = data.wallet || null;
-                
-                if (!walletAddress) {
-                    // Jika wallet belum terhubung, kirim kembali ke menu
-                    showModal("PERINGATAN!", "Harap hubungkan wallet dan simpan nama di Menu Utama sebelum bermain.");
-                    setTimeout(() => { window.location.href = 'index.html'; }, 3000);
-                    return false;
-                }
-            } else {
-                 showModal("PERINGATAN!", "Profile tidak ditemukan. Harap simpan nama dan wallet di Menu Utama.");
-                 setTimeout(() => { window.location.href = 'index.html'; }, 3000);
-                 return false;
-            }
-            return true;
-        } catch (e) {
-            console.error("Error loading user profile:", e);
-            showModal("ERROR", "Gagal memuat profile user. Cek koneksi.");
-            return false;
-        }
-    }
-
-    async function initializeFirebase() {
-        try {
-            const app = initializeApp(hardcodedFirebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            
-            if (initialAuthToken) { 
-                await signInWithCustomToken(auth, initialAuthToken); 
-            } else { 
-                await signInAnonymously(auth); 
-            }
-
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    const loaded = await loadUserProfile();
-                    if (loaded) {
-                        firebaseReady = true;
-                        document.getElementById('submitStatus').textContent = `DB Status: Ready. Player: ${displayName}`;
-                    }
-                } else {
-                    document.getElementById('submitStatus').textContent = `DB Status: Auth Failed.`;
-                }
-            });
-
-        } catch (error) {
-            console.error("Critical Error during Firebase Init/Auth:", error);
-            firebaseReady = false;
-            document.getElementById('submitStatus').textContent = `DB Error: ${error.message}`;
-        }
-    }
-    
-    // ====================================================================
-    // --- 3. GAME LOGIC (SIMPLIFIED PAC-MAN) ---
-    // ====================================================================
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const TILE_SIZE = 25; // Ukuran setiap kotak di maze
-    let currentScore = 0;
-    let highscore = 0;
-    let gameInterval;
-    let gameState = 'START'; // START, PLAYING, GAME_OVER
-
-    // Maze sederhana (1 = Dinding, 0 = Jalan/Kosong, 2 = Makanan, 3 = Hantu, 4 = Player)
-    let maze = [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,2,2,2,2,2,2,1,2,2,2,2,2,2,1],
-        [1,2,1,1,1,2,2,1,2,2,1,1,1,2,1],
-        [1,2,1,2,2,2,2,2,2,2,2,2,1,2,1],
-        [1,2,1,2,1,1,1,1,1,1,1,2,1,2,1],
-        [1,2,2,2,2,2,2,1,2,2,2,2,2,2,1],
-        [1,1,1,1,1,1,2,1,2,1,1,1,1,1,1],
-        [1,0,0,0,0,0,2,3,2,0,0,0,0,0,1], /* Hantu start di sini */
-        [1,1,1,1,1,1,2,1,2,1,1,1,1,1,1],
-        [1,2,2,2,2,2,2,1,2,2,2,2,2,2,1],
-        [1,2,1,1,1,2,2,2,2,2,1,1,1,2,1],
-        [1,2,2,2,1,2,1,1,1,2,2,2,2,2,1],
-        [1,2,1,2,2,2,2,2,2,2,2,1,2,1,1],
-        [1,4,2,2,2,2,2,1,2,2,2,2,2,2,1], /* Player start di sini (4) */
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-    ];
-    
-    const ROWS = maze.length;
-    const COLS = maze[0].length;
-
-    canvas.width = COLS * TILE_SIZE;
-    canvas.height = ROWS * TILE_SIZE;
-
-    let player = { x: 1, y: 13, dx: 0, dy: 0, nextDx: 0, nextDy: 0 }; // dx/dy: current direction, nextDx/nextDy: buffer
-    let ghost = { x: 7, y: 7, dx: 0, dy: 0, color: 'red' };
-    let totalPellets = 0;
-
-    function resetGame() {
-        currentScore = 0;
-        player = { x: 1, y: 13, dx: 0, dy: 0, nextDx: 0, nextDy: 0 };
-        ghost = { x: 7, y: 7, dx: 0, dy: 0, color: 'red' };
-        
-        // Reset maze and count pellets
-        totalPellets = 0;
-        maze = [
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-            [1,2,2,2,2,2,2,1,2,2,2,2,2,2,1],
-            [1,2,1,1,1,2,2,1,2,2,1,1,1,2,1],
-            [1,2,1,2,2,2,2,2,2,2,2,2,1,2,1],
-            [1,2,1,2,1,1,1,1,1,1,1,2,1,2,1],
-            [1,2,2,2,2,2,2,1,2,2,2,2,2,2,1],
-            [1,1,1,1,1,1,2,1,2,1,1,1,1,1,1],
-            [1,0,0,0,0,0,2,3,2,0,0,0,0,0,1], 
-            [1,1,1,1,1,1,2,1,2,1,1,1,1,1,1],
-            [1,2,2,2,2,2,2,1,2,2,2,2,2,2,1],
-            [1,2,1,1,1,2,2,2,2,2,1,1,1,2,1],
-            [1,2,2,2,1,2,1,1,1,2,2,2,2,2,1],
-            [1,2,1,2,2,2,2,2,2,2,2,1,2,1,1],
-            [1,4,2,2,2,2,2,1,2,2,2,2,2,2,1], 
-            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        ];
-        
-        // Hitung total pellet lagi
-        for(let r=0; r < ROWS; r++) {
-            for(let c=0; c < COLS; c++) {
-                if(maze[r][c] === 2) {
-                    totalPellets++;
-                }
-            }
-        }
-        
-        document.getElementById('submitScoreBtn').disabled = true;
-        gameState = 'START';
-        drawGame();
-        updateScoreDisplay();
-    }
-
-    function updateScoreDisplay() {
-        document.getElementById('scoreDisplay').textContent = `SCORE: ${currentScore} | HIGH SCORE: ${highscore}`;
-    }
-
-    function drawGame() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw Maze
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                const x = c * TILE_SIZE;
-                const y = r * TILE_SIZE;
-
-                if (maze[r][c] === 1) { // Wall (Ungu)
-                    ctx.fillStyle = '#4b0082'; 
-                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                    ctx.strokeStyle = '#800080';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-                } else if (maze[r][c] === 2) { // Pellet (Oranye)
-                    ctx.beginPath();
-                    ctx.fillStyle = '#ff8c00';
-                    ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, TILE_SIZE / 8, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-        }
-
-        // Draw Ghost
-        ctx.beginPath();
-        ctx.fillStyle = ghost.color;
-        ctx.arc(ghost.x * TILE_SIZE + TILE_SIZE / 2, ghost.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Draw Player (Pac-Man)
-        ctx.beginPath();
-        ctx.fillStyle = '#ffff00'; // Kuning Neon
-        const angle = Math.atan2(player.dy, player.dx);
-        // Mulut terbuka jika bergerak
-        const mouthOpen = gameState === 'PLAYING' ? 0.2 : 0; 
-        ctx.arc(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 2.5, 
-            angle + mouthOpen, angle + Math.PI * 2 - mouthOpen);
-        ctx.lineTo(player.x * TILE_SIZE + TILE_SIZE / 2, player.y * TILE_SIZE + TILE_SIZE / 2);
-        ctx.fill();
-    }
-
-    function checkCollision(objX, objY, dirX, dirY) {
-        const newX = objX + dirX;
-        const newY = objY + dirY;
-        if (newX >= 0 && newX < COLS && newY >= 0 && newY < ROWS) {
-            return maze[newY][newX] !== 1;
-        }
-        return false;
-    }
-
-    function movePlayer() {
-        // Coba arah dari buffer (nextDx/nextDy)
-        if (checkCollision(player.x, player.y, player.nextDx, player.nextDy)) {
-            player.dx = player.nextDx;
-            player.dy = player.nextDy;
-            player.nextDx = 0;
-            player.nextDy = 0;
-        }
-
-        // Pindah ke arah saat ini
-        if (checkCollision(player.x, player.y, player.dx, player.dy)) {
-            player.x += player.dx;
-            player.y += player.dy;
-
-            // Cek Pellet
-            if (maze[player.y][player.x] === 2) {
-                maze[player.y][player.x] = 0; // Hapus pellet
-                currentScore += 10;
-                totalPellets--;
-                updateScoreDisplay();
-
-                if (totalPellets === 0) {
-                    gameOver("WIN");
-                }
-            }
-        }
-    }
-
-    function moveGhost() {
-        // AI Hantu: Selalu coba bergerak menuju Player (sederhana)
-        let bestDir = { dx: 0, dy: 0 };
-        let minDistance = Infinity;
-        
-        const possibleMoves = [
-            { dx: 1, dy: 0 }, { dx: -1, dy: 0 }, 
-            { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
-        ];
-
-        // Cari langkah terdekat ke pemain
-        for (const move of possibleMoves) {
-            if (checkCollision(ghost.x, ghost.y, move.dx, move.dy)) {
-                const nextX = ghost.x + move.dx;
-                const nextY = ghost.y + move.dy;
-                const distance = Math.sqrt(Math.pow(player.x - nextX, 2) + Math.pow(player.y - nextY, 2));
-                
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    bestDir = move;
-                }
-            }
-        }
-        
-        ghost.dx = bestDir.dx;
-        ghost.dy = bestDir.dy;
-        ghost.x += ghost.dx;
-        ghost.y += ghost.dy;
-    }
-
-    function checkGameOver() {
-        // Player vs Ghost collision
-        if (player.x === ghost.x && player.y === ghost.y) {
-            gameOver("LOSE");
-        }
-    }
-    
-    function gameLoop() {
-        if (gameState !== 'PLAYING') return;
-
-        movePlayer();
-        moveGhost();
-        checkGameOver();
-        drawGame();
-    }
-    
-    function startGame() {
-        if (gameState === 'PLAYING') return;
-        
-        resetGame();
-        gameState = 'PLAYING';
-        document.getElementById('startGameBtn').textContent = "RESTART";
-        document.getElementById('submitScoreBtn').disabled = true;
-
-        // Atur kecepatan game (setiap 200ms)
-        clearInterval(gameInterval);
-        gameInterval = setInterval(gameLoop, 200);
-    }
-
-    function gameOver(status) {
-        gameState = 'GAME_OVER';
-        clearInterval(gameInterval);
-        
-        if (currentScore > highscore) {
-            highscore = currentScore;
-            updateScoreDisplay();
-        }
-        
-        const title = status === 'WIN' ? "CONGRATULATIONS!" : "GAME OVER!";
-        const message = status === 'WIN' ? 
-            `Anda menang! Skor Akhir: ${currentScore}` :
-            `Anda tertangkap Hantu! Skor Akhir: ${currentScore}`;
-        
-        document.getElementById('submitScoreBtn').disabled = false;
-        showModal(title, message);
-    }
-    
-    // ====================================================================
-    // --- 4. FIREBASE SCORE SUBMISSION ---
-    // ====================================================================
-    async function submitScore() {
-        if (!firebaseReady || !walletAddress || !displayName || gameState !== 'GAME_OVER') {
-            showModal("PERINGATAN", "Anda harus menyelesaikan game dan menghubungkan profile di Menu Utama untuk submit skor.");
-            return;
-        }
-
-        const btn = document.getElementById('submitScoreBtn');
-        const statusEl = document.getElementById('submitStatus');
-        btn.disabled = true;
-        btn.textContent = "SUBMITTING...";
-        statusEl.textContent = "Mengirim skor ke Database...";
-        
-        // Path publik untuk Leaderboard: /artifacts/{appId}/public/data/leaderboard/{documentId}
-        const leaderboardCollection = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
-        
-        const scoreData = {
-            score: currentScore,
-            displayName: displayName,
-            wallet: walletAddress,
-            // ID unik untuk memastikan setiap skor baru unik
-            submissionTime: Date.now(), 
-            userId: userId 
-        };
-
-        try {
-            await addDoc(leaderboardCollection, scoreData);
-            statusEl.textContent = `Skor ${currentScore} berhasil disimpan! Lihat Leaderboard.`;
-            statusEl.classList.remove('error-msg');
-            btn.textContent = "SCORE SUBMITTED";
-        } catch (e) {
-            console.error("Error submitting score:", e);
-            statusEl.textContent = `ERROR: Gagal menyimpan skor (${e.message}). Cek Aturan Keamanan.`;
-            statusEl.classList.add('error-msg');
-            btn.disabled = false;
-            btn.textContent = "RETRY SUBMIT SCORE";
-        }
-    }
-
-    // ====================================================================
-    // --- 5. UTILITIES AND EVENT LISTENERS ---
-    // ====================================================================
-
-    function showModal(title, message) {
-        document.getElementById('modalTitle').textContent = title;
-        document.getElementById('modalMessage').textContent = message;
-        document.getElementById('messageModal').classList.remove('hidden');
-    }
-
-    function hideModal() {
-        document.getElementById('messageModal').classList.add('hidden');
-    }
-
-    // Input Handling
-    function handleInput(dx, dy) {
-        if (gameState === 'PLAYING') {
-            // Gunakan buffer untuk input, agar Pac-Man bisa belok saat di tengah jalan
-            player.nextDx = dx;
-            player.nextDy = dy;
-        }
-    }
-    
-    // Keyboard listener
-    document.addEventListener('keydown', (e) => {
-        if (gameState !== 'PLAYING') return;
-        let dx = 0, dy = 0;
-        switch (e.key) {
-            case 'ArrowUp': dy = -1; break;
-            case 'ArrowDown': dy = 1; break;
-            case 'ArrowLeft': dx = -1; break;
-            case 'ArrowRight': dx = 1; break;
-            default: return;
-        }
-        handleInput(dx, dy);
-    });
-
-    // Button (D-Pad) listeners
-    document.getElementById('btnUp').addEventListener('click', () => handleInput(0, -1));
-    document.getElementById('btnDown').addEventListener('click', () => handleInput(0, 1));
-    document.getElementById('btnLeft').addEventListener('click', () => handleInput(-1, 0));
-    document.getElementById('btnRight').addEventListener('click', () => handleInput(1, 0));
-    
-    document.getElementById('startGameBtn').addEventListener('click', startGame);
-    document.getElementById('submitScoreBtn').addEventListener('click', submitScore);
-    document.getElementById('modalCloseBtn').addEventListener('click', hideModal);
-
-    // Initialization on load
-    window.onload = () => {
-        initializeFirebase();
-        resetGame();
-        drawGame(); 
-
-        // Atur ulang ukuran kanvas jika jendela berubah
-        window.addEventListener('resize', () => {
-            canvas.width = COLS * TILE_SIZE;
-            canvas.height = ROWS * TILE_SIZE;
-            drawGame();
-        });
-    };
-
-</script>
+    <!-- Script Game Logic -->
+    <script src="game_logic.js"></script>
+    <!-- Script Web3 Interaction -->
+    <script src="web3_game.js"></script>
 </body>
 </html>
