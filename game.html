@@ -129,37 +129,48 @@
         // Import Firebase modules
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, collection, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Aktifkan logging debug untuk Firebase (sangat membantu mendiagnosis masalah init)
+        setLogLevel('debug');
         
         // Inisialisasi Lucide icons
         lucide.createIcons();
 
-        // --- GLOBAL VARIABLES & FIREBASE INIT SETUP FIX ---
+        // --- GLOBAL VARIABLES & FIREBASE INIT (BLOCK KRITIS) ---
         let db;
         let auth;
         let userId = null;
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // PENGECEKAN LEBIH KUAT UNTUK CONFIGURATION
         const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
         let firebaseConfig = null;
         
-        if (rawConfig && rawConfig.trim() !== '') {
-            try {
-                firebaseConfig = JSON.parse(rawConfig);
-            } catch (e) {
-                console.error("Error parsing Firebase config JSON:", e);
-                // firebaseConfig tetap null jika gagal parse
-            }
-        }
-
         const startGameButton = document.getElementById("startOnchainBtn");
 
+        console.log("DEBUG: --- Firebase Configuration Check ---");
+        console.log("DEBUG: Raw Config Value:", rawConfig ? (rawConfig.length > 50 ? rawConfig.substring(0, 50) + '...' : rawConfig) : 'NULL/UNDEFINED');
+        
+        if (rawConfig && typeof rawConfig === 'string' && rawConfig.trim() !== '') {
+            try {
+                firebaseConfig = JSON.parse(rawConfig);
+                console.log("DEBUG: Configuration successfully parsed.");
+            } catch (e) {
+                console.error("DEBUG: ❌ ERROR: Failed to parse Firebase config JSON.", e);
+            }
+        } else {
+            console.warn("DEBUG: ⚠️ WARNING: __firebase_config is null, undefined, or empty string.");
+        }
+        
+        console.log("DEBUG: Final firebaseConfig object:", firebaseConfig);
+        console.log("DEBUG: ------------------------------------");
+
+
         async function initializeFirebaseAndAuth() {
-            // Cek apakah konfigurasi valid
+            // Cek final sebelum inisialisasi
             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                console.error("Firebase config is invalid or empty.");
+                console.error("Firebase config is invalid or empty. Cannot initialize.");
                 startGameButton.innerText = "Error Init";
                 return;
             }
@@ -169,7 +180,7 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                console.log("Firebase initialized.");
+                console.log("Firebase initialized successfully.");
                 
                 await setPersistence(auth, browserSessionPersistence);
                 
@@ -186,7 +197,7 @@
                         startGameButton.disabled = false;
                         startGameButton.innerText = "START GAME (0.01 SOMI)";
                     } else {
-                        console.log("No user signed in.");
+                        console.log("No user signed in (or sign-in failed).");
                         userId = null;
                         startGameButton.disabled = true;
                         startGameButton.innerText = "LOGIN REQUIRED";
@@ -194,7 +205,7 @@
                 });
 
             } catch (error) {
-                console.error("Error during Firebase initialization or authentication:", error);
+                console.error("Error during Firebase initialization or authentication (Catch All):", error);
                 startGameButton.innerText = "INIT FAILED";
             }
         }
@@ -219,7 +230,7 @@
         let vy = 0; 
         let currentDirection = 0; 
 
-        // --- CUSTOM MODAL FUNCTIONS (Mengganti alert) ---
+        // --- CUSTOM MODAL FUNCTIONS ---
         window.showMessage = (title, message) => {
             document.getElementById("modalTitle").innerText = title;
             document.getElementById("modalMessage").innerText = message;
@@ -248,60 +259,30 @@
             vy = 0;
         }
 
-        // --- WALL MANAGEMENT (LABYRINTH KOMPLEKS BARU) ---
+        // --- WALL MANAGEMENT ---
         const WALL_THICKNESS = 20;
-
-        // Koordinat labirin disesuaikan dengan gambar yang diminta (800x600)
         const walls = [
-            // 1. Perimeter (Batas Luar)
-            { x: 0, y: 0, width: 800, height: WALL_THICKNESS }, 
-            { x: 0, y: 580, width: 800, height: WALL_THICKNESS }, 
-            { x: 0, y: 0, width: WALL_THICKNESS, height: 600 }, 
-            { x: 780, y: 0, width: WALL_THICKNESS, height: 600 }, 
-            
-            // 2. Pusat Labirin
+            // Perimeter
+            { x: 0, y: 0, width: 800, height: WALL_THICKNESS }, { x: 0, y: 580, width: 800, height: WALL_THICKNESS }, 
+            { x: 0, y: 0, width: WALL_THICKNESS, height: 600 }, { x: 780, y: 0, width: WALL_THICKNESS, height: 600 }, 
+            // Pusat
             { x: 300, y: 280, width: 200, height: WALL_THICKNESS }, 
-            
-            // 3. Struktur Internal (Simetris)
-            // Lengan Samping Kiri
-            { x: 100, y: 100, width: 200, height: WALL_THICKNESS }, 
-            { x: 100, y: 100, width: WALL_THICKNESS, height: 100 },
-            { x: 100, y: 480, width: 200, height: WALL_THICKNESS }, 
-            { x: 100, y: 400, width: WALL_THICKNESS, height: 100 },
-
-            // Lengan Samping Kanan
-            { x: 500, y: 100, width: 200, height: WALL_THICKNESS }, 
-            { x: 680, y: 100, width: WALL_THICKNESS, height: 100 },
-            { x: 500, y: 480, width: 200, height: WALL_THICKNESS }, 
-            { x: 680, y: 400, width: WALL_THICKNESS, height: 100 },
-
-            // T-Shapes Atas
-            { x: 380, y: 100, width: 40, height: WALL_THICKNESS },
-            { x: 390, y: 120, width: WALL_THICKNESS, height: 80 },
-
-            // T-Shapes Bawah
-            { x: 380, y: 480, width: 40, height: WALL_THICKNESS },
-            { x: 390, y: 400, width: WALL_THICKNESS, height: 80 },
-
-            // Inner Corners (Kiri Atas)
-            { x: 200, y: 200, width: WALL_THICKNESS, height: 80 },
-            { x: 220, y: 260, width: 80, height: WALL_THICKNESS },
-
-            // Inner Corners (Kanan Atas)
-            { x: 580, y: 200, width: WALL_THICKNESS, height: 80 },
-            { x: 500, y: 260, width: 80, height: WALL_THICKNESS },
-
-            // Inner Corners (Kiri Bawah)
-            { x: 200, y: 400, width: WALL_THICKNESS, height: 80 },
-            { x: 220, y: 400, width: 80, height: WALL_THICKNESS },
-
-            // Inner Corners (Kanan Bawah)
-            { x: 580, y: 400, width: WALL_THICKNESS, height: 80 },
-            { x: 500, y: 400, width: 80, height: WALL_THICKNESS },
+            // Internal Simetris
+            { x: 100, y: 100, width: 200, height: WALL_THICKNESS }, { x: 100, y: 100, width: WALL_THICKNESS, height: 100 },
+            { x: 100, y: 480, width: 200, height: WALL_THICKNESS }, { x: 100, y: 400, width: WALL_THICKNESS, height: 100 },
+            { x: 500, y: 100, width: 200, height: WALL_THICKNESS }, { x: 680, y: 100, width: WALL_THICKNESS, height: 100 },
+            { x: 500, y: 480, width: 200, height: WALL_THICKNESS }, { x: 680, y: 400, width: WALL_THICKNESS, height: 100 },
+            // T-Shapes
+            { x: 380, y: 100, width: 40, height: WALL_THICKNESS }, { x: 390, y: 120, width: WALL_THICKNESS, height: 80 },
+            { x: 380, y: 480, width: 40, height: WALL_THICKNESS }, { x: 390, y: 400, width: WALL_THICKNESS, height: 80 },
+            // Inner Corners
+            { x: 200, y: 200, width: WALL_THICKNESS, height: 80 }, { x: 220, y: 260, width: 80, height: WALL_THICKNESS },
+            { x: 580, y: 200, width: WALL_THICKNESS, height: 80 }, { x: 500, y: 260, width: 80, height: WALL_THICKNESS },
+            { x: 200, y: 400, width: WALL_THICKNESS, height: 80 }, { x: 220, y: 400, width: 80, height: WALL_THICKNESS },
+            { x: 580, y: 400, width: WALL_THICKNESS, height: 80 }, { x: 500, y: 400, width: 80, height: WALL_THICKNESS },
         ];
 
 
-        /** Menggambar semua dinding. */
         function drawWalls() {
             ctx.fillStyle = "rgba(0, 100, 255, 0.8)"; 
             for (const wall of walls) {
@@ -309,32 +290,20 @@
             }
         }
 
-        /** Cek tabrakan AABB. */
         function checkAABBCollision(rect1, rect2) {
-            return rect1.x < rect2.x + rect2.width &&
-                   rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height &&
-                   rect1.y + rect1.height > rect2.y;
+            return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
         }
 
-        /** Mencegah Player menembus dinding. */
         function checkPlayerWallCollision(newX, newY) {
-            const playerRect = {
-                x: newX - PLAYER_SIZE,
-                y: newY - PLAYER_SIZE,
-                width: 2 * PLAYER_SIZE,
-                height: 2 * PLAYER_SIZE
-            };
-
+            const playerRect = { x: newX - PLAYER_SIZE, y: newY - PLAYER_SIZE, width: 2 * PLAYER_SIZE, height: 2 * PLAYER_SIZE };
             for (const wall of walls) {
-                if (checkAABBCollision(playerRect, wall)) {
-                    return true; 
-                }
+                if (checkAABBCollision(playerRect, wall)) { return true; }
             }
             return false; 
         }
 
-        // --- GHOST MANAGEMENT (Disingkat) ---
+        // --- GHOST MANAGEMENT ---
         let ghosts = [];
 
         class Ghost {
@@ -345,14 +314,11 @@
         }
         
         function moveGhost(ghost) {
-            let targetX = x;
-            let targetY = y;
-            let dx = 0;
-            let dy = 0;
+            let targetX = x, targetY = y;
+            let dx = 0, dy = 0;
 
             if (ghost.behavior === "chase" || ghost.behavior === "flee") {
-                dx = targetX - ghost.x;
-                dy = targetY - ghost.y;
+                dx = targetX - ghost.x; dy = targetY - ghost.y;
                 if (ghost.behavior === "flee") { dx *= -1; dy *= -1; }
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance > 0) {
@@ -397,39 +363,25 @@
             ctx.lineTo(ghost.x + r, ghost.y + r);
             ctx.lineTo(ghost.x + r * 0.75, ghost.y + r - 5);
             ctx.lineTo(ghost.x + r * 0.5, ghost.y + r);
-            ctx.lineTo(ghost.x + r * 0.25, ghost.y + r - 5);
-            ctx.lineTo(ghost.x, ghost.y + r);
-            ctx.lineTo(ghost.x - r * 0.25, ghost.y + r - 5);
-            ctx.lineTo(ghost.x - r * 0.5, ghost.y + r);
-            ctx.lineTo(ghost.x - r * 0.75, ghost.y + r - 5);
             ctx.lineTo(ghost.x - r, ghost.y + r);
             ctx.closePath();
             ctx.fill();
 
+            // Eyes
             ctx.fillStyle = "white";
             ctx.beginPath();
             ctx.arc(ghost.x - r / 2, ghost.y - r / 2, 4, 0, 2 * Math.PI);
             ctx.arc(ghost.x + r / 2, ghost.y - r / 2, 4, 0, 2 * Math.PI);
             ctx.fill();
-            
-            ctx.fillStyle = "black";
-            const eyeDx = (x - ghost.x) / 10;
-            const eyeDy = (y - ghost.y) / 10;
-            ctx.beginPath();
-            ctx.arc(ghost.x - r / 2 + eyeDx, ghost.y - r / 2 + eyeDy, 2, 0, 2 * Math.PI);
-            ctx.arc(ghost.x + r / 2 + eyeDx, ghost.y + r / 2 + eyeDy, 2, 0, 2 * Math.PI);
-            ctx.fill();
         }
 
         function checkCollision(ghost) {
-            const dx = x - ghost.x;
-            const dy = y - ghost.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distance = Math.sqrt(Math.pow(x - ghost.x, 2) + Math.pow(y - ghost.y, 2));
             return distance < PLAYER_SIZE + ghost.radius; 
         }
 
 
-        // --- CANDY MANAGEMENT (Disingkat) ---
+        // --- CANDY MANAGEMENT ---
         let candy = [];
 
         function setupCandy() {
@@ -480,18 +432,15 @@
                 ctx.beginPath();
                 ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
                 ctx.fill();
-                ctx.fillStyle = "green";
+                ctx.fillStyle = "green"; // Batang labu
                 ctx.fillRect(item.x - 1, item.y - radius - 3, 2, 3);
-                ctx.fillStyle = "orange"; 
             }
         }
 
         function checkCandyCollection() {
             for (let i = candy.length - 1; i >= 0; i--) {
                 const item = candy[i];
-                const dx = x - item.x;
-                const dy = y - item.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                const distance = Math.sqrt(Math.pow(x - item.x, 2) + Math.pow(y - item.y, 2));
 
                 if (distance < PLAYER_SIZE) {
                     currentScore += CANDY_VALUE;
@@ -552,6 +501,7 @@
             if (!checkPlayerWallCollision(newX, y)) { x = newX; } else { vx = 0; }
             if (!checkPlayerWallCollision(x, newY)) { y = newY; } else { vy = 0; }
 
+            // Batas Canvas
             const minBound = WALL_THICKNESS + PLAYER_SIZE;
             const maxBoundX = canvas.width - WALL_THICKNESS - PLAYER_SIZE;
             const maxBoundY = canvas.height - WALL_THICKNESS - PLAYER_SIZE;
@@ -579,19 +529,18 @@
             scoreEl.innerText = currentScore;
         }
 
-        /** SIMULASI TRANSAKSI ONCHAIN (Dipanggil oleh tombol) */
+        /** SIMULASI TRANSAKSI ONCHAIN */
         window.startGameTransaction = () => {
             if (!userId || running) {
-                showMessage("Akses Ditolak", "Anda harus login untuk memulai permainan.");
+                showMessage("Akses Ditolak", "Autentikasi diperlukan atau game sedang berjalan.");
                 return;
             }
             
-            // SIMULASI PEMBAYARAN SOMI (Start Game)
             console.log(`[TX SIMULATION] User ${userId} membayar 0.01 SOMI untuk memulai game...`);
             startGameLoop(); 
         }
 
-        /** MEMULAI GAME LOOP (Dipanggil setelah simulasi TX berhasil) */
+        /** MEMULAI GAME LOOP */
         function startGameLoop() {
             if (running) return;
             running = true;
@@ -606,7 +555,7 @@
             
             setupCandy();
 
-            // Reset posisi dan kecepatan player
+            // Reset posisi player
             x = 400; 
             y = 300;
             vx = 0;
@@ -618,7 +567,7 @@
             startGameButton.innerText = "GAME RUNNING...";
         }
 
-        /** SUBMIT SCORE KE FIREBASE (Dipanggil saat game over) */
+        /** SUBMIT SCORE KE FIREBASE */
         async function submitFinalScore(score) {
             if (!userId || !db) {
                 console.error("Tidak dapat menyimpan skor: User ID atau DB tidak ditemukan.");
@@ -677,4 +626,3 @@
     </script>
 </body>
 </html>
-
