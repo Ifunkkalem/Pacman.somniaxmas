@@ -112,6 +112,18 @@
     // ====================================================================
     // --- FIREBASE & AUTHENTICATION SETUP (NO FALLBACKS) ---
     // ====================================================================
+// --- 1. KONFIGURASI FIREBASE (HARDCODED SEMENTARA) ---
+    // Karena variabel lingkungan tidak dapat diakses, kita sematkan kunci API yang valid
+    // yang Anda berikan dari proyek "somnia-hallowen". 
+    const firebaseConfig = {
+      apiKey: "AIzaSyBeHjlHJSB5R0mYJmX6h5uJ7Iwqu7zNWtA",
+      authDomain: "somnia-hallowen.firebaseapp.com",
+      projectId: "somnia-hallowen",
+      storageBucket: "somnia-hallowen.firebasestorage.app",
+      messagingSenderId: "441297353260",
+      appId: "1:441297353260:web:71343e500055d10c712f89",
+      measurementId: "G-5KMBCWQ96G"
+    };
     const appId = typeof __app_id !== 'undefined' ? __app_id : null;
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
     const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
