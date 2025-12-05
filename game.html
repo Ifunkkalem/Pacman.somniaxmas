@@ -50,6 +50,7 @@
             gap: 10px;
             justify-content: center;
             padding-top: 10px;
+            margin-bottom: 20px; /* Tambahan margin untuk D-Pad */
         }
         .btn {
             padding: 10px 20px;
@@ -57,8 +58,9 @@
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.1s;
+            touch-action: manipulation; /* Penting untuk mobile */
         }
-        .btn:hover:not(:disabled) {
+        .btn:hover:not(:disabled), .dpad-btn:active { 
             transform: translateY(-2px);
         }
         .btn-start {
@@ -124,6 +126,38 @@
         .modal-button:hover {
             background-color: #c2005c;
         }
+
+        /* --- D-Pad Mobile Controls Styling --- */
+        .dpad-container {
+            display: grid;
+            grid-template-areas: 
+                ". up ."
+                "left center right"
+                ". down .";
+            width: 150px;
+            margin: 20px auto 0;
+            gap: 5px;
+        }
+        .dpad-btn {
+            background-color: #333366;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            line-height: 1;
+            cursor: pointer;
+            touch-action: manipulation;
+            box-shadow: 0 3px 0 #222244;
+        }
+        .dpad-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 0 #222244;
+        }
+        #dpad-up    { grid-area: up; }
+        #dpad-left  { grid-area: left; }
+        #dpad-right { grid-area: right; }
+        #dpad-down  { grid-area: down; }
     </style>
 </head>
 <body>
@@ -144,6 +178,15 @@
 
         <!-- Canvas Game -->
         <canvas id="game" width="800" height="600"></canvas>
+        
+        <!-- Mobile D-Pad Controls -->
+        <div class="dpad-container">
+            <button id="dpad-up" class="dpad-btn" onclick="setDirection('ArrowUp')">▲</button>
+            <button id="dpad-left" class="dpad-btn" onclick="setDirection('ArrowLeft')">◀</button>
+            <div id="dpad-center"></div>
+            <button id="dpad-right" class="dpad-btn" onclick="setDirection('ArrowRight')">▶</button>
+            <button id="dpad-down" class="dpad-btn" onclick="setDirection('ArrowDown')">▼</button>
+        </div>
 
         <!-- Control Panel -->
         <div class="control-panel">
@@ -159,7 +202,7 @@
         
     </div>
 
-    <!-- CUSTOM MODAL (Menggantikan alert()) -->
+    <!-- CUSTOM MODAL (Menggantikan alert() & confirm()) -->
     <div id="customModal" class="modal-overlay">
         <div class="modal-content">
             <div id="modalTitle" class="modal-title"></div>
