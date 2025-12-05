@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Somnia Pac-Man Halloween</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+<style>
+/* ... (Style Anda dari draf pertama di sini) ... */
+
+/* Tambahkan style untuk disabled button */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>
+</head>
+
+<body>
+<div id="root">
+
+  <div id="topBar">
+    <div>🎃 Player: <span id="playerName">Connecting...</span></div>
+    <div id="scoreBox">Score: <span id="score">0</span></div>
+  </div>
+
+  <div id="gameArea">
+    <canvas id="game" width="800" height="600"></canvas>
+  </div>
+
+  <div id="bottomBar">
+    <button id="startOnchainBtn" onclick="startOnchain()" disabled>START GAME (0.01 SOMI)</button>
+    
+    <button id="submitScoreBtn" onclick="submitFinalScore(currentScore)" disabled>SUBMIT SCORE</button>
+    <button onclick="backMenu()">BACK</button>
+  </div>
+
+</div>
+
+<script src="game_logic.js"></script> 
+<script src="web3_game.js"></script>
+
+</body>
+</html>
