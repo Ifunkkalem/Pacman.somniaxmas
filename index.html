@@ -1,353 +1,528 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <title>Somnia Halloween - Pacman Edition</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-
-  <!-- ETHERS.JS (Needed for Wallet Connection Logic) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-
-  <style>
-    /* Styling bertema Halloween/Cyberpunk */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800;300&display=swap');
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    body {
-      width: 100vw; height: 100vh; overflow: hidden;
-      /* Gradient gelap ungu ke hitam */
-      background: radial-gradient(circle at top, #2b0033, #0a0010);
-      color: #fff; display: flex; justify-content: center; align-items: center;
-    }
-    .bubble {
-      position: absolute; bottom: -100px; background: rgba(255, 140, 0, 0.2); border-radius: 50%; animation: floatUp 12s infinite ease-in;
-    }
-    @keyframes floatUp { from { transform: translateY(0); } to { transform: translateY(-120vh); } }
-    .screen {
-      z-index: 10; position: relative; text-align: center; padding: 20px;
-    }
-    h1 {
-      font-size: clamp(30px, 6vw, 42px); color: #ff8c00; text-shadow: 0 0 10px #800080, 0 0 20px #800080; margin-bottom: 8px;
-    }
-    h2 {
-      font-size: clamp(18px, 3vw, 22px); color: #c77dff; margin-bottom: 30px;
-    }
-    .menu-box {
-      background: rgba(20, 0, 30, 0.8); border: 2px solid #ff8c00; border-radius: 16px; padding: 30px 40px; box-shadow: 0 0 20px #800080; min-width: 300px; max-width: 90%;
-    }
-    .menu-box input {
-      width: 100%; padding: 10px; border-radius: 8px; border: none; margin-bottom: 12px; text-align: center; font-size: 16px; outline: none; background-color: #333; color: white;
-    }
-    .menu-box button {
-      width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; 
-      background: linear-gradient(90deg, #ff8c00, #800080); /* Orange ke Ungu */
-      color: white; transition: 0.2s;
-    }
-    .menu-box button:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 0 15px #ff8c00; }
-    .menu-box button:disabled { background: #444; cursor: not-allowed; opacity: 0.7; box-shadow: none; transform: scale(1); }
-    .wallet-box {
-      font-size: 14px; margin-bottom: 12px; color: #ffb703; word-break: break-all;
-    }
-    .hidden { display: none !important; }
-    #menuTxStatus { margin-top: 10px; color: yellow; font-size: 0.9em; }
-    .status-error { color: red !important; }
-    .status-ready { color: #00ff7f !important; }
-  </style>
-</head>
-<body>
-
-<!-- 🎈 Bubble Effects (For Aesthetics) -->
-<script>
-  for (let i = 0; i < 25; i++) {
-    const bubble = document.createElement("div");
-    bubble.className = "bubble";
-    bubble.style.width = bubble.style.height = Math.random() * 40 + 20 + "px";
-    bubble.style.left = Math.random() * 100 + "vw";
-    bubble.style.animationDuration = Math.random() * 6 + 6 + "s";
-    document.body.appendChild(bubble);
-  }
-</script>
-
-<!-- 🎃 MAIN MENU -->
-<div id="menuScreen" class="screen">
-  <h1>WELCOME SOMNIA HALLOWEEN</h1>
-  <h2>PAC-MAN EDITION</h2>
-
-  <div class="menu-box">
-    
-    <!-- Status Wallet -->
-    <div id="walletStatus" class="wallet-box">Memuat Status Database & Wallet...</div>
-
-    <!-- Input Nama -->
-    <input 
-      id="displayNameInput" 
-      type="text" 
-      maxlength="12" 
-      placeholder="Loading Profile..."
-      disabled
-    />
-
-    <!-- Tombol Koneksi -->
-    <button id="connectWalletBtn" disabled>CONNECT WALLET</button>
-    
-    <!-- Tombol Simpan Nama -->
-    <button id="saveNameBtn" disabled>SAVE DISPLAY NAME</button>
-    
-    <div style="height: 1px; background: rgba(255, 255, 255, 0.1); margin: 15px 0;"></div>
-    
-    <!-- Tombol Play -->
-    <button id="playBtn" disabled>PLAY GAME</button>
-    
-    <!-- Tombol Leaderboard -->
-    <button id="leaderboardBtn">LEADERBOARD</button>
-    
-    <!-- Status Transaksi di Menu -->
-    <div id="menuTxStatus"></div>
-    
-  </div>
-</div>
-
-<!-- Logika Web3 dan Menu Utama (Hanya Firestore) -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    setLogLevel('Debug');
-
-    // ====================================================================
-    // --- 1. KONFIGURASI FIREBASE (HARDCODED DENGAN API KEY ANDA) ---
-    // ====================================================================
-    // API KEY yang Anda berikan disematkan di sini
-    const hardcodedFirebaseConfig = {
-      apiKey: "AIzaSyBeHjlHJSB5R0mYJmX6h5uJ7Iwqu7zNWtA",
-      authDomain: "somnia-hallowen.firebaseapp.com",
-      projectId: "somnia-hallowen",
-      storageBucket: "somnia-hallowen.firebasestorage.app",
-      messagingSenderId: "441297353260",
-      appId: "1:441297353260:web:71343e500055d10c712f89",
-      measurementId: "G-5KMBCWQ96G"
-    };
-
-    // Variabel lingkungan dari Canvas
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    
-    let db = null;
-    let auth = null;
-    let userId = null; // ID internal Firebase (uid)
-    let walletAddress = null; // ID publik (alamat Metamask)
-    let firebaseReady = false;
-    let nameLoaded = false;
-    let firebaseError = false; 
-
-    // Elemen DOM
-    const displayNameInput = document.getElementById('displayNameInput');
-    const connectWalletBtn = document.getElementById('connectWalletBtn');
-    const saveNameBtn = document.getElementById('saveNameBtn');
-    const playBtn = document.getElementById('playBtn');
-    const walletStatusEl = document.getElementById('walletStatus');
-    const menuTxStatusEl = document.getElementById('menuTxStatus');
-
-    function formatWallet(address) {
-        if (!address) return 'Disconnected';
-        return `${address.substring(0, 6)}...${address.slice(-4)}`;
-    }
-
-    function updateUI() {
-        const connected = walletAddress !== null;
-        const nameValid = displayNameInput.value.trim().length > 0 && displayNameInput.value.trim().length <= 12;
-        const isReady = firebaseReady && nameLoaded;
-        
-        // 1. Update Status Display
-        if (firebaseError) {
-             walletStatusEl.innerHTML = `<span class="status-error">[CRITICAL ERROR]</span> Gagal koneksi Firebase.`;
-             menuTxStatusEl.textContent = "Koneksi Database GAGAL. Cek Aturan Keamanan.";
-        } else if (!isReady) {
-            walletStatusEl.innerHTML = `Status: <span class="text-yellow-400">Connecting...</span> <br> Wallet: ${formatWallet(walletAddress)}`;
-        } else {
-             const statusColor = connected ? 'status-ready' : 'text-yellow-400';
-             walletStatusEl.innerHTML = `
-                DB Status: <span class="status-ready">ONLINE</span> <br>
-                Wallet: <span class="${statusColor}">${walletAddress ? formatWallet(walletAddress) : 'Harap Hubungkan Wallet'}</span>
-            `;
-        }
-
-        // 2. Control Buttons
-        const dbOperational = !firebaseError && firebaseReady;
-
-        connectWalletBtn.disabled = !dbOperational || connected;
-        connectWalletBtn.textContent = connected ? `WALLET CONNECTED (${formatWallet(walletAddress)})` : "CONNECT WALLET";
-
-        displayNameInput.disabled = !dbOperational || !connected;
-        displayNameInput.placeholder = dbOperational ? "Enter Display Name (Max 12)" : "DB Error. Disabled.";
-        
-        saveNameBtn.disabled = !dbOperational || !connected || !nameValid;
-        
-        // Tombol Play hanya aktif jika DB operational, wallet terhubung, dan nama valid
-        playBtn.disabled = !(dbOperational && connected && nameValid); 
-        
-        if (dbOperational && connected && nameValid) {
-            playBtn.textContent = "PLAY GAME NOW";
-            menuTxStatusEl.textContent = "";
-        }
-    }
-
-    // Memuat nama dan wallet address yang tersimpan di private profile user
-    async function loadUserData() {
-        if (!db || !userId) {
-            nameLoaded = true;
-            updateUI();
-            return;
-        }
-
-        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
-        try {
-            const docSnap = await getDoc(docRef);
-            let name = '';
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                name = data.displayName || '';
-                walletAddress = data.wallet || null; 
-            }
-            displayNameInput.value = name;
-            nameLoaded = true;
-        } catch (e) {
-            console.error("Error loading user profile from Firestore:", e);
-            // Ini bisa terjadi jika security rules belum benar
-            nameLoaded = true; 
-        } finally {
-            updateUI();
-        }
-    }
-
-    async function initializeFirebaseAndAuth() {
-        try {
-            const app = initializeApp(hardcodedFirebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            
-            // 1. Lakukan Autentikasi
-            if (initialAuthToken) { 
-                await signInWithCustomToken(auth, initialAuthToken); 
-            } else { 
-                await signInAnonymously(auth); 
-            }
-
-            // 2. Dengarkan Status Auth
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    firebaseReady = true;
-                    loadUserData(); // Lanjut memuat data user
-                } else {
-                    throw new Error("Firebase authentication failed.");
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOMNIA CHRISTMAS QUEST - PAC-MAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Konfigurasi Tailwind untuk tema Natal yang Ikonik
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'christmas-red': '#C91010', // Merah Natal yang tegas
+                        'christmas-green': '#0B6623', // Hijau Hutan (Pine Green) untuk box utama
+                        'christmas-light-green': '#38761D', // Hijau yang lebih cerah
+                        'christmas-snow': '#FFFFFF', // Putih Salju Murni
+                        'christmas-gold': '#FFD700', // Gold untuk aksen skor
+                    }
                 }
-            });
-
-        } catch (error) {
-            console.error("Critical Error during Firebase Init/Auth:", error);
-            firebaseError = true;
-            firebaseReady = false;
-            updateUI();
-        }
-    }
-    
-    // ====================================================================
-    // --- WEB3 / METAMASK LOGIC ---
-    // ====================================================================
-
-    async function connectWallet() {
-        if (typeof window.ethereum === 'undefined') {
-            menuTxStatusEl.textContent = "Web3 (MetaMask/Ethers) tidak terdeteksi.";
-            return;
-        }
-        
-        connectWalletBtn.disabled = true;
-        connectWalletBtn.textContent = "Connecting...";
-
-        try {
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            walletAddress = accounts[0]; // Set Wallet Address
-            menuTxStatusEl.textContent = `Wallet terhubung: ${formatWallet(walletAddress)}`;
-            
-            // Simpan wallet address ke private profile Firestore 
-            if (db && userId) {
-                 await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile'), { 
-                    wallet: walletAddress,
-                    lastConnect: Date.now()
-                }, { merge: true });
             }
-
-        } catch (error) {
-            console.error("Error connecting wallet:", error);
-            menuTxStatusEl.textContent = "Koneksi dompet dibatalkan atau gagal.";
         }
-        updateUI();
-    }
-    
-    // ====================================================================
-    // --- EVENT HANDLERS ---
-    // ====================================================================
-    
-    async function saveDisplayName() {
-        const name = displayNameInput.value.trim();
-        if (name.length < 1 || name.length > 12) {
-             menuTxStatusEl.textContent = "Nama harus 1-12 karakter.";
-             return;
-        }
-        if (!walletAddress) {
-             menuTxStatusEl.textContent = "Harap hubungkan Wallet terlebih dahulu.";
-             return;
-        }
-        if (!db || !userId) {
-             menuTxStatusEl.textContent = "ERROR: Database tidak siap. Tidak dapat menyimpan nama.";
-             return;
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--christmas-snow); /* Teks default Putih Salju */
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px 10px;
+            
+            /* Latar Belakang Merah Cerah dengan Tekstur */
+            background-color: #E84D4D; /* Merah terang sebagai dasar */
+            background-image: repeating-linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.1) 0,
+                rgba(255, 255, 255, 0.1) 10px,
+                transparent 10px,
+                transparent 20px
+            ); /* Garis diagonal putih samar-samar */
         }
         
-        saveNameBtn.disabled = true;
-        saveNameBtn.textContent = "Saving...";
-
-        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
-        try {
-            await setDoc(docRef, { 
-                displayName: name, 
-                wallet: walletAddress,
-                lastUpdate: Date.now()
-            }, { merge: true });
-            menuTxStatusEl.textContent = "Nama berhasil disimpan!";
-            nameLoaded = true;
-        } catch (e) {
-            console.error("Error saving name:", e);
-            menuTxStatusEl.textContent = "Gagal menyimpan nama ke Database. Coba lagi.";
+        /* BINGKAI UTAMA (GAME CONTAINER) - KOTAK HIJAU DENGAN PITA MERAH/PUTIH */
+        .game-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--christmas-green); /* Hijau Hutan Pekat */
+            color: var(--christmas-snow); /* Teks Putih Salju */
+            
+            /* Border Berlapis (Simulasi Pita/Candy Cane) */
+            border: 8px solid var(--christmas-snow); /* Lapisan Putih Terluar */
+            box-shadow: 
+                0 0 0 4px var(--christmas-red), /* Lapisan Merah Kedua */
+                0 0 30px rgba(255, 255, 255, 0.8); /* Glow Putih Salju */
+                
+            padding: 30px; 
+            border-radius: 1.5rem; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative; 
+            z-index: 10;
         }
-         
-        saveNameBtn.textContent = "EDIT DISPLAY NAME";
-        updateUI();
-    }
-    
-    function redirectToGame() {
-        // Pindahkan ke halaman game.html
-        window.location.href = 'game.html';
-    }
-    
-    function redirectToLeaderboard() {
-        // Pindahkan ke halaman leaderboard.html
-        window.location.href = 'leaderboard.html';
-    }
+        
+        /* JUDUL - PUTIH SALJU MURNI DI ATAS HIJAU */
+        .main-title {
+            font-size: 2.75rem;
+            line-height: 1;
+            font-weight: 900;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            color: var(--christmas-snow); 
+            text-shadow: 
+                2px 2px 0 var(--christmas-red), /* Efek 3D Merah */
+                0 0 15px rgba(255, 255, 255, 0.8); /* Glow Salju */
+        }
 
-    // Pasang Event Listeners
-    connectWalletBtn.addEventListener('click', connectWallet);
-    saveNameBtn.addEventListener('click', saveDisplayName);
-    displayNameInput.addEventListener('input', updateUI);
-    playBtn.addEventListener('click', redirectToGame);
-    leaderboardBtn.addEventListener('click', redirectToLeaderboard);
-    
-    // Mulai inisialisasi ketika window dimuat
-    window.onload = () => {
-        initializeFirebaseAndAuth();
-        updateUI();
-    }
-</script>
+        /* SUBTITLE */
+        .sub-title {
+            font-size: 1.25rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--christmas-gold); /* Emas untuk Subtitle */
+            font-weight: 700;
+        }
 
+        /* BINGKAI GAME (KANVAS) */
+        canvas {
+            background-color: #000000;
+            display: block;
+            border: 4px solid var(--christmas-red); 
+            border-radius: 0.5rem;
+            margin-bottom: 20px;
+            touch-action: none; 
+            box-shadow: 0 0 15px var(--christmas-red); /* Glow Merah */
+        }
+        
+        /* TOMBOL AKSI - FOKUS MERAH & PUTIH TEGAS */
+        .btn-action {
+            background-color: var(--christmas-red);
+            color: var(--christmas-snow); 
+            padding: 16px 24px;
+            border-radius: 1rem; /* Lebih membulat */
+            font-weight: 900;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 15px;
+            /* Border Hijau dan Shadow */
+            border: 3px solid var(--christmas-light-green); 
+            box-shadow: 0 6px 0 var(--christmas-light-green), 0 0 20px rgba(255, 255, 255, 0.7);
+            position: relative;
+        }
+
+        /* Tombol yang diaktifkan (misalnya LEADERBOARD atau Connect Wallet) */
+        .btn-action.active-glow {
+            background-color: var(--christmas-light-green); /* Hijau Solid */
+            border-color: var(--christmas-snow);
+            box-shadow: 0 6px 0 var(--christmas-red), 0 0 25px var(--christmas-snow); /* Glow Merah dan Putih */
+        }
+        
+        /* Status/Error Button (Status DB) */
+        .btn-status {
+            background-color: var(--christmas-snow); /* Latar Putih Salju */
+            color: var(--christmas-red); /* Teks Merah */
+            padding: 14px 24px;
+            border-radius: 0.75rem; 
+            font-weight: 700;
+            width: 100%;
+            margin-bottom: 15px;
+            border: 2px solid var(--christmas-green); /* Border Hijau */
+            cursor: default;
+            box-shadow: 0 4px 0 var(--christmas-green);
+        }
+        .btn-status #playerName {
+            color: var(--christmas-green); /* Player ID menggunakan Hijau */
+        }
+
+        .btn-action:hover:not(:disabled), .btn-action:focus:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 var(--christmas-light-green), 0 0 30px var(--christmas-snow);
+        }
+        .btn-action:active:not(:disabled) {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--christmas-light-green);
+        }
+        
+        .btn-action:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            filter: grayscale(0.5);
+            background-color: #A0A0A0 !important;
+            border-color: #606060 !important;
+            color: #E0E0E0 !important;
+            box-shadow: 0 4px 0 #606060 !important;
+        }
+
+        /* D-PAD - MERAH DENGAN GARIS HIJAU */
+        .dpad-container {
+            display: grid;
+            grid-template-areas:
+                ". up ."
+                "left center right"
+                ". down .";
+            width: 150px;
+            height: 150px;
+            margin: 20px 0;
+            background-color: var(--christmas-snow); /* Latar belakang d-pad putih salju */
+            border-radius: 1rem;
+            padding: 5px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .dpad-btn {
+            grid-area: var(--dir);
+            background-color: var(--christmas-red); /* Merah */
+            color: var(--christmas-snow); /* Teks Putih Salju */
+            border: 2px solid var(--christmas-green); /* Border Hijau */
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 0 4px 0 var(--christmas-green);
+        }
+        .dpad-btn:active {
+            background-color: var(--christmas-green); /* Hijau Natal saat ditekan */
+            color: var(--christmas-snow);
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 var(--christmas-red);
+        }
+        
+        /* MODAL STYLES */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: var(--christmas-snow); /* Latar Putih */
+            color: #333;
+            border: 4px solid var(--christmas-green); /* Hijau */
+            border-radius: 1rem;
+            padding: 30px;
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+            box-shadow: 0 0 20px var(--christmas-red); /* Glow Merah */
+        }
+        .modal-title {
+            font-size: 1.75rem;
+            font-weight: 900;
+            color: var(--christmas-red); 
+            margin-bottom: 10px;
+        }
+        .modal-message {
+            margin-bottom: 20px;
+            color: #333; 
+        }
+        .modal-leaderboard-content {
+            background-color: #F0FFF0; 
+            padding: 10px;
+            border-radius: 0.5rem;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 1px solid var(--christmas-green);
+        }
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed var(--christmas-red);
+        }
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+        .leaderboard-score {
+            color: var(--christmas-red);
+            font-weight: 900;
+        }
+        .leaderboard-name {
+            color: var(--christmas-green);
+            font-weight: 700;
+        }
+
+        /* === EFEK SALJU TURUN (SNOWFALL) === */
+        #snow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 5; 
+        }
+
+        #snow:before, #snow:after {
+            content: "";
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            filter: blur(0.5px);
+            opacity: 0.9;
+            background-image: radial-gradient(white 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        #snow:before {
+            animation: snow-fall 15s linear infinite;
+        }
+
+        #snow:after {
+            animation: snow-fall 25s linear infinite;
+            background-size: 30px 30px;
+            opacity: 0.7;
+        }
+        
+        /* Animasi Salju */
+        @keyframes snow-fall {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(100vh); 
+            }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <!-- Efek Salju (Z-index 5) -->
+    <div id="snow"></div>
+
+    <div id="startScreen" class="game-container min-h-[500px]">
+        <h1 class="main-title text-4xl sm:text-5xl">
+            SELAMAT DATANG DI SOMNIA
+        </h1>
+        <p class="sub-title">CHRISTMAS QUEST EDITION</p>
+
+        <div class="space-y-4 w-full">
+            
+            <!-- 1. DB Status/Error Button -->
+            <!-- Tombol Status sekarang Putih dengan Teks Merah/Hijau di atasnya -->
+            <button id="dbStatusContainer" disabled class="btn-status" title="Status Koneksi Firebase">
+                <p id="dbStatus" class="text-sm font-bold">
+                    [CRITICAL ERROR] Gagal koneksi Firebase.
+                </p>
+                <p id="playerName" class="text-xs mt-1">
+                    Koneksi Database GAGAL. Cek Konfigurasi Firebase/Kunci API Anda.
+                </p>
+            </button>
+            
+            <!-- 2. CONNECT WALLET -->
+            <button id="connectWalletBtn" class="btn-action active-glow" onclick="window.startOnchain()">
+                CONNECT WALLET
+            </button>
+            
+            <!-- 3. SAVE DISPLAY NAME -->
+            <button id="saveDisplayNameBtn" class="btn-action" disabled>
+                SAVE DISPLAY NAME
+            </button>
+            
+            <!-- 4. PLAY GAME -->
+            <button id="startGameBtn" class="btn-action" disabled>
+                PLAY GAME
+            </button>
+            
+            <!-- 5. LEADERBOARD -->
+            <button id="leaderboardBtn" class="btn-action" onclick="showLeaderboardModal()">
+                LEADERBOARD
+            </button>
+        </div>
+        
+    </div>
+
+    <div id="gameScreen" class="game-container hidden">
+        <div class="w-full flex justify-between items-center mb-3 text-sm">
+            <!-- Teks dalam game container sekarang Putih di latar Hijau -->
+            <div class="text-sm text-christmas-snow">Player: <span id="playerNameGame" class="font-bold text-christmas-gold"></span></div>
+            <div class="text-xl font-bold text-christmas-snow">SCORE: <span id="scoreDisplay" class="text-christmas-gold">0</span></div>
+        </div>
+        
+        <canvas id="gameCanvas" width="440" height="480"></canvas>
+
+        <div class="dpad-container">
+            <button class="dpad-btn" style="--dir: up;" ontouchstart="movePlayer('up')" ontouchend="stopPlayer()" onclick="movePlayer('up')">▲</button>
+            <button class="dpad-btn" style="--dir: left;" ontouchstart="movePlayer('left')" ontouchend="stopPlayer()" onclick="movePlayer('left')">◀</button>
+            <div class="dpad-btn" style="--dir: center;"></div>
+            <button class="dpad-btn" style="--dir: right;" ontouchstart="movePlayer('right')" ontouchend="stopPlayer()" onclick="movePlayer('right')">►</button>
+            <button class="dpad-btn" style="--dir: down;" ontouchstart="movePlayer('down')" ontouchend="stopPlayer()" onclick="movePlayer('down')">▼</button>
+        </div>
+
+        <button id="backMenuBtn" class="btn-action w-full">BACK TO MENU</button>
+    </div>
+
+    <!-- Modal Kustom (Untuk Error, Game Over, dll.) -->
+    <div id="customModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="modal-title">Game Over!</h2>
+            <p id="modalMessage" class="modal-message">Skor Anda: 0</p>
+            <button id="modalCloseBtn" class="btn-action active-glow" onclick="document.getElementById('customModal').style.display='none'">TUTUP</button>
+        </div>
+    </div>
+    
+    <!-- Modal Leaderboard -->
+    <div id="leaderboardModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-content">
+            <h2 class="modal-title">Leaderboard Somnia Christmas</h2>
+            <p class="modal-message text-christmas-red">Skor 10 Tertinggi</p>
+            <div id="leaderboardList" class="modal-leaderboard-content">
+                <!-- Data Leaderboard akan di-inject di sini -->
+                <p class="text-center text-gray-400">Memuat data...</p>
+            </div>
+            <button class="btn-action active-glow mt-4" onclick="document.getElementById('leaderboardModal').style.display='none'">TUTUP</button>
+        </div>
+    </div>
+
+    <!-- Ethers JS (Simulasi Wallet) -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+
+    <!-- Skrip Game dan Firebase -->
+    <!-- Harap pastikan game_logic.js dan web3_game.js sudah ada di environment Anda -->
+    <script src="game_logic.js"></script>
+    <script src="web3_game.js"></script>
+    
+    <script>
+        // --- LOGIKA UI/NAVIGASI ---
+        const startScreen = document.getElementById('startScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const connectWalletBtn = document.getElementById('connectWalletBtn');
+        const backMenuButton = document.getElementById('backMenuBtn');
+        
+        // Elemen UI
+        const dbStatusElement = document.getElementById('dbStatus');
+        const playerNameElement = document.getElementById('playerName');
+        const dbStatusContainer = document.getElementById('dbStatusContainer');
+
+
+        function switchToScreen(screenId) {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+
+        startGameBtn.addEventListener('click', () => {
+            switchToScreen('gameScreen');
+            if (typeof initGame === 'function') {
+                initGame();
+            }
+        });
+
+        connectWalletBtn.addEventListener('click', () => {
+             // Ini akan memicu startOnchain() di web3_game.js
+        });
+        
+        backMenuButton.addEventListener('click', () => {
+            switchToScreen('startScreen');
+            // Reset UI di menu utama
+            dbStatusElement.innerText = "Memuat status koneksi..."; 
+            playerNameElement.innerText = "Mencoba otentikasi ulang...";
+            
+            // Hentikan loop game
+            if (typeof stopGameLoop === 'function') {
+                stopGameLoop();
+            }
+        });
+
+        // Pastikan modal kustom hanya menutup jika klik di luar konten modal
+        function closeModal(event) {
+            if (event.target.classList.contains('modal-overlay')) {
+                event.target.style.display = 'none';
+            }
+        }
+        
+        // Fungsi untuk menampilkan modal Leaderboard
+        async function showLeaderboardModal() {
+            document.getElementById('leaderboardModal').style.display = 'flex';
+            
+            if (typeof fetchLeaderboard === 'function') {
+                await fetchLeaderboard();
+            } else {
+                document.getElementById('leaderboardList').innerHTML = '<p class="text-center text-red-500">Error: Fungsi Leaderboard tidak tersedia.</p>';
+            }
+        }
+
+        // Untuk tombol dpad di game.html (untuk memicu logika di game_logic.js)
+        function movePlayer(direction) {
+            if (typeof handleMovement === 'function') {
+                handleMovement(direction);
+            }
+        }
+
+        function stopPlayer() {
+            if (typeof stopMovement === 'function') {
+                stopMovement();
+            }
+        }
+
+        // Listener Keyboard untuk desktop/laptop
+        document.addEventListener('keydown', (e) => {
+            if (typeof handleKeyDown === 'function') {
+                handleKeyDown(e);
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            if (typeof handleKeyUp === 'function') {
+                handleKeyUp(e);
+            }
+        });
+        
+        // Simpan fungsi update UI di window agar bisa dipanggil dari web3_game.js
+        window.updateFirebaseStatusUI = (statusMessage, playerText, isReady) => {
+            dbStatusElement.innerText = statusMessage;
+            playerNameElement.innerText = playerText;
+            
+            // Mengubah style tombol status agar tetap Putih/Merah/Hijau
+            if (isReady) {
+                // Status OK: Latar Putih, Teks Merah/Hijau
+                dbStatusContainer.style.backgroundColor = 'var(--christmas-snow)'; 
+                dbStatusContainer.style.color = 'var(--christmas-red)'; 
+                dbStatusContainer.style.borderColor = 'var(--christmas-green)'; 
+                dbStatusContainer.style.boxShadow = '0 4px 0 var(--christmas-green)';
+                playerNameElement.style.color = 'var(--christmas-green)'; 
+            } else {
+                // Status Error: Latar Merah, Teks Putih/Hijau
+                dbStatusContainer.style.backgroundColor = 'var(--christmas-red)';
+                dbStatusContainer.style.color = 'var(--christmas-snow)';
+                dbStatusContainer.style.borderColor = 'var(--christmas-snow)';
+                dbStatusContainer.style.boxShadow = '0 4px 0 var(--christmas-snow)';
+                playerNameElement.style.color = 'var(--christmas-gold)'; // Emas untuk kontras di latar Merah
+            }
+        };
+
+        window.updateConnectButtonUI = (isConnected) => {
+            if (isConnected) {
+                connectWalletBtn.innerText = "WALLET CONNECTED (SIMULASI)";
+                connectWalletBtn.disabled = true;
+                connectWalletBtn.classList.remove('active-glow');
+                connectWalletBtn.style.backgroundColor = 'var(--christmas-green)'; // Hijau saat terkoneksi
+                connectWalletBtn.style.borderColor = 'var(--christmas-snow)';
+                connectWalletBtn.style.boxShadow = '0 6px 0 var(--christmas-red)';
+            } else {
+                connectWalletBtn.innerText = "CONNECT WALLET";
+                connectWalletBtn.disabled = false;
+                connectWalletBtn.classList.add('active-glow');
+                connectWalletBtn.style.backgroundColor = ''; // Kembali ke default CSS
+                connectWalletBtn.style.borderColor = ''; // Kembali ke default CSS
+                connectWalletBtn.style.boxShadow = ''; // Kembali ke default CSS
+            }
+        };
+
+    </script>
 </body>
 </html>
