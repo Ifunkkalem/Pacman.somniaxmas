@@ -8,12 +8,130 @@
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
   <style>
-    /* ... (CSS Anda) ... */
+    /* CSS dari draf Anda - Menjaga tema dan konsep visual */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Trebuchet MS', sans-serif;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at top, #2b0033, #0a0010);
+      color: #fff;
+    }
+
+    .bubble {
+      position: absolute;
+      bottom: -100px;
+      background: rgba(255, 140, 0, 0.2);
+      border-radius: 50%;
+      animation: floatUp 12s infinite ease-in;
+    }
+
+    @keyframes floatUp {
+      from { transform: translateY(0); }
+      to { transform: translateY(-120vh); }
+    }
+
+    .screen {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      position: relative;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 42px;
+      color: orange;
+      text-shadow: 0 0 10px purple, 0 0 20px purple;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 22px;
+      color: #c77dff;
+      margin-bottom: 30px;
+    }
+
+    .menu-box {
+      background: rgba(20, 0, 30, 0.8);
+      border: 2px solid orange;
+      border-radius: 16px;
+      padding: 30px 40px;
+      box-shadow: 0 0 20px purple;
+      min-width: 300px;
+    }
+
+    .menu-box input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 12px;
+      text-align: center;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .menu-box button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(90deg, orange, purple);
+      color: white;
+      transition: 0.2s;
+    }
+
+    .menu-box button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px orange;
+    }
+    
+    .menu-box button:disabled {
+        background: gray;
+        cursor: not-allowed;
+    }
+
+    .wallet-box {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: #ffb703;
+    }
+
+    .hidden { display: none; }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: black;
+    }
+    
+    #menuTxStatus {
+        margin-top: 10px;
+        color: yellow;
+        font-size: 0.9em;
+    }
   </style>
 </head>
 <body>
 
 <script>
+  // Script untuk efek gelembung yang Anda buat
   for (let i = 0; i < 25; i++) {
     const bubble = document.createElement("div");
     bubble.className = "bubble";
@@ -29,8 +147,9 @@
   <h2>PAC-MAN EDITION</h2>
 
   <div class="menu-box">
+    
     <div id="walletStatus" class="wallet-box">
-        Wallet: Not Connected <span id="currentDisplayName"></span>
+        Wallet: Not Connected 
     </div>
 
     <input 
@@ -39,12 +158,18 @@
       maxlength="12" 
       placeholder="Enter Display Name (Max 12)"
     />
-    
+
     <button id="connectWalletBtn">CONNECT WALLET</button>
-    <button id="saveNameBtn">EDIT DISPLAY NAME</button>
-    <button id="playBtn">PLAY</button>
+    <button id="saveNameBtn" disabled>EDIT DISPLAY NAME</button>
+    
+    <div style="height: 1px; background: rgba(255, 255, 255, 0.1); margin: 15px 0;"></div>
+    
+    <button id="playBtn" disabled>PLAY (0.01 SOMI)</button>
     <button id="leaderboardBtn">LEADERBOARD</button>
     <button id="quitBtn">QUIT</button>
+    
+    <div id="menuTxStatus"></div>
+    
   </div>
 </div>
 
@@ -56,7 +181,7 @@
   <iframe src="leaderboard.html"></iframe>
 </div>
 
-<script src="app.js"></script> 
+<script src="app.js"></script>
 
 </body>
 </html>
