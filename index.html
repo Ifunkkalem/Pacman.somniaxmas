@@ -5,131 +5,47 @@
   <title>Somnia Halloween - Pacman Edition</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
-  <!-- ETHERS.JS - Library untuk interaksi Web3/Blockchain -->
+  <!-- ETHERS.JS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
   <style>
     /* Styling bertema Halloween/Cyberpunk */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800;300&display=swap');
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
     body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      /* Background gradient yang gelap dan misterius */
+      width: 100vw; height: 100vh; overflow: hidden;
       background: radial-gradient(circle at top, #2b0033, #0a0010);
-      color: #fff;
+      color: #fff; display: flex; justify-content: center; align-items: center;
     }
-
     .bubble {
-      position: absolute;
-      bottom: -100px;
-      background: rgba(255, 140, 0, 0.2); /* Oranye transparan */
-      border-radius: 50%;
-      animation: floatUp 12s infinite ease-in;
+      position: absolute; bottom: -100px; background: rgba(255, 140, 0, 0.2); border-radius: 50%; animation: floatUp 12s infinite ease-in;
     }
-
-    @keyframes floatUp {
-      from { transform: translateY(0); }
-      to { transform: translateY(-120vh); }
-    }
-
+    @keyframes floatUp { from { transform: translateY(0); } to { transform: translateY(-120vh); } }
     .screen {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-      position: relative;
-      text-align: center;
-      padding: 20px;
+      z-index: 10; position: relative; text-align: center; padding: 20px;
     }
-
     h1 {
-      font-size: clamp(30px, 6vw, 42px);
-      color: #ff8c00; /* Oranye Terang */
-      text-shadow: 0 0 10px #800080, 0 0 20px #800080; /* Ungu neon */
-      margin-bottom: 8px;
+      font-size: clamp(30px, 6vw, 42px); color: #ff8c00; text-shadow: 0 0 10px #800080, 0 0 20px #800080; margin-bottom: 8px;
     }
-
     h2 {
-      font-size: clamp(18px, 3vw, 22px);
-      color: #c77dff; /* Ungu Muda */
-      margin-bottom: 30px;
+      font-size: clamp(18px, 3vw, 22px); color: #c77dff; margin-bottom: 30px;
     }
-
     .menu-box {
-      background: rgba(20, 0, 30, 0.8);
-      border: 2px solid #ff8c00;
-      border-radius: 16px;
-      padding: 30px 40px;
-      box-shadow: 0 0 20px #800080;
-      min-width: 300px;
-      max-width: 90%;
+      background: rgba(20, 0, 30, 0.8); border: 2px solid #ff8c00; border-radius: 16px; padding: 30px 40px; box-shadow: 0 0 20px #800080; min-width: 300px; max-width: 90%;
     }
-
     .menu-box input {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      margin-bottom: 12px;
-      text-align: center;
-      font-size: 16px;
-      outline: none;
-      background-color: #333;
-      color: white;
+      width: 100%; padding: 10px; border-radius: 8px; border: none; margin-bottom: 12px; text-align: center; font-size: 16px; outline: none; background-color: #333; color: white;
     }
-
     .menu-box button {
-      width: 100%;
-      padding: 12px;
-      margin: 8px 0;
-      font-size: 16px;
-      font-weight: bold;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      background: linear-gradient(90deg, #ff8c00, #800080);
-      color: white;
-      transition: 0.2s;
+      width: 100%; padding: 12px; margin: 8px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; background: linear-gradient(90deg, #ff8c00, #800080); color: white; transition: 0.2s;
     }
-
-    .menu-box button:hover:not(:disabled) {
-      transform: scale(1.03);
-      box-shadow: 0 0 15px #ff8c00;
-    }
-    
-    .menu-box button:disabled {
-        background: #444;
-        cursor: not-allowed;
-        opacity: 0.7;
-        box-shadow: none;
-        transform: scale(1);
-    }
-
+    .menu-box button:hover:not(:disabled) { transform: scale(1.03); box-shadow: 0 0 15px #ff8c00; }
+    .menu-box button:disabled { background: #444; cursor: not-allowed; opacity: 0.7; box-shadow: none; transform: scale(1); }
     .wallet-box {
-      font-size: 14px;
-      margin-bottom: 12px;
-      color: #ffb703; /* Kuning Oranye */
-      word-break: break-all;
+      font-size: 14px; margin-bottom: 12px; color: #ffb703; word-break: break-all;
     }
-
     .hidden { display: none !important; }
-
-    #menuTxStatus {
-        margin-top: 10px;
-        color: yellow;
-        font-size: 0.9em;
-    }
+    #menuTxStatus { margin-top: 10px; color: yellow; font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -146,19 +62,17 @@
   }
 </script>
 
-<!-- 🎃 MAIN MENU (ID: menuScreen) -->
+<!-- 🎃 MAIN MENU -->
 <div id="menuScreen" class="screen">
   <h1>WELCOME SOMNIA HALLOWEEN</h1>
   <h2>PAC-MAN EDITION</h2>
 
   <div class="menu-box">
     
-    <!-- Status Wallet (ID: walletStatus) -->
-    <div id="walletStatus" class="wallet-box">
-        Memuat Status...
-    </div>
+    <!-- Status Wallet -->
+    <div id="walletStatus" class="wallet-box">Memuat Status Database & Wallet...</div>
 
-    <!-- Input Nama (ID: displayNameInput) -->
+    <!-- Input Nama -->
     <input 
       id="displayNameInput" 
       type="text" 
@@ -167,30 +81,27 @@
       disabled
     />
 
-    <!-- Tombol Koneksi (ID: connectWalletBtn) -->
-    <button id="connectWalletBtn">CONNECT WALLET</button>
+    <!-- Tombol Koneksi -->
+    <button id="connectWalletBtn" disabled>CONNECT WALLET</button>
     
-    <!-- Tombol Simpan Nama (ID: saveNameBtn) -->
+    <!-- Tombol Simpan Nama -->
     <button id="saveNameBtn" disabled>SAVE DISPLAY NAME</button>
     
     <div style="height: 1px; background: rgba(255, 255, 255, 0.1); margin: 15px 0;"></div>
     
-    <!-- Tombol Play (ID: playBtn) - Disabled sampai koneksi/nama siap -->
+    <!-- Tombol Play -->
     <button id="playBtn" disabled>PLAY (Redirect to Game)</button>
     
-    <!-- Tombol Leaderboard (ID: leaderboardBtn) -->
+    <!-- Tombol Leaderboard -->
     <button id="leaderboardBtn">LEADERBOARD</button>
     
-    <!-- Tombol Keluar (ID: quitBtn) -->
-    <button id="quitBtn" onclick="window.close()">QUIT</button>
-    
-    <!-- Status Transaksi di Menu (ID: menuTxStatus) -->
+    <!-- Status Transaksi di Menu -->
     <div id="menuTxStatus"></div>
     
   </div>
 </div>
 
-<!-- Logika Web3 dan Menu Utama -->
+<!-- Logika Web3 dan Menu Utama (Hanya Firestore) -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -199,42 +110,31 @@
     setLogLevel('Debug');
 
     // ====================================================================
-    // --- FIREBASE & AUTHENTICATION SETUP ---
+    // --- FIREBASE & AUTHENTICATION SETUP (NO FALLBACKS) ---
     // ====================================================================
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : null;
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    
-    const EMPTY_CONFIG_FALLBACK = '{"apiKey":"AIzaSyB-fallback","authDomain":"projectId.firebaseapp.com","projectId":"fallback-project","storageBucket":"projectId.appspot.com","messagingSenderId":"123456789012","appId":"1:123456789012:web:abac123456789012"}';
+    const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
 
-    function getFirebaseConfig() {
-        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        let config = null;
-        if (rawConfig && typeof rawConfig === 'string' && rawConfig.trim() !== '') {
-            try { config = JSON.parse(rawConfig); } catch (e) { console.error("Gagal parse Config sistem.", e); }
-        }
-        if (!config || Object.keys(config).length === 0) {
-             try {
-                config = JSON.parse(EMPTY_CONFIG_FALLBACK);
-            } catch (e) {
-                return null;
-            }
-        }
-        return config;
-    }
-
-    let db;
-    let auth;
-    let userId;
+    let db = null;
+    let auth = null;
+    let userId = null; // Tetap diperlukan untuk Auth/Security Rules
     let walletAddress = null;
     let firebaseReady = false;
     let nameLoaded = false;
-    
+    let firebaseError = false; 
+
     const displayNameInput = document.getElementById('displayNameInput');
     const connectWalletBtn = document.getElementById('connectWalletBtn');
     const saveNameBtn = document.getElementById('saveNameBtn');
     const playBtn = document.getElementById('playBtn');
-    const leaderboardBtn = document.getElementById('leaderboardBtn');
     const walletStatusEl = document.getElementById('walletStatus');
+    const menuTxStatusEl = document.getElementById('menuTxStatus');
+
+    function formatWallet(address) {
+        if (!address) return 'Disconnected';
+        return `${address.substring(0, 6)}...${address.slice(-4)}`;
+    }
 
     function updateUI() {
         const connected = walletAddress !== null;
@@ -242,69 +142,72 @@
         const isReady = firebaseReady && nameLoaded;
         
         // 1. Update Status Display
-        if (!isReady) {
-            walletStatusEl.innerHTML = `Status: Connecting to Firebase... <br> Wallet: ${connected ? walletAddress.substring(0, 6) + '...' + walletAddress.slice(-4) : 'Disconnected'}`;
+        if (firebaseError || !appId || !rawFirebaseConfig) {
+             walletStatusEl.innerHTML = `<span style="color: red;">[CRITICAL ERROR]</span> Firebase Config/Auth Gagal. Aplikasi tidak berfungsi.`;
+             menuTxStatusEl.textContent = "Koneksi Database Global GAGAL. Periksa konfigurasi Anda.";
+        } else if (!isReady) {
+            walletStatusEl.innerHTML = `Status: Connecting to Firebase... <br> Wallet: ${formatWallet(walletAddress)}`;
         } else {
-             walletStatusEl.innerHTML = `
-                Firebase User ID: ${userId.substring(0, 8) + '...'} <br>
-                Wallet: ${connected ? walletAddress.substring(0, 6) + '...' + walletAddress.slice(-4) : 'Disconnected'}
+             // Menghilangkan display userId, hanya fokus pada Wallet
+             walletStatusEl.innerHTML = `Wallet Status: <span style="color: #ffb703;">Connected</span> <br> Address: ${formatWallet(walletAddress)}
             `;
         }
 
         // 2. Control Buttons
-        
-        // CONNECT WALLET button must always be clickable unless already connected
-        connectWalletBtn.disabled = connected;
-        connectWalletBtn.textContent = connected ? "WALLET CONNECTED" : "CONNECT WALLET";
+        const dbOperational = !firebaseError && firebaseReady;
 
-        displayNameInput.disabled = !connected || !isReady;
-        saveNameBtn.disabled = !connected || !nameValid || !isReady;
-        playBtn.disabled = !(connected && nameValid && isReady); 
-        leaderboardBtn.disabled = false;
+        connectWalletBtn.disabled = !dbOperational || connected;
+        connectWalletBtn.textContent = connected ? `WALLET CONNECTED (${formatWallet(walletAddress)})` : "CONNECT WALLET";
+
+        displayNameInput.disabled = !dbOperational || !connected;
+        displayNameInput.placeholder = dbOperational ? "Enter Display Name (Max 12)" : "DB Error. Disabled.";
         
-        if (!isReady) {
-             displayNameInput.placeholder = "Loading Profile...";
-        } else {
-             displayNameInput.placeholder = "Enter Display Name (Max 12)";
+        saveNameBtn.disabled = !dbOperational || !connected || !nameValid;
+        
+        // Tombol Play hanya aktif jika DB operational, wallet terhubung, dan nama valid
+        playBtn.disabled = !(dbOperational && connected && nameValid); 
+        
+        if (dbOperational && connected && nameValid) {
+            saveNameBtn.textContent = "SAVE DISPLAY NAME";
+            menuTxStatusEl.textContent = "";
         }
     }
 
     async function loadUserData() {
-        if (!db || !userId) return;
+        if (!db || !userId) {
+            nameLoaded = true; // Anggap selesai memuat
+            updateUI();
+            return;
+        }
 
         const docRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
         try {
             const docSnap = await getDoc(docRef);
             let name = '';
             if (docSnap.exists()) {
-                name = docSnap.data().displayName || '';
-                walletAddress = docSnap.data().wallet || null; // Muat wallet address jika sudah disimpan
+                const data = docSnap.data();
+                name = data.displayName || '';
+                walletAddress = data.wallet || null;
             }
             displayNameInput.value = name;
             nameLoaded = true;
-            updateUI();
         } catch (e) {
-            console.error("Error loading user profile:", e);
+            console.error("Error loading user profile from Firestore:", e);
             nameLoaded = true;
+        } finally {
             updateUI();
         }
     }
 
     async function initializeFirebaseAndAuth() {
-        const firebaseConfig = getFirebaseConfig();
-
-        if (!firebaseConfig) { 
-            console.error("Firebase GAGAL: Config tidak tersedia."); 
-            updateUI();
-            return; 
-        }
-
         try {
+            if (!rawFirebaseConfig || !appId) throw new Error("Firebase config not available from environment.");
+            const firebaseConfig = JSON.parse(rawFirebaseConfig);
+
             const app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
             
-            // Lakukan sign-in awal
             if (initialAuthToken) { 
                 await signInWithCustomToken(auth, initialAuthToken); 
             } else { 
@@ -315,20 +218,18 @@
                 if (user) {
                     userId = user.uid;
                     firebaseReady = true;
-                    console.log("Firebase Siap. User ID:", userId.substring(0, 8) + '...');
-                    loadUserData(); // Muat data setelah auth siap
+                    connectWalletBtn.disabled = false;
+                    loadUserData();
                 } else {
-                    userId = null;
-                    firebaseReady = false;
-                    console.warn("Firebase Gagal Otentikasi.");
-                    nameLoaded = true; // Set true agar UI bisa diupdate
-                    updateUI();
+                    throw new Error("Firebase authentication failed.");
                 }
             });
 
         } catch (error) {
-            console.error("Error Firebase Init/Auth:", error);
+            console.error("Critical Error during Firebase Init/Auth:", error);
+            firebaseError = true;
             firebaseReady = false;
+            updateUI();
         }
     }
     
@@ -338,7 +239,7 @@
 
     async function connectWallet() {
         if (typeof window.ethereum === 'undefined') {
-            document.getElementById('menuTxStatus').textContent = "Web3 (MetaMask/Ethers) tidak terdeteksi.";
+            menuTxStatusEl.textContent = "Web3 (MetaMask/Ethers) tidak terdeteksi.";
             return;
         }
         
@@ -348,10 +249,10 @@
         try {
             const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
             walletAddress = accounts[0];
-            document.getElementById('menuTxStatus').textContent = `Wallet terhubung: ${walletAddress.substring(0, 6)}...`;
+            menuTxStatusEl.textContent = `Wallet terhubung: ${formatWallet(walletAddress)}`;
             
-            // Simpan wallet address ke profil setelah koneksi
-            if (firebaseReady && userId) {
+            // Simpan wallet address ke private profile Firestore 
+            if (db && userId) {
                  await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile'), { 
                     wallet: walletAddress,
                     lastConnect: Date.now()
@@ -360,7 +261,7 @@
 
         } catch (error) {
             console.error("Error connecting wallet:", error);
-            document.getElementById('menuTxStatus').textContent = "Koneksi dompet dibatalkan atau gagal.";
+            menuTxStatusEl.textContent = "Koneksi dompet dibatalkan atau gagal.";
         }
         updateUI();
     }
@@ -370,38 +271,41 @@
     // ====================================================================
     
     async function saveDisplayName() {
-        // Cek kembali status isReady
-        const isReady = firebaseReady && nameLoaded;
-        if (!isReady || !userId || !db || !walletAddress) return; 
-
         const name = displayNameInput.value.trim();
         if (name.length < 1 || name.length > 12) {
-             document.getElementById('menuTxStatus').textContent = "Nama harus 1-12 karakter.";
+             menuTxStatusEl.textContent = "Nama harus 1-12 karakter.";
              return;
         }
-
-        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
+        if (!walletAddress) {
+             menuTxStatusEl.textContent = "Harap hubungkan Wallet terlebih dahulu.";
+             return;
+        }
+        if (!db || !userId) {
+             menuTxStatusEl.textContent = "ERROR: Database tidak siap. Tidak dapat menyimpan nama.";
+             return;
+        }
+        
         saveNameBtn.disabled = true;
         saveNameBtn.textContent = "Saving...";
 
+        const docRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
         try {
             await setDoc(docRef, { 
                 displayName: name, 
                 wallet: walletAddress,
                 lastUpdate: Date.now()
             }, { merge: true });
-            
-            document.getElementById('menuTxStatus').textContent = "Nama berhasil disimpan!";
+            menuTxStatusEl.textContent = "Nama berhasil disimpan ke Database Global!";
+            nameLoaded = true;
         } catch (e) {
             console.error("Error saving name:", e);
-            document.getElementById('menuTxStatus').textContent = "Gagal menyimpan nama. Coba lagi.";
-        } finally {
-            saveNameBtn.textContent = "EDIT DISPLAY NAME";
-            updateUI();
+            menuTxStatusEl.textContent = "Gagal menyimpan nama ke Database. Coba lagi.";
         }
+         
+        saveNameBtn.textContent = "EDIT DISPLAY NAME";
+        updateUI();
     }
     
-    // Redirect ke halaman lain
     function redirectToGame() {
         window.location.href = 'game.html';
     }
@@ -409,7 +313,6 @@
     function redirectToLeaderboard() {
         window.location.href = 'leaderboard.html';
     }
-
 
     // Pasang Event Listeners
     connectWalletBtn.addEventListener('click', connectWallet);
@@ -420,7 +323,7 @@
     
     // Mulai inisialisasi
     initializeFirebaseAndAuth();
-    updateUI(); // Panggil pertama kali untuk menampilkan status awal
+    updateUI();
 </script>
 
 </body>
