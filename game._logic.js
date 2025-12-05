@@ -1,9 +1,10 @@
 /* game_logic.js */
 // File ini hanya menangani rendering dan state game.
-// PERUBAHAN UTAMA: Labirin yang jauh lebih rumit untuk meningkatkan tantangan dan strategi.
+// PERUBAHAN KRITIS: Penambahan gameStartTime untuk mencegah Game Over instan.
 
 let running = false;
 let currentScore = 0; 
+let gameStartTime = 0; // Tambahkan variabel waktu mulai game
 const PLAYER_SPEED = 3.5; 
 const GHOST_SIZE = 20; 
 const PLAYER_SIZE = 30; 
@@ -21,7 +22,6 @@ let vy = 0;
 let currentDirection = 0; 
 
 // --- WALL MANAGEMENT (LABYRINTH KOMPLEKS) ---
-// Definisi dinding: { x, y, width, height }
 const WALL_THICKNESS = 20;
 
 const walls = [
@@ -95,7 +95,7 @@ function checkPlayerWallCollision(newX, newY) {
 }
 
 
-// --- GHOST MANAGEMENT (Logika tidak berubah, hanya posisi awal) ---
+// --- GHOST MANAGEMENT ---
 let ghosts = [];
 
 class Ghost {
@@ -210,7 +210,7 @@ function drawGhost(ghost) {
     const eyeDy = (y - ghost.y) / 10;
     ctx.beginPath();
     ctx.arc(ghost.x - r / 2 + eyeDx, ghost.y - r / 2 + eyeDy, 2, 0, 2 * Math.PI);
-    ctx.arc(ghost.x + r / 2 + eyeDx, ghost.y - r / 2 + eyeDy, 2, 0, 2 * Math.PI);
+    ctx.arc(ghost.x + r / 2 + eyeDx, ghost.y + r / 2 + eyeDy, 2, 0, 2 * Math.PI);
     ctx.fill();
 }
 
@@ -462,6 +462,10 @@ function startGameLoop() {
     running = true;
     currentScore = 0;
     
+    // --- KRITIS: SETEL WAKTU MULAI GAME ---
+    gameStartTime = Date.now(); 
+    // -------------------------------------
+    
     // INISIASI 3 GHOST (Dimulai dari sudut luar)
     ghosts = [
         new Ghost(40, 40, "#FF0000", "chase", 2.0),       // Merah (Chaser)
@@ -490,21 +494,22 @@ function startGameLoop() {
  */
 function endGame(isWin) {
     if (!running) return;
-    running = false;
     
-    // --- Lakukan Pengecekan Skor Minimum ---
-    // Pengecekan ini ditambahkan untuk mencegah notifikasi END GAME langsung muncul 
-    // jika fungsi dipanggil tanpa sengaja (seperti bug awal).
-    if (currentScore === 0 && !isWin) {
-        // Jika skor 0 dan BUKAN menang, anggap ini inisialisasi yang salah. HANYA LOG.
-        console.warn("endGame dipanggil dengan skor 0. Diabaikan karena game belum berjalan penuh.");
-        
-        // Reset tombol start jika ini adalah panggilan yang tidak disengaja
+    // --- KRITIS: PEMERIKSAAN WAKTU DAN SKOR MINIMUM ---
+    const timeElapsed = Date.now() - gameStartTime;
+    
+    if (timeElapsed < 1000 && currentScore === 0 && !isWin) {
+        // Jika Game Over dalam 1 detik pertama dengan skor 0 (panggilan instan yang tidak disengaja)
+        console.warn("endGame diabaikan: Panggilan terjadi terlalu cepat (<1 detik) saat inisialisasi.");
+        running = false; // Pastikan loop berhenti
+        // Reset Tombol UI:
         document.getElementById("startOnchainBtn").disabled = false;
         document.getElementById("startOnchainBtn").innerText = "START GAME (0.01 SOMI)";
         return; 
     }
-    // ----------------------------------------
+    // --------------------------------------------------
+    
+    running = false; // Hentikan loop game
     
     if (isWin) {
         alert(`CONGRATULATIONS! Anda memenangkan permainan dengan skor penuh: ${currentScore}`);
@@ -513,11 +518,13 @@ function endGame(isWin) {
     }
     
     if (typeof submitFinalScore === 'function') {
+        // Panggil fungsi submit ke kontrak dari web3_game.js
         submitFinalScore(currentScore); 
     } else {
-        console.error("submitFinalScore tidak ditemukan. Transaksi tidak dikirim.");
+        console.error("submitFinalScore tidak ditemukan. Transaksi skor tidak dikirim.");
     }
     
+    // Reset UI setelah modal ditutup/proses submit selesai
     document.getElementById("startOnchainBtn").disabled = false;
     document.getElementById("startOnchainBtn").innerText = "START GAME (0.01 SOMI)";
 }
