@@ -9,7 +9,7 @@
     <!-- Lucide Icons for direction arrows -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800&display=swap');
         body {
             font-family: 'Inter', sans-serif;
             background-color: #1a1a2e;
@@ -20,7 +20,8 @@
             align-items: center;
         }
         #game-container {
-            max-width: 800px;
+            /* Max width untuk frame game yang lebih besar */
+            max-width: 1000px; 
             width: 100%;
             margin-bottom: 1rem;
             border: 4px solid #7B00FF;
@@ -33,22 +34,24 @@
             background-color: #000000;
             width: 100%; 
             height: auto;
-            aspect-ratio: 800 / 600;
+            /* Mempertahankan rasio aspek 4:3 (800/600) untuk konsistensi game */
+            aspect-ratio: 4 / 3; 
         }
-        /* Mobile Control Grid */
         .control-grid {
             grid-template-areas:
                 ". up ."
                 "left center right"
                 ". down .";
-            width: 300px; 
+            /* Mengurangi lebar grid kontrol */
+            width: 200px; 
             margin-top: 1rem;
         }
         .control-btn {
             background-color: #FF6600; 
             color: #1a1a2e;
             border-radius: 9999px; 
-            padding: 1.5rem;
+            /* Ukuran tombol agar lebih kecil */
+            padding: 1rem;
             box-shadow: 0 4px 0 #D35400;
             transition: all 0.1s;
             cursor: pointer;
@@ -61,7 +64,6 @@
             box-shadow: 0 0 0 #D35400;
             transform: translateY(4px);
         }
-        /* Modal Style */
         #gameOverModal {
             position: fixed;
             top: 0;
@@ -78,7 +80,7 @@
 </head>
 <body class="min-h-screen">
 
-    <!-- Game Over Modal (Mengganti alert) -->
+    <!-- Modal Game Over -->
     <div id="gameOverModal" class="flex flex-col p-8 rounded-xl bg-gray-900 border-4 border-yellow-500 shadow-2xl w-11/12 max-w-sm">
         <h2 id="modalTitle" class="text-3xl font-extrabold mb-4 text-center text-yellow-400"></h2>
         <p id="modalMessage" class="text-lg text-center mb-6"></p>
@@ -98,27 +100,27 @@
         <canvas id="game" width="800" height="600"></canvas>
     </div>
 
-    <!-- Mobile Controls (4 Tombol) -->
+    <!-- Kontrol Mobile -->
     <div class="control-grid grid grid-cols-3 gap-2">
         <button id="up-btn" class="control-btn" style="grid-area: up;" ontouchstart="setDirection(2)" ontouchend="stopDirection()" onmousedown="setDirection(2)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-up" class="w-8 h-8"></i>
+            <i data-lucide="arrow-up" class="w-6 h-6"></i>
         </button>
         <button id="left-btn" class="control-btn" style="grid-area: left;" ontouchstart="setDirection(1)" ontouchend="stopDirection()" onmousedown="setDirection(1)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-left" class="w-8 h-8"></i>
+            <i data-lucide="arrow-left" class="w-6 h-6"></i>
         </button>
-        <div style="grid-area: center;"></div> <!-- Placeholder -->
+        <div style="grid-area: center;"></div> 
         <button id="right-btn" class="control-btn" style="grid-area: right;" ontouchstart="setDirection(0)" ontouchend="stopDirection()" onmousedown="setDirection(0)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-right" class="w-8 h-8"></i>
+            <i data-lucide="arrow-right" class="w-6 h-6"></i>
         </button>
         <button id="down-btn" class="control-btn" style="grid-area: down;" ontouchstart="setDirection(3)" ontouchend="stopDirection()" onmousedown="setDirection(3)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-down" class="w-8 h-8"></i>
+            <i data-lucide="arrow-down" class="w-6 h-6"></i>
         </button>
     </div>
 
     <!-- Tombol Web3 -->
     <div class="flex flex-wrap justify-center gap-4 mt-8 w-full max-w-md">
-        <button id="startOnchainBtn" onclick="startGameTransaction()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-xl transition duration-150" disabled>
-            Loading...
+        <button id="startOnchainBtn" onclick="startGameTransaction()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-xl transition duration-150">
+            START GAME (Bayar 0.01 SOMI)
         </button>
         <button onclick="backMenu()" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-xl transition duration-150">
             BACK TO MENU
@@ -126,66 +128,53 @@
     </div>
 
     <script type="module">
-        // Import Firebase modules
+        // ====================================================================
+        // --- 1. INISIALISASI FIREBASE DAN OTENTIKASI (Hanya untuk Submission Skor) ---
+        // KODE INI DIPERLUKAN UNTUK MENGIRIM SKOR KE LEDGER PUBLIK (FIREBASE)
+        // ====================================================================
+        
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Aktifkan logging debug untuk Firebase
-        setLogLevel('debug');
-        
-        // Inisialisasi Lucide icons
-        lucide.createIcons();
+        // setLogLevel('debug'); 
 
-        // --- GLOBAL VARIABLES & FIREBASE INIT (BLOCK KRITIS FIX) ---
-        let db;
-        let auth;
+        let db = null;
+        let auth = null;
         let userId = null;
+        let firebaseReady = false; 
         
         const startGameButton = document.getElementById("startOnchainBtn");
 
-        // Gunakan variabel global, tapi berikan nilai default yang aman
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // **PERUBAHAN KRITIS:** Tetapkan konfigurasi default yang valid jika string input kosong
-        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        let firebaseConfig = null;
-        
-        // Konfigurasi Default yang dijamin valid (Hanya digunakan jika variabel dari sistem GAGAL/KOSONG)
         const EMPTY_CONFIG_FALLBACK = '{"apiKey":"AIzaSyB-fallback","authDomain":"projectId.firebaseapp.com","projectId":"fallback-project","storageBucket":"projectId.appspot.com","messagingSenderId":"123456789012","appId":"1:123456789012:web:abac123456789012"}';
 
-        // Lakukan pengujian dan parsing yang sangat ketat
-        if (rawConfig && typeof rawConfig === 'string' && rawConfig.trim() !== '') {
-            try {
-                firebaseConfig = JSON.parse(rawConfig);
-                console.log("DEBUG: 🟢 Config successfully parsed from system variable.");
-            } catch (e) {
-                console.error("DEBUG: ❌ ERROR: Failed to parse Firebase config JSON. Using fallback. Error:", e);
-                // Jika gagal parse, gunakan fallback
-                try {
-                    firebaseConfig = JSON.parse(EMPTY_CONFIG_FALLBACK);
-                    console.log("DEBUG: ⚠️ WARNING: Using hardcoded fallback configuration.");
+        function getFirebaseConfig() {
+            const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            let config = null;
+
+            if (rawConfig && typeof rawConfig === 'string' && rawConfig.trim() !== '') {
+                try { config = JSON.parse(rawConfig); } catch (e) { console.error("Gagal parse Config sistem."); }
+            }
+            
+            if (!config || Object.keys(config).length === 0) {
+                 try {
+                    config = JSON.parse(EMPTY_CONFIG_FALLBACK);
+                    console.warn("Menggunakan konfigurasi fallback. Skor mungkin tidak tersimpan.");
                 } catch (e) {
-                    console.error("DEBUG: 💀 FATAL: Fallback config also failed to parse.", e);
+                    return null;
                 }
             }
-        } else {
-            console.warn("DEBUG: ⚠️ WARNING: System config variable is empty or undefined. Using fallback.");
-             try {
-                firebaseConfig = JSON.parse(EMPTY_CONFIG_FALLBACK);
-                console.log("DEBUG: ⚠️ WARNING: Using hardcoded fallback configuration.");
-            } catch (e) {
-                console.error("DEBUG: 💀 FATAL: Fallback config also failed to parse.", e);
-            }
+            return config;
         }
-        
-        console.log("DEBUG: Final firebaseConfig object keys:", firebaseConfig ? Object.keys(firebaseConfig) : 'NONE');
 
         async function initializeFirebaseAndAuth() {
-            if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                console.error("Initialization FAILED: Final config is invalid or empty.");
-                startGameButton.innerText = "Error Init";
+            const firebaseConfig = getFirebaseConfig();
+
+            if (!firebaseConfig) {
+                console.error("Firebase GAGAL: Config tidak tersedia.");
                 return;
             }
 
@@ -194,39 +183,62 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                console.log("Firebase initialized successfully.");
-                
                 await setPersistence(auth, browserSessionPersistence);
                 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                    console.log("Auth: Signed in with custom token.");
-                } else {
-                    await signInAnonymously(auth);
-                    console.log("Auth: Signed in anonymously.");
+                if (initialAuthToken) { 
+                    await signInWithCustomToken(auth, initialAuthToken); 
+                } else { 
+                    await signInAnonymously(auth); 
                 }
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        console.log("Auth State: User logged in. UID:", userId);
-                        startGameButton.disabled = false;
-                        startGameButton.innerText = "START GAME (0.01 SOMI)";
+                        firebaseReady = true;
+                        console.log("Firebase Siap: Skor akan dikirim sebagai user:", userId.substring(0, 8) + '...');
                     } else {
-                        console.log("Auth State: No user signed in.");
                         userId = null;
-                        startGameButton.disabled = true;
-                        startGameButton.innerText = "LOGIN REQUIRED";
+                        firebaseReady = false;
+                        console.warn("Firebase Gagal Otentikasi. Skor tidak akan tersimpan.");
                     }
                 });
 
             } catch (error) {
-                console.error("Error during Firebase initialization or authentication:", error);
-                startGameButton.innerText = "INIT FAILED";
+                console.error("Error Firebase Init/Auth:", error);
+                firebaseReady = false;
+            }
+        }
+        
+        /** SUBMIT SCORE KE FIREBASE (PUBLIC LEDGER) */
+        async function submitFinalScore(score) {
+            if (!firebaseReady || !userId || !db) {
+                console.warn("Skor tidak disimpan: Firebase tidak siap atau otentikasi gagal.");
+                return;
+            }
+            
+            const scoreData = {
+                score: score,
+                userId: userId,
+                timestamp: Date.now(),
+                app: appId 
+            };
+            
+            try {
+                // MENGGUNAKAN PATH PUBLIC FIREBASE SEBAGAI SIMULASI LEDGER ON-CHAIN
+                const path = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                // Menggunakan doc() tanpa argumen untuk membuat ID baru
+                await setDoc(doc(path), scoreData); 
+                console.log(`Skor ${score} berhasil dikirim ke Public Ledger (untuk Leaderboard luar).`);
+            } catch (e) {
+                console.error("Error saat mengirim skor ke Public Leaderboard: ", e);
             }
         }
 
-        // --- GAME LOGIC START ---
+        // ====================================================================
+        // --- 2. LOGIKA GAME PAC-MAN CORE ---
+        // ====================================================================
+
+        lucide.createIcons();
 
         let running = false;
         let currentScore = 0; 
@@ -239,14 +251,9 @@
         const ctx = canvas.getContext("2d");
         const scoreEl = document.getElementById("score");
 
-        // Player State
-        let x = 400; 
-        let y = 300; 
-        let vx = 0; 
-        let vy = 0; 
-        let currentDirection = 0; 
+        let x = 400; let y = 300; let vx = 0; let vy = 0; let currentDirection = 0; 
 
-        // --- CUSTOM MODAL FUNCTIONS ---
+        // Fungsi Modal (Mengganti alert)
         window.showMessage = (title, message) => {
             document.getElementById("modalTitle").innerText = title;
             document.getElementById("modalMessage").innerText = message;
@@ -257,13 +264,11 @@
             document.getElementById("gameOverModal").style.display = 'none';
         }
 
-        // --- MOBILE CONTROL FUNCTIONS ---
-        // 0: Right, 1: Left, 2: Up, 3: Down
+        // Fungsi Kontrol Mobile
         window.setDirection = (direction) => {
             if (!running) return;
             currentDirection = direction;
-            vx = 0;
-            vy = 0;
+            vx = 0; vy = 0;
             if (direction === 0) { vx = PLAYER_SPEED; } 
             else if (direction === 1) { vx = -PLAYER_SPEED; } 
             else if (direction === 2) { vy = -PLAYER_SPEED; } 
@@ -275,40 +280,32 @@
             vy = 0;
         }
 
-        // --- WALL MANAGEMENT ---
+        // Definisi Dinding
         const WALL_THICKNESS = 20;
         const walls = [
-            // Perimeter
             { x: 0, y: 0, width: 800, height: WALL_THICKNESS }, { x: 0, y: 580, width: 800, height: WALL_THICKNESS }, 
             { x: 0, y: 0, width: WALL_THICKNESS, height: 600 }, { x: 780, y: 0, width: WALL_THICKNESS, height: 600 }, 
-            // Pusat
             { x: 300, y: 280, width: 200, height: WALL_THICKNESS }, 
-            // Internal Simetris
             { x: 100, y: 100, width: 200, height: WALL_THICKNESS }, { x: 100, y: 100, width: WALL_THICKNESS, height: 100 },
             { x: 100, y: 480, width: 200, height: WALL_THICKNESS }, { x: 100, y: 400, width: WALL_THICKNESS, height: 100 },
             { x: 500, y: 100, width: 200, height: WALL_THICKNESS }, { x: 680, y: 100, width: WALL_THICKNESS, height: 100 },
             { x: 500, y: 480, width: 200, height: WALL_THICKNESS }, { x: 680, y: 400, width: WALL_THICKNESS, height: 100 },
-            // T-Shapes
             { x: 380, y: 100, width: 40, height: WALL_THICKNESS }, { x: 390, y: 120, width: WALL_THICKNESS, height: 80 },
             { x: 380, y: 480, width: 40, height: WALL_THICKNESS }, { x: 390, y: 400, width: WALL_THICKNESS, height: 80 },
-            // Inner Corners
             { x: 200, y: 200, width: WALL_THICKNESS, height: 80 }, { x: 220, y: 260, width: 80, height: WALL_THICKNESS },
             { x: 580, y: 200, width: WALL_THICKNESS, height: 80 }, { x: 500, y: 260, width: 80, height: WALL_THICKNESS },
             { x: 200, y: 400, width: WALL_THICKNESS, height: 80 }, { x: 220, y: 400, width: 80, height: WALL_THICKNESS },
             { x: 580, y: 400, width: WALL_THICKNESS, height: 80 }, { x: 500, y: 400, width: 80, height: WALL_THICKNESS },
         ];
 
-
         function drawWalls() {
             ctx.fillStyle = "rgba(0, 100, 255, 0.8)"; 
-            for (const wall of walls) {
-                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-            }
+            for (const wall of walls) { ctx.fillRect(wall.x, wall.y, wall.width, wall.height); }
         }
 
         function checkAABBCollision(rect1, rect2) {
             return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y;
+                   rect1.y < rect2.y + rect2.height && rect1.y + rect2.height > rect2.y;
         }
 
         function checkPlayerWallCollision(newX, newY) {
@@ -319,9 +316,8 @@
             return false; 
         }
 
-        // --- GHOST MANAGEMENT ---
+        // Class dan Logika Ghost
         let ghosts = [];
-
         class Ghost {
             constructor(x, y, color, behavior, speed) {
                 this.x = x; this.y = y; this.color = color; this.behavior = behavior; this.speed = speed;
@@ -396,10 +392,8 @@
             return distance < PLAYER_SIZE + ghost.radius; 
         }
 
-
-        // --- CANDY MANAGEMENT ---
+        // Logika Candy
         let candy = [];
-
         function setupCandy() {
             candy = [];
             const rows = 15; const cols = 20; 
@@ -448,7 +442,7 @@
                 ctx.beginPath();
                 ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
                 ctx.fill();
-                ctx.fillStyle = "green"; // Batang labu
+                ctx.fillStyle = "green"; 
                 ctx.fillRect(item.x - 1, item.y - radius - 3, 2, 3);
             }
         }
@@ -505,7 +499,7 @@
                 ctx.fillStyle = "white";
                 ctx.textAlign = "center";
                 ctx.font = "30px 'Inter', sans-serif";
-                ctx.fillText("Click START to Pay and Play!", canvas.width / 2, canvas.height / 2);
+                ctx.fillText("Klik START untuk Bermain!", canvas.width / 2, canvas.height / 2);
                 return;
             }
             
@@ -517,7 +511,6 @@
             if (!checkPlayerWallCollision(newX, y)) { x = newX; } else { vx = 0; }
             if (!checkPlayerWallCollision(x, newY)) { y = newY; } else { vy = 0; }
 
-            // Batas Canvas
             const minBound = WALL_THICKNESS + PLAYER_SIZE;
             const maxBoundX = canvas.width - WALL_THICKNESS - PLAYER_SIZE;
             const maxBoundY = canvas.height - WALL_THICKNESS - PLAYER_SIZE;
@@ -528,7 +521,6 @@
             if (y > maxBoundY) y = maxBoundY;
             
             drawPacman();
-            
             drawCandy();
             checkCandyCollection();
             
@@ -545,90 +537,77 @@
             scoreEl.innerText = currentScore;
         }
 
-        /** SIMULASI TRANSAKSI ONCHAIN */
-        window.startGameTransaction = () => {
-            if (!userId || running) {
-                showMessage("Akses Ditolak", "Autentikasi diperlukan atau game sedang berjalan.");
-                return;
-            }
-            
-            console.log(`[TX SIMULATION] User ${userId} membayar 0.01 SOMI untuk memulai game...`);
-            startGameLoop(); 
+        // ====================================================================
+        // --- 3. FUNGSI TRANSAKSI & KONTROL UTAMA ---
+        // ====================================================================
+        
+        /**
+         * FUNGSI SIMULASI TRANSAKSI SOMNIA MAINNET
+         */
+        async function simulateSomniaTx() {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    console.log("[SOMNIA MAINNET] Simulasi transaksi 0.01 SOMI berhasil.");
+                    resolve(true); 
+                }, 500); 
+            });
         }
 
-        /** MEMULAI GAME LOOP */
-        function startGameLoop() {
+        /** Dipanggil saat tombol "START GAME" ditekan. */
+        window.startGameTransaction = async () => {
             if (running) return;
+
+            startGameButton.disabled = true;
+            startGameButton.innerText = "Memproses Transaksi SOMI...";
+
+            const txSuccess = await simulateSomniaTx(); 
+
+            if (txSuccess) {
+                startGameLoop();
+                showMessage("Transaksi Berhasil", "Pembayaran 0.01 SOMI disimulasikan sukses! Game dimulai.");
+            } else {
+                showMessage("Kesalahan Transaksi", "Transaksi ke Somnia Mainnet gagal. Coba lagi.");
+                startGameButton.disabled = false;
+                startGameButton.innerText = "START GAME (Bayar 0.01 SOMI)";
+            }
+        }
+
+        /** Memulai Game Loop */
+        function startGameLoop() {
             running = true;
             currentScore = 0;
             
-            // INISIASI 3 GHOST
             ghosts = [
-                new Ghost(50, 50, "#FF0000", "chase", 2.0),       
-                new Ghost(750, 50, "#00FFFF", "random", 2.0),    
+                new Ghost(50, 50, "#FF0000", "chase", 2.0), new Ghost(750, 50, "#00FFFF", "random", 2.0),    
                 new Ghost(750, 550, "#FF69B4", "flee", 1.5)       
             ];
             
             setupCandy();
-
-            // Reset posisi player
-            x = 400; 
-            y = 300;
-            vx = 0;
-            vy = 0;
-            currentDirection = 0;
+            x = 400; y = 300; vx = 0; vy = 0; currentDirection = 0;
             
             scoreEl.innerText = currentScore; 
-            startGameButton.disabled = true;
-            startGameButton.innerText = "GAME RUNNING...";
+            document.getElementById("startOnchainBtn").innerText = "GAME RUNNING...";
         }
-
-        /** SUBMIT SCORE KE FIREBASE */
-        async function submitFinalScore(score) {
-            if (!userId || !db) {
-                console.error("Tidak dapat menyimpan skor: User ID atau DB tidak ditemukan.");
-                return;
-            }
-            
-            const scoreData = {
-                score: score,
-                userId: userId,
-                timestamp: Date.now(),
-                app: appId 
-            };
-            
-            try {
-                // Simpan skor ke koleksi 'public/data/leaderboard'
-                const path = `artifacts/${appId}/public/data/leaderboard`;
-                await setDoc(doc(collection(db, path)), scoreData);
-                console.log(`Skor ${score} berhasil dikirim ke Leaderboard.`);
-            } catch (e) {
-                console.error("Error saat mengirim skor ke Firestore: ", e);
-            }
-        }
-
 
         /** Dipanggil ketika game over/win. */
         function endGame(isWin) {
             if (!running) return;
             running = false;
             
-            if (isWin) {
-                showMessage(
-                    "SELAMAT! 🏆", 
-                    `Anda memenangkan permainan dan mengumpulkan semua permen! Skor Akhir: ${currentScore}`
-                );
-            } else {
-                showMessage(
-                    "GAME OVER!", 
-                    `Anda tertangkap hantu. Skor Akhir: ${currentScore}. Coba lagi!`
-                );
+            const title = isWin ? "SELAMAT! 🏆" : "GAME OVER!";
+            const message = isWin 
+                ? `Anda memenangkan permainan! Skor Akhir: ${currentScore}`
+                : `Anda tertangkap hantu. Skor Akhir: ${currentScore}. Coba lagi!`;
+            
+            showMessage(title, message);
+            
+            // --- HANYA MENGIRIM SKOR (TANPA MENAMPILKAN LEADERBOARD) ---
+            if (currentScore > 0) {
+                submitFinalScore(currentScore); 
             }
             
-            submitFinalScore(currentScore); 
-            
             startGameButton.disabled = false;
-            startGameButton.innerText = "START GAME (0.01 SOMI)";
+            startGameButton.innerText = "START GAME (Bayar 0.01 SOMI)";
         }
 
         /** Navigasi kembali ke menu (simulasi reload). */
@@ -636,12 +615,9 @@
             window.location.reload();
         }
 
-        // --- INISIASI ---
+        // --- INISIASI APLIKASI: Mulai Auth Firebase dan Game Loop ---
         initializeFirebaseAndAuth();
         window.onload = loop; 
     </script>
 </body>
 </html>
-
-
-  
