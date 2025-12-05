@@ -1,657 +1,486 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pac-Man Halloween Labyrinth</title>
-    <!-- Tailwind CSS untuk styling dan responsiveness -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons untuk tombol arah -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Ethers.js library for Web3 interaction -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800;300&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background: radial-gradient(circle at top, #2b0033, #0a0010); /* Match Menu Background */
-            color: white;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-        #game-container {
-            max-width: 800px; 
-            width: 100%;
-            margin-bottom: 1rem;
-            border: 4px solid #ff8c00; /* Oranye neon */
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(128, 0, 128, 0.7); /* Ungu neon */
-        }
-        canvas {
-            display: block;
-            background-color: #000000;
-            width: 100%; 
-            height: auto;
-            aspect-ratio: 4 / 3; 
-        }
-        .control-grid {
-            grid-template-areas:
-                ". up ."
-                "left center right"
-                ". down .";
-            width: 200px; 
-            margin-top: 1rem;
-        }
-        .control-btn {
-            background-color: #FF6600; 
-            color: #1a1a2e;
-            border-radius: 9999px; 
-            padding: 1rem;
-            box-shadow: 0 4px 0 #D35400;
-            transition: all 0.1s;
-            cursor: pointer;
-            margin: 5px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        .control-btn:active {
-            box-shadow: 0 0 0 #D35400;
-            transform: translateY(4px);
-        }
-        #messageModal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 1000;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        #modalContent {
-             animation: neon-glow 1.5s infinite alternate;
-        }
-        
-        @keyframes neon-glow {
-            from { box-shadow: 0 0 5px #ff8c00, 0 0 10px #800080; }
-            to { box-shadow: 0 0 10px #ff8c00, 0 0 20px #800080; }
-        }
-    </style>
-</head>
-<body class="min-h-screen">
+  <meta charset="UTF-8">
+  <title>Somnia Halloween Labyrinth</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  
+  <!-- ETHERS.JS untuk transaksi Web3 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 
-    <!-- Modal untuk Pesan Status/Game Over -->
-    <div id="messageModal">
-        <div id="modalContent" class="flex flex-col p-8 rounded-xl bg-gray-900 border-4 border-yellow-500 shadow-2xl w-11/12 max-w-sm">
-            <h2 id="modalTitle" class="text-3xl font-extrabold mb-4 text-center text-yellow-400"></h2>
-            <p id="modalMessage" class="text-lg text-center mb-6"></p>
-            <button onclick="hideMessage();" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold transition duration-150">
-                Tutup
-            </button>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900;800;300&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body {
+      background-color: #0a0010; color: #fff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 20px 10px;
+    }
+    .game-container {
+      width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 15px;
+    }
+    .header-info {
+      width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 1.1em; color: #ff8c00;
+    }
+    #gameCanvas {
+      background-color: #000; border: 3px solid #800080; box-shadow: 0 0 15px #800080, 0 0 5px #ff8c00; border-radius: 12px; touch-action: none;
+    }
+    .controls-area {
+      width: 100%; display: flex; flex-direction: column; align-items: center; margin-top: 15px;
+    }
+    .dpad-container {
+      display: grid; grid-template-areas: ". up ." "left . right" ". down ."; gap: 10px; margin-bottom: 20px;
+    }
+    .control-btn {
+      width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(145deg, #ff8c00, #ffb703); color: #333; font-size: 1.5em; border: none; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.5); cursor: pointer; transition: all 0.1s ease;
+    }
+    .control-btn:active { transform: scale(0.95); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.5); }
+    #upBtn { grid-area: up; } #leftBtn { grid-area: left; } #rightBtn { grid-area: right; } #downBtn { grid-area: down; }
+    .action-buttons button { padding: 12px 25px; margin: 10px 5px; font-size: 1em; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    #startBtn { background: linear-gradient(90deg, #1e8449, #2ecc71); color: white; }
+    #startBtn:hover { box-shadow: 0 0 10px #2ecc71; }
+    #startBtn:disabled { background: #444; cursor: not-allowed; opacity: 0.7; }
+    #backBtn { background: linear-gradient(90deg, #c0392b, #e74c3c); color: white; }
+    #backBtn:hover { box-shadow: 0 0 10px #e74c3c; }
+    .game-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-size: 1.5em; z-index: 100; padding: 20px;
+    }
+    .overlay-content {
+      background: rgba(20, 0, 30, 0.98); border: 2px solid #ff8c00; border-radius: 16px; padding: 30px; box-shadow: 0 0 20px #800080;
+    }
+    .overlay-content h3 { color: #ff8c00; margin-bottom: 20px; font-size: 1.5em; }
+    .overlay-content button { margin-top: 15px; padding: 10px 20px; font-weight: bold; border-radius: 8px; cursor: pointer; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="header-info">
+      <span id="playerDisplay">Memuat Profil...</span>
+      <span id="scoreDisplay">Score: 0</span>
+    </div>
+
+    <!-- CANVAS GAME -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- Area Kontrol (untuk mobile/sentuhan) -->
+    <div class="controls-area">
+        <div class="dpad-container">
+            <button id="upBtn" class="control-btn">↑</button>
+            <button id="leftBtn" class="control-btn">←</button>
+            <button id="rightBtn" class="control-btn">→</button>
+            <button id="downBtn" class="control-btn">↓</button>
+        </div>
+
+        <div class="action-buttons">
+            <button id="startBtn">START GAME (Bayar 0.01 SOMI)</button>
+            <button id="backBtn" onclick="window.location.href='index.html'">BACK TO MENU</button>
         </div>
     </div>
+</div>
 
-    <header class="w-full max-w-xl flex justify-between items-center p-4 bg-gray-800 rounded-lg mb-4 shadow-lg">
-        <h1 class="text-xl font-bold flex items-center text-purple-400">
-            <span class="text-3xl mr-2 text-yellow-500">🎃</span> Labyrinth
-        </h1>
-        <div class="text-lg">Score: <span id="score" class="font-extrabold text-yellow-400">0</span></div>
-    </header>
-
-    <div id="game-container">
-        <canvas id="game" width="800" height="600"></canvas>
+<!-- 💰 Transaction Overlay -->
+<div id="txOverlay" class="game-overlay hidden">
+    <div class="overlay-content">
+        <h3 id="txStatusTitle">Memproses Transaksi...</h3>
+        <p id="txStatusMessage">Harap konfirmasi transaksi di dompet Anda untuk memulai permainan (0.01 SOMI).</p>
+        <button id="closeTxOverlay" class="hidden" onclick="closeOverlay('txOverlay')">Tutup</button>
     </div>
+</div>
 
-    <!-- Kontrol Mobile -->
-    <div class="control-grid grid grid-cols-3 gap-2">
-        <button id="up-btn" class="control-btn" style="grid-area: up;" ontouchstart="setDirection(2)" ontouchend="stopDirection()" onmousedown="setDirection(2)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-up" class="w-6 h-6"></i>
-        </button>
-        <button id="left-btn" class="control-btn" style="grid-area: left;" ontouchstart="setDirection(1)" ontouchend="stopDirection()" onmousedown="setDirection(1)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-left" class="w-6 h-6"></i>
-        </button>
-        <div style="grid-area: center;"></div> 
-        <button id="right-btn" class="control-btn" style="grid-area: right;" ontouchstart="setDirection(0)" ontouchend="stopDirection()" onmousedown="setDirection(0)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-right" class="w-6 h-6"></i>
-        </button>
-        <button id="down-btn" class="control-btn" style="grid-area: down;" ontouchstart="setDirection(3)" ontouchend="stopDirection()" onmousedown="setDirection(3)" onmouseup="stopDirection()">
-            <i data-lucide="arrow-down" class="w-6 h-6"></i>
-        </button>
+<!-- 👻 Game Over Overlay -->
+<div id="gameOverOverlay" class="game-overlay hidden">
+    <div class="overlay-content">
+        <h3>GAME OVER!</h3>
+        <p>Skor Anda: <span id="finalScore">0</span></p>
+        <!-- Status penting: Hanya melaporkan status Global Save -->
+        <p id="saveStatusMessage" style="font-size: 0.8em;"></p> 
+        <button id="playAgainBtn" style="background: #2ecc71; color: white;">Main Lagi</button>
+        <button id="menuFromGameOverBtn" style="background: #e74c3c; color: white;" onclick="window.location.href='index.html'">Kembali ke Menu</button>
     </div>
+</div>
 
-    <!-- Tombol Web3 & Navigasi -->
-    <div class="flex flex-wrap justify-center gap-4 mt-8 w-full max-w-md">
-        <button id="startOnchainBtn" onclick="requestStartGameTransaction()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-xl transition duration-150">
-            START GAME (Bayar 0.01 SOMI)
-        </button>
-        <button onclick="window.location.href='index.html'" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-xl transition duration-150">
-            BACK TO MENU
-        </button>
-    </div>
+<!-- Logika Game dan Web3 (Hanya Firestore) -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, addDoc, collection, doc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, setLogLevel, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    setLogLevel('Debug');
 
-        setLogLevel('Debug');
+    // ====================================================================
+    // --- FIREBASE & PROFILE SETUP (NO STORAGE/FALLBACKS) ---
+    // ====================================================================
+    const appId = typeof __app_id !== 'undefined' ? __app_id : null;
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    const rawFirebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+    
+    let db = null;
+    let auth = null;
+    let firebaseReady = false;
+    let profileLoaded = false;
+    
+    let playerProfile = {
+        userId: null, // Internal Firebase UID (disembunyikan dari publik)
+        displayName: null,
+        walletAddress: null // Identitas Publik
+    };
 
-        // ====================================================================
-        // --- FIREBASE & AUTHENTICATION SETUP (Untuk Score Submission) ---
-        // ====================================================================
-        
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        const EMPTY_CONFIG_FALLBACK = '{"apiKey":"AIzaSyB-fallback","authDomain":"projectId.firebaseapp.com","projectId":"fallback-project","storageBucket":"projectId.appspot.com","messagingSenderId":"123456789012","appId":"1:123456789012:web:abac123456789012"}';
-        
-        function getFirebaseConfig() {
-            const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-            let config = null;
-            if (rawConfig && typeof rawConfig === 'string' && rawConfig.trim() !== '') {
-                try { config = JSON.parse(rawConfig); } catch (e) { console.error("Gagal parse Config sistem.", e); }
-            }
-            if (!config || Object.keys(config).length === 0) {
-                 try { config = JSON.parse(EMPTY_CONFIG_FALLBACK); } catch (e) { return null; }
-            }
-            return config;
+    function formatWallet(address) {
+        if (!address) return 'N/A';
+        return `${address.substring(0, 6)}...${address.slice(-4)}`;
+    }
+
+    // Muat profil dari Firestore setelah otentikasi
+    async function fetchPlayerProfile(uid) {
+        if (!db || !uid || !appId) {
+            console.error("DB/Auth Gagal: Tidak dapat memuat profil.");
+            return;
         }
 
-        let db = null;
-        let auth = null;
-        let userId = null;
-        let firebaseReady = false;
-        let displayName = "Player"; // Default display name
-
-        async function initializeFirebaseAndAuth() {
-            const firebaseConfig = getFirebaseConfig();
-            if (!firebaseConfig) { console.error("Firebase GAGAL: Config tidak tersedia."); return; }
-            
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                if (initialAuthToken) { await signInWithCustomToken(auth, initialAuthToken); } else { await signInAnonymously(auth); }
-
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        firebaseReady = true;
-                        await loadDisplayName();
-                        console.log("Firebase Siap untuk Leaderboard.");
-                    } else {
-                        userId = null;
-                        firebaseReady = false;
-                        console.warn("Firebase Gagal Otentikasi.");
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error Firebase Init/Auth:", error);
-                firebaseReady = false;
-            }
-        }
-        
-        async function loadDisplayName() {
-            if (!db || !userId) return;
-            // Mengambil DisplayName dari profil pribadi user
-            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'config', 'profile');
-            try {
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists() && docSnap.data().displayName) {
-                    displayName = docSnap.data().displayName;
-                }
-            } catch (e) {
-                console.warn("Could not load display name, using default 'Player'.", e);
-            }
-        }
-        
-        async function submitFinalScore(score) {
-            if (!firebaseReady || !userId || !db) {
-                console.warn("Skor tidak disimpan: Firebase tidak siap.");
-                return;
-            }
-            
-            const scoreData = {
-                score: score,
-                userId: userId,
-                displayName: displayName, 
-                timestamp: Date.now(),
-                app: appId 
-            };
-            
-            try {
-                // Menyimpan di Public Data Collection untuk Leaderboard
-                // Path: /artifacts/{appId}/public/data/leaderboard/{documentId}
-                const path = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
-                // Menggunakan setDoc(doc(path)) untuk membuat ID unik otomatis
-                await setDoc(doc(path), scoreData); 
-                console.log(`Skor ${score} berhasil dikirim ke Leaderboard Internal.`);
-            } catch (e) {
-                console.error("Error saat mengirim skor ke Leaderboard Internal: ", e);
-            }
-        }
-        
-        initializeFirebaseAndAuth();
-
-        // ====================================================================
-        // --- FUNGSI MODAL ---
-        // ====================================================================
-
-        const modal = document.getElementById("messageModal");
-        window.showMessage = (title, message) => {
-            document.getElementById("modalTitle").innerText = title;
-            document.getElementById("modalMessage").innerText = message;
-            modal.style.display = 'flex';
-        }
-
-        window.hideMessage = () => {
-            modal.style.display = 'none';
-        }
-
-        // ====================================================================
-        // --- WEB3 TRANSACTION LOGIC (DI SINI) ---
-        // ====================================================================
-
-        const SOMNIA_RECEIVER_ADDRESS = "0x89798C0B7e9B2a7f0A812a32c324269e88C359D4"; // Ganti jika perlu
-        const SOMNIA_TX_AMOUNT = "0.01"; 
-        const startGameButton = document.getElementById("startOnchainBtn");
-
-        async function realSomniaTx(amountInEth) {
-            if (typeof window.ethers === 'undefined' || !window.ethereum) {
-                showMessage("Web3 Error", "Web3 (MetaMask/Ethers) tidak terdeteksi. Pastikan dompet terinstal dan terhubung.");
-                return { success: false, message: "Web3 provider not found." };
-            }
-            
-            try {
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-                const provider = new window.ethers.BrowserProvider(window.ethereum);
-                const signer = await provider.getSigner();
-                const amountWei = window.ethers.parseEther(amountInEth);
-
-                const tx = {
-                    to: SOMNIA_RECEIVER_ADDRESS,
-                    value: amountWei,
-                };
-
-                const txResponse = await signer.sendTransaction(tx);
-                showMessage("Transaksi Dikirim", `Transaksi berhasil dikirim. Hash: ${txResponse.hash}. Menunggu konfirmasi...`);
-                
-                const txReceipt = await txResponse.wait();
-
-                if (txReceipt && txReceipt.status === 1) {
-                    return { success: true, message: `Transaksi berhasil dikonfirmasi.` };
-                } else {
-                    return { success: false, message: "Transaksi gagal dikonfirmasi (Status 0)." };
-                }
-            } catch (error) {
-                console.error("Error saat transaksi on-chain:", error);
-                let message = "Transaksi dibatalkan oleh pengguna atau terjadi kesalahan jaringan.";
-                if (error.code === 4001) { message = "Transaksi dibatalkan oleh pengguna."; }
-                
-                return { success: false, message: message };
-            }
-        }
-
-        window.requestStartGameTransaction = async () => {
-            if (running) return;
-
-            startGameButton.disabled = true;
-            startGameButton.innerText = "Memproses Transaksi...";
-            
-            showMessage("Meminta Transaksi", `Meminta konfirmasi di dompet Anda untuk transfer ${SOMNIA_TX_AMOUNT} SOMI. Harap perhatikan notifikasi dompet Anda!`);
-            
-            const txResult = await realSomniaTx(SOMNIA_TX_AMOUNT);
-
-            if (txResult.success) {
-                startGameLoop();
-                showMessage("Transaksi Berhasil ✅", `${txResult.message} Game dimulai!`);
+        const docRef = doc(db, 'artifacts', appId, 'users', uid, 'config', 'profile');
+        try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                playerProfile.userId = uid;
+                playerProfile.displayName = data.displayName || 'Anon Player';
+                playerProfile.walletAddress = data.wallet || null;
             } else {
-                showMessage("Transaksi Gagal ❌", txResult.message);
-                startGameButton.disabled = false;
-                startGameButton.innerText = "START GAME (Bayar 0.01 SOMI)";
+                 // Jika doc tidak ada, buat profil minimal
+                 playerProfile.userId = uid;
+                 playerProfile.displayName = 'Anon Player';
+                 playerProfile.walletAddress = null;
+            }
+        } catch (e) {
+            console.error("Gagal memuat profil pemain dari Firestore:", e);
+        } finally {
+            profileLoaded = true;
+            updateHeaderDisplay();
+            showStartScreen(); // Panggil setelah profil siap
+        }
+    }
+    
+    async function initializeFirebase() {
+        try {
+             if (!rawFirebaseConfig || !appId) throw new Error("Firebase config not available from environment.");
+             const firebaseConfig = JSON.parse(rawFirebaseConfig);
+
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            if (initialAuthToken) { 
+                await signInWithCustomToken(auth, initialAuthToken); 
+            } else { 
+                await signInAnonymously(auth); 
+            }
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    firebaseReady = true;
+                    fetchPlayerProfile(user.uid);
+                } else {
+                    throw new Error("Firebase authentication failed.");
+                }
+            });
+
+        } catch (error) {
+            console.error("Critical Error during Firebase Init:", error);
+            // Non-operasional jika DB gagal
+            db = null; 
+            showStartScreen(); 
+        }
+    }
+    
+    // ====================================================================
+    // --- GAME STATE & UI CONTROLS ---
+    // ====================================================================
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const playerDisplay = document.getElementById('playerDisplay');
+    const startBtn = document.getElementById('startBtn');
+    
+    let gameScore = 0;
+    let gameRunning = false;
+    let pacman = { x: 50, y: 50, radius: 10, color: 'yellow', dx: 0, dy: 0, speed: 5 };
+    const TILE_SIZE = 40;
+    const GAME_MAP = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 0, 0, 0, 0, 0, 0, 0, 0, 1], [1, 0, 1, 1, 0, 1, 1, 0, 0, 1],
+        [1, 0, 1, 0, 0, 0, 1, 0, 0, 1], [1, 0, 0, 0, 1, 1, 1, 0, 0, 1], [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    ];
+    canvas.width = GAME_MAP[0].length * TILE_SIZE;
+    canvas.height = GAME_MAP.length * TILE_SIZE;
+
+    function drawMap() {
+        ctx.fillStyle = '#000080';
+        for (let y = 0; y < GAME_MAP.length; y++) {
+            for (let x = 0; x < GAME_MAP[y].length; x++) {
+                if (GAME_MAP[y][x] === 1) {
+                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                }
             }
         }
-        
-        // ====================================================================
-        // --- LOGIKA GAME PAC-MAN CORE ---
-        // ====================================================================
+    }
 
-        lucide.createIcons();
+    function drawPacman() {
+        ctx.beginPath();
+        ctx.arc(pacman.x, pacman.y, pacman.radius, 0.2 * Math.PI, 1.8 * Math.PI);
+        ctx.lineTo(pacman.x, pacman.y);
+        ctx.closePath();
+        ctx.fillStyle = pacman.color;
+        ctx.fill();
+    }
+    
+    function updateScore(points) {
+        gameScore += points;
+        scoreDisplay.textContent = `Score: ${gameScore}`;
+    }
 
-        let running = false;
-        let currentScore = 0; 
-        const PLAYER_SPEED = 3.5; 
-        const GHOST_SIZE = 20; 
-        const PLAYER_SIZE = 25; 
-        const CANDY_VALUE = 10; 
-        
-        const canvas = document.getElementById("game");
-        const ctx = canvas.getContext("2d");
-        const scoreEl = document.getElementById("score");
-
-        let x = 400; let y = 320; let vx = 0; let vy = 0; let currentDirection = 0; 
-        
-        // Fungsi Kontrol Mobile
-        window.setDirection = (direction) => {
-            if (!running) return;
-            currentDirection = direction;
-            vx = 0; vy = 0;
-            if (direction === 0) { vx = PLAYER_SPEED; } 
-            else if (direction === 1) { vx = -PLAYER_SPEED; } 
-            else if (direction === 2) { vy = -PLAYER_SPEED; } 
-            else if (direction === 3) { vy = PLAYER_SPEED; } 
-        }
-
-        window.stopDirection = () => {
-            vx = 0;
-            vy = 0;
-        }
-
-        // Definisi Dinding
-        const WALL_THICKNESS = 20;
-        const walls = [
-            { x: 0, y: 0, width: 800, height: WALL_THICKNESS }, { x: 0, y: 580, width: 800, height: WALL_THICKNESS }, 
-            { x: 0, y: 0, width: WALL_THICKNESS, height: 600 }, { x: 780, y: 0, width: WALL_THICKNESS, height: 600 }, 
-            { x: 300, y: 280, width: 200, height: WALL_THICKNESS }, 
-            { x: 100, y: 100, width: 200, height: WALL_THICKNESS }, { x: 100, y: 100, width: WALL_THICKNESS, height: 100 },
-            { x: 100, y: 480, width: 200, height: WALL_THICKNESS }, { x: 100, y: 400, width: WALL_THICKNESS, height: 100 },
-            { x: 500, y: 100, width: 200, height: WALL_THICKNESS }, { x: 680, y: 100, width: WALL_THICKNESS, height: 100 },
-            { x: 500, y: 480, width: 200, height: WALL_THICKNESS }, { x: 680, y: 400, width: WALL_THICKNESS, height: 100 },
-            { x: 380, y: 100, width: 40, height: WALL_THICKNESS }, { x: 390, y: 120, width: WALL_THICKNESS, height: 80 },
-            { x: 380, y: 480, width: 40, height: WALL_THICKNESS }, { x: 390, y: 400, width: WALL_THICKNESS, height: 80 },
-            { x: 200, y: 200, width: WALL_THICKNESS, height: 80 }, { x: 220, y: 260, width: 80, height: WALL_THICKNESS },
-            { x: 580, y: 200, width: WALL_THICKNESS, height: 80 }, { x: 500, y: 260, width: 80, height: WALL_THICKNESS },
-            { x: 200, y: 400, width: WALL_THICKNESS, height: 80 }, { x: 220, y: 400, width: 80, height: WALL_THICKNESS },
-            { x: 580, y: 400, width: WALL_THICKNESS, height: 80 }, { x: 500, y: 400, width: 80, height: WALL_THICKNESS },
+    function isWall(px, py) {
+         const tx = Math.floor(px / TILE_SIZE);
+         const ty = Math.floor(py / TILE_SIZE);
+         return ty >= 0 && ty < GAME_MAP.length && tx >= 0 && tx < GAME_MAP[0].length && GAME_MAP[ty][tx] === 1;
+    }
+    
+    function isCollidingWithWall(x, y) {
+        const checks = [
+            isWall(x - pacman.radius, y - pacman.radius), isWall(x + pacman.radius, y - pacman.radius),
+            isWall(x - pacman.radius, y + pacman.radius), isWall(x + pacman.radius, y + pacman.radius)
         ];
+        return checks.some(c => c);
+    }
 
-        function drawWalls() {
-            ctx.fillStyle = "rgba(0, 100, 255, 0.8)"; 
-            for (const wall of walls) { ctx.fillRect(wall.x, wall.y, wall.width, wall.height); }
+    function movePacman() {
+        const nextX = pacman.x + pacman.dx;
+        const nextY = pacman.y + pacman.dy;
+
+        if (!isCollidingWithWall(nextX, nextY)) {
+            pacman.x = nextX;
+            pacman.y = nextY;
+        } else {
+            pacman.dx = 0;
+            pacman.dy = 0;
+        }
+        if ((pacman.dx !== 0 || pacman.dy !== 0) && Math.floor(Date.now() / 20) % 20 === 0) {
+             updateScore(1);
+        }
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMap();
+        movePacman();
+        drawPacman();
+        
+        if (gameScore >= 100) {
+            gameOver();
+            return;
         }
 
-        function checkAABBCollision(rect1, rect2) {
-            return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x &&
-                   rect1.y < rect2.y + rect2.height && rect1.y + rect2.height > rect2.y;
-        }
+        requestAnimationFrame(gameLoop);
+    }
+    
+    function resetGame() {
+        gameScore = 0;
+        scoreDisplay.textContent = 'Score: 0';
+        pacman = { x: 50, y: 50, radius: 10, color: 'yellow', dx: 0, dy: 0, speed: 5 };
+        document.getElementById('txOverlay').classList.add('hidden');
+        document.getElementById('gameOverOverlay').classList.add('hidden');
+        startBtn.textContent = 'START GAME (Bayar 0.01 SOMI)';
+        startBtn.disabled = false;
+        drawMap();
+        drawPacman();
+    }
+    
+    function updateHeaderDisplay() {
+        // Tampilkan Nama dan Wallet Address
+        playerDisplay.innerHTML = `
+            Player: ${playerProfile.displayName || 'Loading...'} <br>
+            Wallet: <span style="font-size: 0.8em; color: #c77dff;">${formatWallet(playerProfile.walletAddress)}</span>
+        `;
+    }
 
-        function checkPlayerWallCollision(newX, newY) {
-            const playerRect = { x: newX - PLAYER_SIZE, y: newY - PLAYER_SIZE, width: 2 * PLAYER_SIZE, height: 2 * PLAYER_SIZE };
-            for (const wall of walls) {
-                if (checkAABBCollision(playerRect, wall)) { return true; }
-            }
-            return false; 
-        }
+    function showStartScreen() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawMap();
+        drawPacman();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ff8c00';
+        ctx.font = '24px Inter';
+        ctx.textAlign = 'center';
+        
+        let message = 'Menghubungkan ke Database...';
+        let canStart = false;
 
-        let ghosts = [];
-        class Ghost {
-            constructor(x, y, color, behavior, speed) {
-                this.x = x; this.y = y; this.color = color; this.behavior = behavior; this.speed = speed;
-                this.radius = GHOST_SIZE; this.randomMoveCooldown = 0; this.vx = 0; this.vy = 0;
-            }
+        if (db === null) {
+            message = 'ERROR KRITIS: Koneksi Database GAGAL.';
+        } else if (!profileLoaded) {
+            message = 'Memuat Profil Pemain dari Firestore...';
+        } else if (!playerProfile.walletAddress || !playerProfile.displayName) {
+             message = 'Profil TIDAK Lengkap. Harap hubungkan Wallet & Isi Nama di Menu Utama.';
+        } else {
+             message = 'Click START untuk Bayar dan Main!';
+             canStart = true;
         }
         
-        function moveGhost(ghost) {
-            let targetX = x, targetY = y;
-            let dx = 0, dy = 0;
-
-            if (ghost.behavior === "chase" || ghost.behavior === "flee") {
-                dx = targetX - ghost.x; dy = targetY - ghost.y;
-                if (ghost.behavior === "flee") { dx *= -1; dy *= -1; }
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                if (distance > 0) {
-                    ghost.vx = (dx / distance) * ghost.speed;
-                    ghost.vy = (dy / distance) * ghost.speed;
-                }
-            } else if (ghost.behavior === "random") {
-                ghost.randomMoveCooldown--;
-                if (ghost.randomMoveCooldown <= 0) {
-                    ghost.vx = (Math.random() - 0.5) * ghost.speed * 2;
-                    ghost.vy = (Math.random() - 0.5) * ghost.speed * 2;
-                    ghost.randomMoveCooldown = 60; 
-                }
-            }
-            
-            const newX = ghost.x + ghost.vx;
-            const newY = ghost.y + ghost.vy;
-            const ghostRect = { x: newX - ghost.radius, y: newY - ghost.radius, width: 2 * ghost.radius, height: 2 * ghost.radius };
-            
-            let collided = false;
-            for (const wall of walls) {
-                if (checkAABBCollision(ghostRect, wall)) {
-                    collided = true;
-                    if (ghost.vx !== 0) ghost.vx *= -1;
-                    if (ghost.vy !== 0) ghost.vy *= -1;
-                    if (ghost.behavior === "random") { ghost.randomMoveCooldown = 0; }
-                    break;
-                }
-            }
-
-            if (!collided) {
-                ghost.x = newX;
-                ghost.y = newY;
-            }
+        ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+        startBtn.disabled = !canStart;
+        if (!canStart && db !== null && profileLoaded) {
+            startBtn.textContent = 'Kembali ke Menu (Profil Belum Lengkap)';
+            startBtn.onclick = () => window.location.href='index.html';
         }
+    }
+    
+    // ====================================================================
+    // --- WEB3 TRANSACTION LOGIC (PAY-TO-PLAY) ---
+    // ====================================================================
+    
+    const TARGET_ADDRESS = '0x5ac99e984638792e33959A1d258aC00bA8810D32'; 
+    const PAYMENT_AMOUNT_ETH = '0.0001'; 
 
-        function drawGhost(ghost) {
-            const r = ghost.radius;
-            ctx.fillStyle = ghost.color;
-            ctx.beginPath();
-            ctx.arc(ghost.x, ghost.y - r / 2, r, Math.PI, 0, false);
-            ctx.lineTo(ghost.x + r, ghost.y + r);
-            ctx.lineTo(ghost.x + r * 0.75, ghost.y + r - 5);
-            ctx.lineTo(ghost.x + r * 0.5, ghost.y + r);
-            ctx.lineTo(ghost.x - r, ghost.y + r);
-            ctx.closePath();
-            ctx.fill();
-
-            // Eyes
-            ctx.fillStyle = "white";
-            ctx.beginPath();
-            ctx.arc(ghost.x - r / 2, ghost.y - r / 2, 4, 0, 2 * Math.PI);
-            ctx.arc(ghost.x + r / 2, ghost.y - r / 2, 4, 0, 2 * Math.PI);
-            ctx.fill();
-        }
-
-        function checkCollision(ghost) {
-            const distance = Math.sqrt(Math.pow(x - ghost.x, 2) + Math.pow(y - ghost.y, 2));
-            return distance < PLAYER_SIZE + ghost.radius; 
-        }
+    async function startTransactionAndGame() {
+        if (!playerProfile.walletAddress) { return; }
         
-        let candy = [];
-        function setupCandy() {
-            candy = [];
-            const rows = 15; const cols = 20; 
-            const paddingX = 40; const paddingY = 40;
-            const spacingX = (canvas.width - 2 * paddingX) / (cols - 1);
-            const spacingY = (canvas.height - 2 * paddingY) / (rows - 1);
-            const candyRectSize = 10; 
+        startBtn.disabled = true;
+        document.getElementById('txOverlay').classList.remove('hidden');
+        document.getElementById('txStatusTitle').textContent = "Memproses Transaksi...";
+        document.getElementById('txStatusMessage').textContent = `Mengirim ${PAYMENT_AMOUNT_ETH} SOMI (sebagai ETH di simulasi) ke ${formatWallet(TARGET_ADDRESS)}...`;
 
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    const candyX = paddingX + c * spacingX;
-                    const candyY = paddingY + r * spacingY;
-                    
-                    if (Math.abs(candyX - 400) < 60 && Math.abs(candyY - 300) < 60) continue; 
-                    
-                    let isInsideWall = false;
-                    const candyRect = {
-                        x: candyX - candyRectSize / 2, y: candyY - candyRectSize / 2, 
-                        width: candyRectSize, height: candyRectSize
-                    };
-
-                    for (const wall of walls) {
-                        const collisionMargin = 5; 
-                        const wallCheck = {
-                            x: wall.x - collisionMargin, y: wall.y - collisionMargin,
-                            width: wall.width + 2 * collisionMargin, height: wall.height + 2 * collisionMargin
-                        };
-                        
-                        if (checkAABBCollision(candyRect, wallCheck)) {
-                            isInsideWall = true;
-                            break;
-                        }
-                    }
-
-                    if (!isInsideWall) {
-                        candy.push({ x: candyX, y: candyY });
-                    }
-                }
-            }
-        }
-
-        function drawCandy() {
-            ctx.fillStyle = "orange";
-            for (const item of candy) {
-                const radius = 6;
-                ctx.beginPath();
-                ctx.arc(item.x, item.y, radius, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.fillStyle = "green"; 
-                ctx.fillRect(item.x - 1, item.y - radius - 3, 2, 3);
-            }
-        }
-
-        function checkCandyCollection() {
-            for (let i = candy.length - 1; i >= 0; i--) {
-                const item = candy[i];
-                const distance = Math.sqrt(Math.pow(x - item.x, 2) + Math.pow(y - item.y, 2));
-
-                if (distance < PLAYER_SIZE) {
-                    currentScore += CANDY_VALUE;
-                    candy.splice(i, 1); 
-
-                    if (candy.length === 0) {
-                        endGame(true); 
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        /** Menggambar Pacman. */
-        function drawPacman() {
-            const radius = PLAYER_SIZE;
-            let startAngle = 0;
-            let endAngle = 2 * Math.PI;
-
-            const mouthOpenness = Math.sin(Date.now() / 100) * 0.2 + 0.5;
-            const mouthAngle = mouthOpenness * Math.PI / 4;
-
-            switch (currentDirection) {
-                case 0: startAngle = mouthAngle; endAngle = 2 * Math.PI - mouthAngle; break; 
-                case 1: startAngle = Math.PI + mouthAngle; endAngle = 3 * Math.PI - mouthAngle; break; 
-                case 2: startAngle = 1.5 * Math.PI + mouthAngle; endAngle = 3.5 * Math.PI - mouthAngle; break; 
-                case 3: startAngle = 0.5 * Math.PI + mouthAngle; endAngle = 2.5 * Math.PI - mouthAngle; break; 
-            }
+        try {
+            const provider = new ethers.BrowserProvider(window.ethereum);
+            const signer = await provider.getSigner();
             
-            ctx.fillStyle = "yellow";
-            ctx.beginPath();
-            ctx.arc(x, y, radius, startAngle, endAngle);
-            ctx.lineTo(x, y);
-            ctx.closePath();
-            ctx.fill();
+            const tx = {
+                to: TARGET_ADDRESS,
+                value: ethers.parseEther(PAYMENT_AMOUNT_ETH)
+            };
+
+            const txResponse = await signer.sendTransaction(tx);
+            
+            document.getElementById('txStatusTitle').textContent = "Transaksi Dikirim";
+            document.getElementById('txStatusMessage').textContent = `Menunggu konfirmasi blok... Hash: ${txResponse.hash.substring(0, 10)}...`;
+
+            await txResponse.wait(); 
+
+            document.getElementById('txStatusTitle').textContent = "TRANSAKSI BERHASIL!";
+            document.getElementById('txStatusMessage').textContent = "Pembayaran dikonfirmasi. Selamat bermain!";
+            
+            setTimeout(() => {
+                document.getElementById('txOverlay').classList.add('hidden');
+                gameRunning = true;
+                gameLoop();
+            }, 1000);
+
+        } catch (error) {
+            console.error("Transaksi GAGAL:", error);
+            document.getElementById('txStatusTitle').textContent = "Transaksi Gagal";
+            document.getElementById('txStatusMessage').textContent = "Transaksi dibatalkan atau terjadi kegagalan jaringan.";
+            document.getElementById('closeTxOverlay').classList.remove('hidden');
+            startBtn.disabled = false;
         }
-
-        /** Game Loop Utama */
-        function loop() {
-            requestAnimationFrame(loop);
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (!running) {
-                ctx.fillStyle = "white";
-                ctx.textAlign = "center";
-                ctx.font = "30px 'Inter', sans-serif";
-                ctx.fillText("Klik START untuk Bermain!", canvas.width / 2, canvas.height / 2);
-                return;
-            }
-            
-            drawWalls();
-
-            const newX = x + vx;
-            const newY = y + vy;
-
-            if (!checkPlayerWallCollision(newX, y)) { x = newX; } else { vx = 0; }
-            if (!checkPlayerWallCollision(x, newY)) { y = newY; } else { vy = 0; }
-
-            const minBound = WALL_THICKNESS + PLAYER_SIZE;
-            const maxBoundX = canvas.width - WALL_THICKNESS - PLAYER_SIZE;
-            const maxBoundY = canvas.height - WALL_THICKNESS - PLAYER_SIZE;
-
-            if (x < minBound) x = minBound;
-            if (x > maxBoundX) x = maxBoundX;
-            if (y < minBound) y = minBound;
-            if (y > maxBoundY) y = maxBoundY;
-            
-            drawPacman();
-            drawCandy();
-            checkCandyCollection();
-            
-            for (const ghost of ghosts) {
-                moveGhost(ghost);
-                drawGhost(ghost);
-
-                if (checkCollision(ghost)) {
-                    endGame(false); 
-                    return; 
-                }
-            }
-            
-            scoreEl.innerText = currentScore;
-        }
+    }
+    
+    // ====================================================================
+    // --- GAME OVER & SCORE SUBMISSION (Hanya Wallet) ---
+    // ====================================================================
+    
+    // Fungsi Penyimpanan Skor GLOBAL (TIDAK ADA FALLBACK)
+    async function saveScoreToLeaderboard(score) {
+        const saveStatusEl = document.getElementById('saveStatusMessage');
         
-        /** Memulai Game Loop */
-        function startGameLoop() {
-            running = true;
-            currentScore = 0;
-            
-            ghosts = [
-                new Ghost(50, 50, "#FF0000", "chase", 2.0), new Ghost(750, 50, "#00FFFF", "random", 2.0),    
-                new Ghost(750, 550, "#FF69B4", "flee", 1.5)       
-            ];
-            
-            setupCandy();
-            x = 400; y = 320; vx = 0; vy = 0; currentDirection = 0;
-            
-            scoreEl.innerText = currentScore; 
-            startGameButton.innerText = "GAME RUNNING...";
-            startGameButton.disabled = true;
+        // Cek kritis: Harus memiliki DB dan Wallet Address
+        if (!db || !playerProfile.walletAddress || !playerProfile.displayName || !appId) {
+            saveStatusEl.style.color = 'red';
+            saveStatusEl.textContent = "CRITICAL: Database Global TIDAK SIAP (Wallet/Nama Hilang). Skor TIDAK tersimpan.";
+            console.error("Skor tidak tersimpan: DB/Profile tidak lengkap.", { dbStatus: db !== null, wallet: playerProfile.walletAddress, name: playerProfile.displayName });
+            return;
         }
 
-        /** Dipanggil ketika game over/win. */
-        function endGame(isWin) {
-            if (!running) return;
-            running = false;
+        const scoreData = {
+            // Gunakan Wallet Address sebagai identitas publik utama
+            walletAddress: playerProfile.walletAddress, 
+            displayName: playerProfile.displayName,
+            score: score,
+            timestamp: new Date().toISOString()
+            // userId dihilangkan dari data publik
+        };
+
+        try {
+            const leaderboardRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            await addDoc(leaderboardRef, scoreData);
             
-            const title = isWin ? "SELAMAT! 🏆" : "GAME OVER!";
-            const message = isWin 
-                ? `Anda memenangkan permainan! Skor Akhir: ${currentScore}`
-                : `Anda tertangkap hantu. Skor Akhir: ${currentScore}. Coba lagi!`;
+            saveStatusEl.style.color = '#2ecc71';
+            saveStatusEl.textContent = "Skor berhasil disimpan ke Leaderboard Global!";
             
-            showMessage(title, message);
-            
-            if (currentScore > 0) {
-                submitFinalScore(currentScore); 
+        } catch (e) {
+            console.error("Gagal menyimpan skor ke Firestore (Kritis):", e);
+            saveStatusEl.style.color = 'red';
+            saveStatusEl.textContent = "CRITICAL: Gagal menyimpan skor ke Database Global. Skor hilang.";
+        }
+    }
+
+    async function gameOver() {
+        gameRunning = false;
+        
+        document.getElementById('finalScore').textContent = gameScore;
+        document.getElementById('gameOverOverlay').classList.remove('hidden');
+        
+        // Kirim skor langsung ke Firestore
+        await saveScoreToLeaderboard(gameScore);
+        
+        document.getElementById('playAgainBtn').onclick = () => {
+             document.getElementById('gameOverOverlay').classList.add('hidden');
+             resetGame(); 
+             showStartScreen();
+        };
+    }
+    
+    // ====================================================================
+    // --- EVENT LISTENERS & INIT ---
+    // ====================================================================
+
+    function setupEventListeners() {
+        startBtn.addEventListener('click', startTransactionAndGame);
+        
+        // Kontrol Keyboard
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            switch(e.key) {
+                case 'ArrowUp': pacman.dx = 0; pacman.dy = -pacman.speed; break;
+                case 'ArrowDown': pacman.dx = 0; pacman.dy = pacman.speed; break;
+                case 'ArrowLeft': pacman.dx = -pacman.speed; pacman.dy = 0; break;
+                case 'ArrowRight': pacman.dx = pacman.speed; pacman.dy = 0; break;
             }
-            
-            startGameButton.disabled = false;
-            startGameButton.innerText = "START GAME (Bayar 0.01 SOMI)";
-        }
+        });
+        
+        // Kontrol Mobile/Touchpad
+        document.getElementById('upBtn').addEventListener('touchstart', (e) => { e.preventDefault(); pacman.dx = 0; pacman.dy = -pacman.speed; });
+        document.getElementById('downBtn').addEventListener('touchstart', (e) => { e.preventDefault(); pacman.dx = 0; pacman.dy = pacman.speed; });
+        document.getElementById('leftBtn').addEventListener('touchstart', (e) => { e.preventDefault(); pacman.dx = -pacman.speed; pacman.dy = 0; });
+        document.getElementById('rightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); pacman.dx = pacman.speed; pacman.dy = 0; });
 
-        window.onload = loop; 
-    </script>
+        document.querySelectorAll('.control-btn').forEach(btn => {
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); pacman.dx = 0; pacman.dy = 0; });
+        });
+    }
+
+    function closeOverlay(id) {
+         document.getElementById(id).classList.add('hidden');
+    }
+    
+    window.onload = async function () {
+        await initializeFirebase();
+        setupEventListeners();
+        resetGame();
+        updateHeaderDisplay();
+        showStartScreen();
+    }
+</script>
+
 </body>
 </html>
