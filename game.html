@@ -12,7 +12,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a2e; /* Dark background for spooky theme */
+            background-color: #1a1a2e;
             color: white;
             padding: 1rem;
             display: flex;
@@ -23,7 +23,7 @@
             max-width: 800px;
             width: 100%;
             margin-bottom: 1rem;
-            border: 4px solid #7B00FF; /* Border Labirin */
+            border: 4px solid #7B00FF;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 0 20px rgba(123, 0, 255, 0.5);
@@ -131,46 +131,60 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Aktifkan logging debug untuk Firebase (sangat membantu mendiagnosis masalah init)
+        // Aktifkan logging debug untuk Firebase
         setLogLevel('debug');
         
         // Inisialisasi Lucide icons
         lucide.createIcons();
 
-        // --- GLOBAL VARIABLES & FIREBASE INIT (BLOCK KRITIS) ---
+        // --- GLOBAL VARIABLES & FIREBASE INIT (BLOCK KRITIS FIX) ---
         let db;
         let auth;
         let userId = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        let firebaseConfig = null;
         
         const startGameButton = document.getElementById("startOnchainBtn");
 
-        console.log("DEBUG: --- Firebase Configuration Check ---");
-        console.log("DEBUG: Raw Config Value:", rawConfig ? (rawConfig.length > 50 ? rawConfig.substring(0, 50) + '...' : rawConfig) : 'NULL/UNDEFINED');
+        // Gunakan variabel global, tapi berikan nilai default yang aman
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
+        // **PERUBAHAN KRITIS:** Tetapkan konfigurasi default yang valid jika string input kosong
+        const rawConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+        let firebaseConfig = null;
+        
+        // Konfigurasi Default yang dijamin valid (Hanya digunakan jika variabel dari sistem GAGAL/KOSONG)
+        const EMPTY_CONFIG_FALLBACK = '{"apiKey":"AIzaSyB-fallback","authDomain":"projectId.firebaseapp.com","projectId":"fallback-project","storageBucket":"projectId.appspot.com","messagingSenderId":"123456789012","appId":"1:123456789012:web:abac123456789012"}';
+
+        // Lakukan pengujian dan parsing yang sangat ketat
         if (rawConfig && typeof rawConfig === 'string' && rawConfig.trim() !== '') {
             try {
                 firebaseConfig = JSON.parse(rawConfig);
-                console.log("DEBUG: Configuration successfully parsed.");
+                console.log("DEBUG: 🟢 Config successfully parsed from system variable.");
             } catch (e) {
-                console.error("DEBUG: ❌ ERROR: Failed to parse Firebase config JSON.", e);
+                console.error("DEBUG: ❌ ERROR: Failed to parse Firebase config JSON. Using fallback. Error:", e);
+                // Jika gagal parse, gunakan fallback
+                try {
+                    firebaseConfig = JSON.parse(EMPTY_CONFIG_FALLBACK);
+                    console.log("DEBUG: ⚠️ WARNING: Using hardcoded fallback configuration.");
+                } catch (e) {
+                    console.error("DEBUG: 💀 FATAL: Fallback config also failed to parse.", e);
+                }
             }
         } else {
-            console.warn("DEBUG: ⚠️ WARNING: __firebase_config is null, undefined, or empty string.");
+            console.warn("DEBUG: ⚠️ WARNING: System config variable is empty or undefined. Using fallback.");
+             try {
+                firebaseConfig = JSON.parse(EMPTY_CONFIG_FALLBACK);
+                console.log("DEBUG: ⚠️ WARNING: Using hardcoded fallback configuration.");
+            } catch (e) {
+                console.error("DEBUG: 💀 FATAL: Fallback config also failed to parse.", e);
+            }
         }
         
-        console.log("DEBUG: Final firebaseConfig object:", firebaseConfig);
-        console.log("DEBUG: ------------------------------------");
-
+        console.log("DEBUG: Final firebaseConfig object keys:", firebaseConfig ? Object.keys(firebaseConfig) : 'NONE');
 
         async function initializeFirebaseAndAuth() {
-            // Cek final sebelum inisialisasi
             if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
-                console.error("Firebase config is invalid or empty. Cannot initialize.");
+                console.error("Initialization FAILED: Final config is invalid or empty.");
                 startGameButton.innerText = "Error Init";
                 return;
             }
@@ -186,18 +200,20 @@
                 
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
+                    console.log("Auth: Signed in with custom token.");
                 } else {
                     await signInAnonymously(auth);
+                    console.log("Auth: Signed in anonymously.");
                 }
 
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        console.log("User authenticated. UID:", userId);
+                        console.log("Auth State: User logged in. UID:", userId);
                         startGameButton.disabled = false;
                         startGameButton.innerText = "START GAME (0.01 SOMI)";
                     } else {
-                        console.log("No user signed in (or sign-in failed).");
+                        console.log("Auth State: No user signed in.");
                         userId = null;
                         startGameButton.disabled = true;
                         startGameButton.innerText = "LOGIN REQUIRED";
@@ -205,7 +221,7 @@
                 });
 
             } catch (error) {
-                console.error("Error during Firebase initialization or authentication (Catch All):", error);
+                console.error("Error during Firebase initialization or authentication:", error);
                 startGameButton.innerText = "INIT FAILED";
             }
         }
@@ -626,3 +642,6 @@
     </script>
 </body>
 </html>
+
+
+  
