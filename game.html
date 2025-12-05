@@ -31,24 +31,23 @@
         canvas {
             display: block;
             background-color: #000000;
-            /* Ukuran Kanvas disesuaikan dengan kontainer (800x600) */
             width: 100%; 
             height: auto;
             aspect-ratio: 800 / 600;
         }
+        /* Mobile Control Grid */
         .control-grid {
-            /* Grid untuk tombol, dioptimalkan untuk sentuhan mobile */
             grid-template-areas:
                 ". up ."
                 "left center right"
                 ". down .";
-            width: 300px; /* Ukuran total tombol */
+            width: 300px; 
             margin-top: 1rem;
         }
         .control-btn {
-            background-color: #FF6600; /* Oranye Halloween */
+            background-color: #FF6600; 
             color: #1a1a2e;
-            border-radius: 9999px; /* Bentuk bulat */
+            border-radius: 9999px; 
             padding: 1.5rem;
             box-shadow: 0 4px 0 #D35400;
             transition: all 0.1s;
@@ -62,9 +61,31 @@
             box-shadow: 0 0 0 #D35400;
             transform: translateY(4px);
         }
+        /* Modal Style */
+        #gameOverModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
     </style>
 </head>
 <body class="min-h-screen">
+
+    <!-- Game Over Modal (Mengganti alert()) -->
+    <div id="gameOverModal" class="flex flex-col p-8 rounded-xl bg-gray-900 border-4 border-yellow-500 shadow-2xl w-11/12 max-w-sm">
+        <h2 id="modalTitle" class="text-3xl font-extrabold mb-4 text-center text-yellow-400"></h2>
+        <p id="modalMessage" class="text-lg text-center mb-6"></p>
+        <button onclick="hideMessage();" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-bold">
+            Tutup
+        </button>
+    </div>
 
     <header class="w-full max-w-xl flex justify-between items-center p-4 bg-gray-800 rounded-lg mb-4 shadow-lg">
         <h1 class="text-xl font-bold flex items-center">
@@ -93,19 +114,78 @@
             <i data-lucide="arrow-down" class="w-8 h-8"></i>
         </button>
     </div>
-    <!-- Tombol Web3 (Asumsi fungsi sudah ada di scope global) -->
+
+    <!-- Tombol Web3 -->
     <div class="flex flex-wrap justify-center gap-4 mt-8 w-full max-w-md">
-        <button id="startOnchainBtn" onclick="startGameLoop()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-xl transition duration-150">
-            START GAME (0.01 SOMI)
+        <button id="startOnchainBtn" onclick="startGameTransaction()" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-xl transition duration-150" disabled>
+            Loading...
         </button>
         <button onclick="backMenu()" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg shadow-xl transition duration-150">
             BACK TO MENU
         </button>
     </div>
 
-    <script>
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, getDocs, query, limit, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
         // Inisialisasi Lucide icons
         lucide.createIcons();
+
+        // --- GLOBAL VARIABLES & FIREBASE INIT ---
+        let db;
+        let auth;
+        let userId = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const startGameButton = document.getElementById("startOnchainBtn");
+
+        async function initializeFirebaseAndAuth() {
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                startGameButton.innerText = "Error Init";
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                console.log("Firebase initialized.");
+                
+                // Set persistence to session to maintain login state
+                await setPersistence(auth, browserSessionPersistence);
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User authenticated. UID:", userId);
+                        startGameButton.disabled = false;
+                        startGameButton.innerText = "START GAME (0.01 SOMI)";
+                    } else {
+                        console.log("No user signed in.");
+                        userId = null;
+                        startGameButton.disabled = true;
+                        startGameButton.innerText = "LOGIN REQUIRED";
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or authentication:", error);
+                startGameButton.innerText = "INIT FAILED";
+            }
+        }
 
         // --- GAME LOGIC START ---
 
@@ -121,12 +201,23 @@
         const scoreEl = document.getElementById("score");
 
         // Player State
-        let x = 400; // Posisi awal di tengah
+        let x = 400; 
         let y = 300; 
         let vx = 0; 
         let vy = 0; 
         let currentDirection = 0; 
-        
+
+        // --- CUSTOM MODAL FUNCTIONS (Mengganti alert) ---
+        function showMessage(title, message) {
+            document.getElementById("modalTitle").innerText = title;
+            document.getElementById("modalMessage").innerText = message;
+            document.getElementById("gameOverModal").style.display = 'flex';
+        }
+
+        function hideMessage() {
+            document.getElementById("gameOverModal").style.display = 'none';
+        }
+
         // --- MOBILE CONTROL FUNCTIONS ---
         // 0: Right, 1: Left, 2: Up, 3: Down
         function setDirection(direction) {
@@ -134,12 +225,11 @@
             currentDirection = direction;
             vx = 0;
             vy = 0;
-            switch (direction) {
-                case 0: vx = PLAYER_SPEED; break; // Kanan
-                case 1: vx = -PLAYER_SPEED; break; // Kiri
-                case 2: vy = -PLAYER_SPEED; break; // Atas
-                case 3: vy = PLAYER_SPEED; break; // Bawah
-            }
+            // Gunakan `if/else if` untuk memastikan hanya satu arah yang aktif
+            if (direction === 0) { vx = PLAYER_SPEED; } // Kanan
+            else if (direction === 1) { vx = -PLAYER_SPEED; } // Kiri
+            else if (direction === 2) { vy = -PLAYER_SPEED; } // Atas
+            else if (direction === 3) { vy = PLAYER_SPEED; } // Bawah
         }
 
         function stopDirection() {
@@ -148,13 +238,10 @@
             vy = 0;
         }
 
-        // Menonaktifkan kontrol keyboard default (jika ingin fokus ke mobile)
-        window.removeEventListener('keydown', handleKeyDown);
-        
         // --- WALL MANAGEMENT (LABYRINTH KOMPLEKS BARU) ---
         const WALL_THICKNESS = 20;
 
-        // Koordinat disesuaikan dengan gambar yang diminta (800x600)
+        // Koordinat labirin disesuaikan dengan gambar yang diminta (800x600)
         const walls = [
             // 1. Perimeter (Batas Luar)
             { x: 0, y: 0, width: 800, height: WALL_THICKNESS }, 
@@ -163,19 +250,19 @@
             { x: 780, y: 0, width: WALL_THICKNESS, height: 600 }, 
             
             // 2. Pusat Labirin
-            { x: 300, y: 280, width: 200, height: WALL_THICKNESS }, // Pusat H
+            { x: 300, y: 280, width: 200, height: WALL_THICKNESS }, 
             
             // 3. Struktur Internal (Simetris)
             // Lengan Samping Kiri
-            { x: 100, y: 100, width: 200, height: WALL_THICKNESS }, // Atas
+            { x: 100, y: 100, width: 200, height: WALL_THICKNESS }, 
             { x: 100, y: 100, width: WALL_THICKNESS, height: 100 },
-            { x: 100, y: 480, width: 200, height: WALL_THICKNESS }, // Bawah
+            { x: 100, y: 480, width: 200, height: WALL_THICKNESS }, 
             { x: 100, y: 400, width: WALL_THICKNESS, height: 100 },
 
             // Lengan Samping Kanan
-            { x: 500, y: 100, width: 200, height: WALL_THICKNESS }, // Atas
+            { x: 500, y: 100, width: 200, height: WALL_THICKNESS }, 
             { x: 680, y: 100, width: WALL_THICKNESS, height: 100 },
-            { x: 500, y: 480, width: 200, height: WALL_THICKNESS }, // Bawah
+            { x: 500, y: 480, width: 200, height: WALL_THICKNESS }, 
             { x: 680, y: 400, width: WALL_THICKNESS, height: 100 },
 
             // T-Shapes Atas
@@ -204,19 +291,15 @@
         ];
 
 
-        /**
-         * Menggambar semua dinding (Labirin).
-         */
+        /** Menggambar semua dinding. */
         function drawWalls() {
-            ctx.fillStyle = "rgba(0, 100, 255, 0.8)"; // Biru terang seperti di gambar
+            ctx.fillStyle = "rgba(0, 100, 255, 0.8)"; 
             for (const wall of walls) {
                 ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
             }
         }
 
-        /**
-         * Cek tabrakan AABB antara dua kotak.
-         */
+        /** Cek tabrakan AABB. */
         function checkAABBCollision(rect1, rect2) {
             return rect1.x < rect2.x + rect2.width &&
                    rect1.x + rect1.width > rect2.x &&
@@ -224,9 +307,7 @@
                    rect1.y + rect1.height > rect2.y;
         }
 
-        /**
-         * Mencegah Player menembus dinding.
-         */
+        /** Mencegah Player menembus dinding. */
         function checkPlayerWallCollision(newX, newY) {
             const playerRect = {
                 x: newX - PLAYER_SIZE,
@@ -242,7 +323,6 @@
             }
             return false; 
         }
-
 
         // --- GHOST MANAGEMENT ---
         let ghosts = [];
@@ -261,25 +341,17 @@
             }
         }
 
-        /**
-         * Menghitung pergerakan hantu, mencegahnya menembus dinding.
-         */
+        /** Menghitung pergerakan hantu, mencegahnya menembus dinding. */
         function moveGhost(ghost) {
             let targetX = x;
             let targetY = y;
             let dx = 0;
             let dy = 0;
 
-            // Menghitung arah ke target
             if (ghost.behavior === "chase" || ghost.behavior === "flee") {
                 dx = targetX - ghost.x;
                 dy = targetY - ghost.y;
-                
-                if (ghost.behavior === "flee") {
-                    dx *= -1;
-                    dy *= -1;
-                }
-
+                if (ghost.behavior === "flee") { dx *= -1; dy *= -1; }
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 if (distance > 0) {
                     ghost.vx = (dx / distance) * ghost.speed;
@@ -294,28 +366,21 @@
                 }
             }
             
-            // --- PENGECEKAN TABRAKAN DINDING UNTUK GHOST ---
             const newX = ghost.x + ghost.vx;
             const newY = ghost.y + ghost.vy;
             
             const ghostRect = {
-                x: newX - ghost.radius,
-                y: newY - ghost.radius,
-                width: 2 * ghost.radius,
-                height: 2 * ghost.radius
+                x: newX - ghost.radius, y: newY - ghost.radius,
+                width: 2 * ghost.radius, height: 2 * ghost.radius
             };
             
             let collided = false;
             for (const wall of walls) {
                 if (checkAABBCollision(ghostRect, wall)) {
                     collided = true;
-                    
                     if (ghost.vx !== 0) ghost.vx *= -1;
                     if (ghost.vy !== 0) ghost.vy *= -1;
-                    
-                    if (ghost.behavior === "random") {
-                        ghost.randomMoveCooldown = 0; 
-                    }
+                    if (ghost.behavior === "random") { ghost.randomMoveCooldown = 0; }
                     break;
                 }
             }
@@ -324,16 +389,13 @@
                 ghost.x = newX;
                 ghost.y = newY;
             }
-            
-            // Batas Dinding Canvas (Perimeter dihitung sebagai Wall, jadi tidak perlu lagi)
         }
 
-        /**
-         * Menggambar Hantu (Tampilan Halloween)
-         */
+        /** Menggambar Hantu. */
         function drawGhost(ghost) {
             const r = ghost.radius;
             
+            // Draw ghost body (Halloween style)
             ctx.fillStyle = ghost.color;
             ctx.beginPath();
             ctx.arc(ghost.x, ghost.y - r / 2, r, Math.PI, 0, false);
@@ -349,6 +411,7 @@
             ctx.closePath();
             ctx.fill();
 
+            // Draw eyes
             ctx.fillStyle = "white";
             ctx.beginPath();
             ctx.arc(ghost.x - r / 2, ghost.y - r / 2, 4, 0, 2 * Math.PI);
@@ -360,7 +423,7 @@
             const eyeDy = (y - ghost.y) / 10;
             ctx.beginPath();
             ctx.arc(ghost.x - r / 2 + eyeDx, ghost.y - r / 2 + eyeDy, 2, 0, 2 * Math.PI);
-            ctx.arc(ghost.x + r / 2 + eyeDx, ghost.y - r / 2 + eyeDy, 2, 0, 2 * Math.PI);
+            ctx.arc(ghost.x + r / 2 + eyeDx, ghost.y + r / 2 + eyeDy, 2, 0, 2 * Math.PI);
             ctx.fill();
         }
 
@@ -375,9 +438,7 @@
         // --- CANDY (PERMEN) MANAGEMENT ---
         let candy = [];
 
-        /**
-         * Menyusun permen di canvas. Memastikan permen TIDAK berada di dalam dinding.
-         */
+        /** Menyusun permen di canvas. Memastikan permen TIDAK berada di dalam dinding. */
         function setupCandy() {
             candy = [];
             const rows = 15; 
@@ -394,25 +455,19 @@
                     const candyX = paddingX + c * spacingX;
                     const candyY = paddingY + r * spacingY;
                     
-                    // Hindari menaruh permen di area start player (Pusat: 400, 300)
                     if (Math.abs(candyX - 400) < 60 && Math.abs(candyY - 300) < 60) continue; 
                     
-                    // Cek apakah permen bertabrakan dengan DINDING
                     let isInsideWall = false;
                     const candyRect = {
-                        x: candyX - candyRectSize / 2, 
-                        y: candyY - candyRectSize / 2, 
-                        width: candyRectSize, 
-                        height: candyRectSize
+                        x: candyX - candyRectSize / 2, y: candyY - candyRectSize / 2, 
+                        width: candyRectSize, height: candyRectSize
                     };
 
                     for (const wall of walls) {
                         const collisionMargin = 5; 
                         const wallCheck = {
-                            x: wall.x - collisionMargin,
-                            y: wall.y - collisionMargin,
-                            width: wall.width + 2 * collisionMargin,
-                            height: wall.height + 2 * collisionMargin
+                            x: wall.x - collisionMargin, y: wall.y - collisionMargin,
+                            width: wall.width + 2 * collisionMargin, height: wall.height + 2 * collisionMargin
                         };
                         
                         if (checkAABBCollision(candyRect, wallCheck)) {
@@ -428,9 +483,7 @@
             }
         }
 
-        /**
-         * Menggambar semua permen (labu/pumpkin) yang tersisa.
-         */
+        /** Menggambar semua permen (labu/pumpkin) yang tersisa. */
         function drawCandy() {
             ctx.fillStyle = "orange";
             for (const item of candy) {
@@ -444,9 +497,7 @@
             }
         }
 
-        /**
-         * Cek apakah Pac-Man mengumpulkan permen.
-         */
+        /** Cek apakah Pac-Man mengumpulkan permen. */
         function checkCandyCollection() {
             for (let i = candy.length - 1; i >= 0; i--) {
                 const item = candy[i];
@@ -467,35 +518,20 @@
             return false;
         }
 
-
-        // --- PLAYER DRAW FUNCTIONS ---
-
+        /** Menggambar Pacman. */
         function drawPacman() {
             const radius = PLAYER_SIZE;
             let startAngle = 0;
             let endAngle = 2 * Math.PI;
 
-            // Animasi mulut
             const mouthOpenness = Math.sin(Date.now() / 100) * 0.2 + 0.5;
             const mouthAngle = mouthOpenness * Math.PI / 4;
 
             switch (currentDirection) {
-                case 0: // Kanan
-                    startAngle = mouthAngle;
-                    endAngle = 2 * Math.PI - mouthAngle;
-                    break;
-                case 1: // Kiri
-                    startAngle = Math.PI + mouthAngle;
-                    endAngle = 3 * Math.PI - mouthAngle;
-                    break;
-                case 2: // Atas
-                    startAngle = 1.5 * Math.PI + mouthAngle;
-                    endAngle = 3.5 * Math.PI - mouthAngle;
-                    break;
-                case 3: // Bawah
-                    startAngle = 0.5 * Math.PI + mouthAngle;
-                    endAngle = 2.5 * Math.PI - mouthAngle;
-                    break;
+                case 0: startAngle = mouthAngle; endAngle = 2 * Math.PI - mouthAngle; break; // Kanan
+                case 1: startAngle = Math.PI + mouthAngle; endAngle = 3 * Math.PI - mouthAngle; break; // Kiri
+                case 2: startAngle = 1.5 * Math.PI + mouthAngle; endAngle = 3.5 * Math.PI - mouthAngle; break; // Atas
+                case 3: startAngle = 0.5 * Math.PI + mouthAngle; endAngle = 2.5 * Math.PI - mouthAngle; break; // Bawah
             }
             
             ctx.fillStyle = "yellow";
@@ -506,10 +542,7 @@
             ctx.fill();
         }
 
-
-        /**
-         * Game Loop Utama
-         */
+        /** Game Loop Utama */
         function loop() {
             requestAnimationFrame(loop);
 
@@ -526,23 +559,12 @@
             // 1. GAMBAR DINDING (LABIRIN)
             drawWalls();
 
-            // 2. UPDATE POSISI PLAYER & BATAS
+            // 2. UPDATE POSISI PLAYER
             const newX = x + vx;
             const newY = y + vy;
 
-            // Cek tabrakan dinding sebelum bergerak (X)
-            if (!checkPlayerWallCollision(newX, y)) {
-                x = newX;
-            } else {
-                vx = 0; 
-            }
-            
-            // Cek tabrakan dinding sebelum bergerak (Y)
-            if (!checkPlayerWallCollision(x, newY)) {
-                y = newY;
-            } else {
-                vy = 0; 
-            }
+            if (!checkPlayerWallCollision(newX, y)) { x = newX; } else { vx = 0; }
+            if (!checkPlayerWallCollision(x, newY)) { y = newY; } else { vy = 0; }
 
             // Batas Dinding Canvas (Perimeter)
             const minBound = WALL_THICKNESS + PLAYER_SIZE;
@@ -553,7 +575,6 @@
             if (x > maxBoundX) x = maxBoundX;
             if (y < minBound) y = minBound;
             if (y > maxBoundY) y = maxBoundY;
-            
             
             // 3. GAMBAR PACMAN
             drawPacman();
@@ -568,7 +589,7 @@
                 drawGhost(ghost);
 
                 if (checkCollision(ghost)) {
-                    endGame(false); // Game Over karena tabrakan
+                    endGame(false); 
                     return; 
                 }
             }
@@ -577,24 +598,34 @@
             scoreEl.innerText = currentScore;
         }
 
-        /**
-         * Dipanggil oleh tombol START.
-         */
+        /** SIMULASI TRANSAKSI ONCHAIN (Dipanggil oleh tombol) */
+        function startGameTransaction() {
+            if (!userId || running) {
+                showMessage("Akses Ditolak", "Anda harus login untuk memulai permainan.");
+                return;
+            }
+            
+            // --- SIMULASI PEMBAYARAN SOMI (Start Game) ---
+            console.log(`[TX SIMULATION] User ${userId} membayar 0.01 SOMI untuk memulai game...`);
+            startGameLoop(); // Jika pembayaran berhasil, mulai game
+        }
+
+        /** MEMULAI GAME LOOP (Dipanggil setelah simulasi TX berhasil) */
         function startGameLoop() {
             if (running) return;
             running = true;
             currentScore = 0;
             
-            // INISIASI 3 GHOST (Dimulai dari sudut luar)
+            // INISIASI 3 GHOST
             ghosts = [
-                new Ghost(50, 50, "#FF0000", "chase", 2.0),       // Merah (Chaser)
-                new Ghost(750, 50, "#00FFFF", "random", 2.0),    // Cyan (Randomizer)
-                new Ghost(750, 550, "#FF69B4", "flee", 1.5)       // Pink (Evader)
+                new Ghost(50, 50, "#FF0000", "chase", 2.0),       
+                new Ghost(750, 50, "#00FFFF", "random", 2.0),    
+                new Ghost(750, 550, "#FF69B4", "flee", 1.5)       
             ];
             
             setupCandy();
 
-            // Reset posisi dan kecepatan player (Tengah)
+            // Reset posisi dan kecepatan player
             x = 400; 
             y = 300;
             vx = 0;
@@ -602,50 +633,67 @@
             currentDirection = 0;
             
             scoreEl.innerText = currentScore; 
-            document.getElementById("startOnchainBtn").disabled = true;
-            document.getElementById("startOnchainBtn").innerText = "GAME RUNNING...";
+            startGameButton.disabled = true;
+            startGameButton.innerText = "GAME RUNNING...";
         }
 
-        /**
-         * Dipanggil ketika game over/win.
-         * @param {boolean} isWin - True jika menang (kumpulkan semua permen).
-         */
+        /** SUBMIT SCORE KE FIREBASE (Dipanggil saat game over) */
+        async function submitFinalScore(score) {
+            if (!userId) {
+                console.error("Tidak dapat menyimpan skor: User ID tidak ditemukan.");
+                return;
+            }
+            
+            const scoreData = {
+                score: score,
+                userId: userId,
+                timestamp: Date.now(),
+                app: appId 
+            };
+            
+            try {
+                // Simpan skor ke koleksi 'public/data/leaderboard'
+                const path = `artifacts/${appId}/public/data/leaderboard`;
+                await setDoc(doc(collection(db, path)), scoreData);
+                console.log(`Skor ${score} berhasil dikirim ke Leaderboard.`);
+            } catch (e) {
+                console.error("Error saat mengirim skor ke Firestore: ", e);
+            }
+        }
+
+
+        /** Dipanggil ketika game over/win. */
         function endGame(isWin) {
             if (!running) return;
             running = false;
             
-            // Gunakan alert karena modal custom membutuhkan lebih banyak kode UI
             if (isWin) {
-                alert(`SELAMAT! Anda memenangkan permainan dengan skor penuh: ${currentScore}`);
+                showMessage(
+                    "SELAMAT! 🏆", 
+                    `Anda memenangkan permainan dan mengumpulkan semua permen! Skor Akhir: ${currentScore}`
+                );
             } else {
-                alert(`GAME OVER! Skor Akhir: ${currentScore}`);
+                showMessage(
+                    "GAME OVER!", 
+                    `Anda tertangkap hantu. Skor Akhir: ${currentScore}. Coba lagi!`
+                );
             }
             
-            // Panggil fungsi submit score (Asumsi fungsi ada di scope global)
-            if (typeof submitFinalScore === 'function') {
-                submitFinalScore(currentScore); 
-            } else {
-                console.warn("Fungsi submitFinalScore tidak ditemukan. Pastikan web3_game.js terhubung.");
-            }
+            submitFinalScore(currentScore); 
             
-            document.getElementById("startOnchainBtn").disabled = false;
-            document.getElementById("startOnchainBtn").innerText = "START GAME (0.01 SOMI)";
+            startGameButton.disabled = false;
+            startGameButton.innerText = "START GAME (0.01 SOMI)";
         }
 
-        /**
-         * Navigasi kembali ke menu (index.html).
-         */
+        /** Navigasi kembali ke menu (simulasi reload). */
         function backMenu() {
-            // Placeholder, karena ini file tunggal, kita hanya me-reload
             window.location.reload();
         }
 
-        // Mulai loop awal
+        // --- INISIASI ---
+        initializeFirebaseAndAuth();
         window.onload = loop; 
-
-        // --- GAME LOGIC END ---
     </script>
 </body>
 </html>
-
-
+  
