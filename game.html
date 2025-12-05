@@ -3,83 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Somnia Labyrinth Master</title>
+    <title>Somnia Labyrinth of Horrors</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1a1a2e; /* Dark theme background */
-            color: white;
+            background-color: #0c0c0c; /* Blacker background */
+            color: #f0f0f0; /* Teks terang */
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 10px;
         }
         .game-container {
-            background-color: #2c004a; /* Dark purple */
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            max-width: 800px;
+            background-color: #1a012e; /* Deep Indigo/Purple (Somnia Primary) */
+            max-width: 838px; 
             width: 100%;
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(255, 140, 0, 0.4); /* Neon Orange/Pumpkin glow */
+            margin: 10px auto;
         }
         canvas {
             display: block;
             background-color: #000000;
             border-radius: 8px;
-            margin: 20px auto;
-            border: 3px solid #ff0077; /* Neon pink border */
+            margin: 15px auto;
+            border: 4px solid #ff8c00; /* Dark Orange Halloween Border */
         }
         .info-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 10px 0;
-            border-bottom: 2px solid #3c155d;
+            border-bottom: 1px solid #3c155d;
             margin-bottom: 10px;
         }
         .score-box, .player-box {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #ffd700; /* Gold */
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #32cd32; /* Slime Green Neon */
+            text-shadow: 0 0 5px rgba(50, 205, 50, 0.5);
         }
+        
+        /* --- KONTROL DAN TOMBOL --- */
+        .controls-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+        }
+
         .control-panel {
             display: flex;
+            flex-direction: column; 
             gap: 10px;
             justify-content: center;
-            padding-top: 10px;
-            margin-bottom: 20px; /* Tambahan margin untuk D-Pad */
+            align-items: center;
+            padding-top: 20px;
+            width: 100%;
         }
         .btn {
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 8px;
             font-weight: bold;
             cursor: pointer;
-            transition: transform 0.1s;
-            touch-action: manipulation; /* Penting untuk mobile */
+            transition: all 0.2s;
+            touch-action: manipulation;
+            text-transform: uppercase;
+            border: none;
+            width: 100%; 
         }
         .btn:hover:not(:disabled), .dpad-btn:active { 
-            transform: translateY(-2px);
+            transform: scale(1.02);
         }
         .btn-start {
-            background-color: #ff0077;
-            color: white;
-            border: none;
-            box-shadow: 0 4px 0 #c2005c;
+            background-color: #ff8c00; /* Dark Orange */
+            color: black; 
+            box-shadow: 0 4px 0 #cc6600;
         }
         .btn-start:disabled {
             background-color: #555;
-            box-shadow: none;
+            box-shadow: 0 4px 0 #333;
             cursor: not-allowed;
+            color: #bbb;
         }
         .btn-menu {
-            background-color: #333366;
+            background-color: #4b0082; /* Deep Indigo */
             color: white;
-            border: none;
-            box-shadow: 0 4px 0 #222244;
+            box-shadow: 0 4px 0 #2a004c;
         }
+
+        /* Responsive untuk Desktop */
+        @media (min-width: 768px) {
+            .control-panel {
+                flex-direction: row; 
+                width: auto;
+            }
+            .btn {
+                width: 250px; 
+            }
+            .controls-wrapper {
+                width: 100%; 
+                padding: 10px 0; 
+            }
+        }
+        
+        /* --- D-Pad Mobile Controls Styling --- */
+        .dpad-container {
+            display: grid;
+            grid-template-areas: 
+                ". up ."
+                "left center right"
+                ". down .";
+            width: 180px; 
+            gap: 8px; 
+        }
+        .dpad-btn {
+            background-color: #4b0082; /* Deep Indigo */
+            color: #ff8c00; /* Teks Orange */
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 1.8rem;
+            line-height: 1;
+            cursor: pointer;
+            touch-action: manipulation;
+            box-shadow: 0 4px 0 #2a004c;
+            transition: all 0.1s;
+        }
+        .dpad-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #2a004c;
+        }
+        #dpad-up    { grid-area: up; }
+        #dpad-left  { grid-area: left; }
+        #dpad-right { grid-area: right; }
+        #dpad-down  { grid-area: down; }
 
         /* --- Custom Modal Styling --- */
         .modal-overlay {
@@ -88,82 +150,61 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: none; /* Default hidden */
+            background: rgba(0, 0, 0, 0.85);
+            display: none; 
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
         .modal-content {
-            background: #1a1a2e;
+            background: #1a012e;
             padding: 30px;
-            border-radius: 12px;
+            border-radius: 16px;
             text-align: center;
             max-width: 90%;
-            width: 400px;
-            box-shadow: 0 10px 30px rgba(255, 0, 119, 0.5);
-            border: 2px solid #ff0077;
+            width: 350px;
+            box-shadow: 0 0 50px rgba(255, 140, 0, 0.7); /* Orange Glow */
+            border: 3px solid #ff8c00;
         }
         .modal-title {
             font-size: 1.8rem;
             font-weight: bold;
-            color: #ffd700;
+            color: #32cd32; /* Slime Green */
             margin-bottom: 15px;
         }
         .modal-message {
             margin-bottom: 25px;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
+            color: #ccc;
         }
         .modal-button {
-            background-color: #ff0077;
-            color: white;
+            background-color: #ff8c00;
+            color: black;
             padding: 10px 25px;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
             transition: background-color 0.2s;
+            text-transform: uppercase;
         }
         .modal-button:hover {
-            background-color: #c2005c;
+            background-color: #cc6600;
         }
-
-        /* --- D-Pad Mobile Controls Styling --- */
-        .dpad-container {
-            display: grid;
-            grid-template-areas: 
-                ". up ."
-                "left center right"
-                ". down .";
-            width: 150px;
-            margin: 20px auto 0;
-            gap: 5px;
+        /* Style untuk ikon logo Somnia di judul */
+        .somnia-logo-icon {
+            font-size: 1.5em; /* Ukuran relatif terhadap font judul */
+            vertical-align: middle;
+            margin-right: 5px;
+            color: #4b0082; /* Warna Deep Indigo/Ungu */
+            text-shadow: 0 0 8px rgba(75, 0, 130, 0.8); /* Glow Ungu */
         }
-        .dpad-btn {
-            background-color: #333366;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 1.5rem;
-            line-height: 1;
-            cursor: pointer;
-            touch-action: manipulation;
-            box-shadow: 0 3px 0 #222244;
-        }
-        .dpad-btn:active {
-            transform: translateY(1px);
-            box-shadow: 0 2px 0 #222244;
-        }
-        #dpad-up    { grid-area: up; }
-        #dpad-left  { grid-area: left; }
-        #dpad-right { grid-area: right; }
-        #dpad-down  { grid-area: down; }
     </style>
 </head>
 <body>
     <div class="game-container">
-        <h1 class="text-3xl font-extrabold text-center text-[#ff0077] mb-4">
-            SOMNIA LABYRINTH MASTER
+        <!-- JUDUL DENGAN LOGO SOMNIA -->
+        <h1 class="text-3xl font-extrabold text-center text-[#ff8c00] mb-4">
+            <span class="somnia-logo-icon">🌙</span> SOMNIA <span class="text-[#32cd32]">LABYRINTH</span> OF HORRORS
         </h1>
 
         <!-- Info Bar -->
@@ -179,30 +220,31 @@
         <!-- Canvas Game -->
         <canvas id="game" width="800" height="600"></canvas>
         
-        <!-- Mobile D-Pad Controls -->
-        <div class="dpad-container">
-            <button id="dpad-up" class="dpad-btn" onclick="setDirection('ArrowUp')">▲</button>
-            <button id="dpad-left" class="dpad-btn" onclick="setDirection('ArrowLeft')">◀</button>
-            <div id="dpad-center"></div>
-            <button id="dpad-right" class="dpad-btn" onclick="setDirection('ArrowRight')">▶</button>
-            <button id="dpad-down" class="dpad-btn" onclick="setDirection('ArrowDown')">▼</button>
-        </div>
+        <!-- WRAPPER KONTROL -->
+        <div class="controls-wrapper">
+            <!-- Mobile D-Pad Controls -->
+            <div class="dpad-container">
+                <button id="dpad-up" class="dpad-btn" onclick="setDirection('ArrowUp')">▲</button>
+                <button id="dpad-left" class="dpad-btn" onclick="setDirection('ArrowLeft')">◀</button>
+                <div id="dpad-center"></div>
+                <button id="dpad-right" class="dpad-btn" onclick="setDirection('ArrowRight')">▶</button>
+                <button id="dpad-down" class="dpad-btn" onclick="setDirection('ArrowDown')">▼</button>
+            </div>
 
-        <!-- Control Panel -->
-        <div class="control-panel">
-            <button id="startOnchainBtn" class="btn btn-start" onclick="startOnchain()" disabled>
-                CONNECT WALLET TO START
-            </button>
-            <button id="backMenuBtn" class="btn btn-menu" onclick="backMenu()">
-                BACK TO MENU
-            </button>
-            <!-- Tombol submit score disembunyikan, karena submit dilakukan otomatis oleh endGame -->
-            <button id="submitScoreBtn" style="display:none;">SUBMIT SCORE (Auto)</button> 
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <button id="startOnchainBtn" class="btn btn-start" onclick="startOnchain()" disabled>
+                    CONNECT WALLET TO START
+                </button>
+                <button id="backMenuBtn" class="btn btn-menu" onclick="backMenu()">
+                    BACK TO MENU
+                </button>
+            </div>
         </div>
         
     </div>
 
-    <!-- CUSTOM MODAL (Menggantikan alert() & confirm()) -->
+    <!-- CUSTOM MODAL -->
     <div id="customModal" class="modal-overlay">
         <div class="modal-content">
             <div id="modalTitle" class="modal-title"></div>
