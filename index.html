@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SOMNIA CHRISTMAS QUEST - PAC-MAN</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         // Konfigurasi Tailwind untuk tema Natal yang Ikonik
@@ -25,7 +26,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            color: var(--christmas-snow); /* Teks default Putih Salju */
+            color: var(--christmas-snow); 
             display: flex;
             justify-content: center;
             align-items: flex-start;
@@ -33,28 +34,28 @@
             padding: 20px 10px;
             
             /* Latar Belakang Merah Cerah dengan Tekstur */
-            background-color: #E84D4D; /* Merah terang sebagai dasar */
+            background-color: #E84D4D; 
             background-image: repeating-linear-gradient(
                 45deg,
                 rgba(255, 255, 255, 0.1) 0,
                 rgba(255, 255, 255, 0.1) 10px,
                 transparent 10px,
                 transparent 20px
-            ); /* Garis diagonal putih samar-samar */
+            ); 
         }
         
-        /* BINGKAI UTAMA (GAME CONTAINER) - KOTAK HIJAU DENGAN PITA MERAH/PUTIH */
+        /* BINGKAI UTAMA (GAME CONTAINER) */
         .game-container {
             width: 100%;
             max-width: 480px;
-            background-color: var(--christmas-green); /* Hijau Hutan Pekat */
-            color: var(--christmas-snow); /* Teks Putih Salju */
+            background-color: var(--christmas-green); 
+            color: var(--christmas-snow); 
             
             /* Border Berlapis (Simulasi Pita/Candy Cane) */
-            border: 8px solid var(--christmas-snow); /* Lapisan Putih Terluar */
+            border: 8px solid var(--christmas-snow); 
             box-shadow: 
-                0 0 0 4px var(--christmas-red), /* Lapisan Merah Kedua */
-                0 0 30px rgba(255, 255, 255, 0.8); /* Glow Putih Salju */
+                0 0 0 4px var(--christmas-red), 
+                0 0 30px rgba(255, 255, 255, 0.8); 
                 
             padding: 30px; 
             border-radius: 1.5rem; 
@@ -65,7 +66,7 @@
             z-index: 10;
         }
         
-        /* JUDUL - PUTIH SALJU MURNI DI ATAS HIJAU */
+        /* JUDUL */
         .main-title {
             font-size: 2.75rem;
             line-height: 1;
@@ -74,8 +75,8 @@
             margin-bottom: 0.5rem;
             color: var(--christmas-snow); 
             text-shadow: 
-                2px 2px 0 var(--christmas-red), /* Efek 3D Merah */
-                0 0 15px rgba(255, 255, 255, 0.8); /* Glow Salju */
+                2px 2px 0 var(--christmas-red), 
+                0 0 15px rgba(255, 255, 255, 0.8); 
         }
 
         /* SUBTITLE */
@@ -83,7 +84,7 @@
             font-size: 1.25rem;
             text-align: center;
             margin-bottom: 2rem;
-            color: var(--christmas-gold); /* Emas untuk Subtitle */
+            color: var(--christmas-gold); 
             font-weight: 700;
         }
 
@@ -95,49 +96,47 @@
             border-radius: 0.5rem;
             margin-bottom: 20px;
             touch-action: none; 
-            box-shadow: 0 0 15px var(--christmas-red); /* Glow Merah */
+            box-shadow: 0 0 15px var(--christmas-red); 
         }
         
-        /* TOMBOL AKSI - FOKUS MERAH & PUTIH TEGAS */
+        /* TOMBOL AKSI */
         .btn-action {
             background-color: var(--christmas-red);
             color: var(--christmas-snow); 
             padding: 16px 24px;
-            border-radius: 1rem; /* Lebih membulat */
+            border-radius: 1rem; 
             font-weight: 900;
             text-transform: uppercase;
             transition: all 0.2s ease;
             cursor: pointer;
             width: 100%;
             margin-bottom: 15px;
-            /* Border Hijau dan Shadow */
             border: 3px solid var(--christmas-light-green); 
             box-shadow: 0 6px 0 var(--christmas-light-green), 0 0 20px rgba(255, 255, 255, 0.7);
             position: relative;
         }
 
-        /* Tombol yang diaktifkan (misalnya LEADERBOARD atau Connect Wallet) */
         .btn-action.active-glow {
-            background-color: var(--christmas-light-green); /* Hijau Solid */
+            background-color: var(--christmas-light-green); 
             border-color: var(--christmas-snow);
-            box-shadow: 0 6px 0 var(--christmas-red), 0 0 25px var(--christmas-snow); /* Glow Merah dan Putih */
+            box-shadow: 0 6px 0 var(--christmas-red), 0 0 25px var(--christmas-snow); 
         }
         
         /* Status/Error Button (Status DB) */
         .btn-status {
-            background-color: var(--christmas-snow); /* Latar Putih Salju */
-            color: var(--christmas-red); /* Teks Merah */
+            background-color: var(--christmas-snow); 
+            color: var(--christmas-red); 
             padding: 14px 24px;
             border-radius: 0.75rem; 
             font-weight: 700;
             width: 100%;
             margin-bottom: 15px;
-            border: 2px solid var(--christmas-green); /* Border Hijau */
+            border: 2px solid var(--christmas-green); 
             cursor: default;
             box-shadow: 0 4px 0 var(--christmas-green);
         }
         .btn-status #playerName {
-            color: var(--christmas-green); /* Player ID menggunakan Hijau */
+            color: var(--christmas-green); 
         }
 
         .btn-action:hover:not(:disabled), .btn-action:focus:not(:disabled) {
@@ -159,7 +158,7 @@
             box-shadow: 0 4px 0 #606060 !important;
         }
 
-        /* D-PAD - MERAH DENGAN GARIS HIJAU */
+        /* D-PAD */
         .dpad-container {
             display: grid;
             grid-template-areas:
@@ -169,16 +168,16 @@
             width: 150px;
             height: 150px;
             margin: 20px 0;
-            background-color: var(--christmas-snow); /* Latar belakang d-pad putih salju */
+            background-color: var(--christmas-snow); 
             border-radius: 1rem;
             padding: 5px;
             box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
         }
         .dpad-btn {
             grid-area: var(--dir);
-            background-color: var(--christmas-red); /* Merah */
-            color: var(--christmas-snow); /* Teks Putih Salju */
-            border: 2px solid var(--christmas-green); /* Border Hijau */
+            background-color: var(--christmas-red); 
+            color: var(--christmas-snow); 
+            border: 2px solid var(--christmas-green); 
             border-radius: 0.5rem;
             display: flex;
             justify-content: center;
@@ -189,7 +188,7 @@
             box-shadow: 0 4px 0 var(--christmas-green);
         }
         .dpad-btn:active {
-            background-color: var(--christmas-green); /* Hijau Natal saat ditekan */
+            background-color: var(--christmas-green); 
             color: var(--christmas-snow);
             transform: translateY(2px);
             box-shadow: 0 2px 0 var(--christmas-red);
@@ -209,15 +208,15 @@
             z-index: 1000;
         }
         .modal-content {
-            background-color: var(--christmas-snow); /* Latar Putih */
+            background-color: var(--christmas-snow); 
             color: #333;
-            border: 4px solid var(--christmas-green); /* Hijau */
+            border: 4px solid var(--christmas-green); 
             border-radius: 1rem;
             padding: 30px;
             text-align: center;
             max-width: 90%;
             width: 400px;
-            box-shadow: 0 0 20px var(--christmas-red); /* Glow Merah */
+            box-shadow: 0 0 20px var(--christmas-red); 
         }
         .modal-title {
             font-size: 1.75rem;
@@ -313,7 +312,7 @@
         <div class="space-y-4 w-full">
             
             <!-- 1. DB Status/Error Button -->
-            <!-- PERUBAHAN: Teks default sekarang menjadi "Memuat" -->
+            <!-- Teks default sekarang menjadi "Memuat" -->
             <button id="dbStatusContainer" disabled class="btn-status" title="Status Koneksi Firebase">
                 <p id="dbStatus" class="text-sm font-bold">
                     Memuat Koneksi Database...
@@ -324,7 +323,7 @@
             </button>
             
             <!-- 2. CONNECT WALLET -->
-            <button id="connectWalletBtn" class="btn-action active-glow" onclick="window.startOnchain()">
+            <button id="connectWalletBtn" class="btn-action active-glow" onclick="startOnchain()">
                 CONNECT WALLET
             </button>
             
@@ -348,7 +347,6 @@
 
     <div id="gameScreen" class="game-container hidden">
         <div class="w-full flex justify-between items-center mb-3 text-sm">
-            <!-- Teks dalam game container sekarang Putih di latar Hijau -->
             <div class="text-sm text-christmas-snow">Player: <span id="playerNameGame" class="font-bold text-christmas-gold"></span></div>
             <div class="text-xl font-bold text-christmas-snow">SCORE: <span id="scoreDisplay" class="text-christmas-gold">0</span></div>
         </div>
@@ -388,145 +386,731 @@
         </div>
     </div>
 
-    <!-- Ethers JS (Simulasi Wallet) -->
-    <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
-
-    <!-- Skrip Game dan Firebase -->
-    <script type="module" src="game_logic.js"></script>
-    <script type="module" src="web3_game.js"></script>
-    
-    <script>
-        // --- LOGIKA UI/NAVIGASI ---
+    <!-- SKRIP UTAMA: GABUNGAN FIREBASE/WEB3 DAN LOGIKA GAME -->
+    <script type="module">
+        // Import Firebase SDK (Versi yang sudah diuji)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // --- VARIABEL UI & NAVIGASI ---
         const startScreen = document.getElementById('startScreen');
         const gameScreen = document.getElementById('gameScreen');
         const startGameBtn = document.getElementById('startGameBtn');
         const connectWalletBtn = document.getElementById('connectWalletBtn');
         const backMenuButton = document.getElementById('backMenuBtn');
-        
-        // Elemen UI
+        const saveDisplayNameBtn = document.getElementById('saveDisplayNameBtn');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const playerNameGame = document.getElementById('playerNameGame');
+        const modalOverlay = document.getElementById('customModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+
+        // Elemen Status DB
         const dbStatusElement = document.getElementById('dbStatus');
         const playerNameElement = document.getElementById('playerName');
         const dbStatusContainer = document.getElementById('dbStatusContainer');
 
+        // --- VARIABEL FIREBASE/WEB3 ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'somnia-default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false; 
+        let isWalletConnected = false;
+        let displayName = localStorage.getItem('displayName') || "Player Anon";
 
+        // --- VARIABEL GAME ---
+        const TILE_SIZE = 20; // Ukuran setiap kotak di grid
+        const GRID_WIDTH = 22;
+        const GRID_HEIGHT = 24;
+        const CANVAS_WIDTH = GRID_WIDTH * TILE_SIZE;
+        const CANVAS_HEIGHT = GRID_HEIGHT * TILE_SIZE;
+        
+        // Menyesuaikan ukuran kanvas
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        let playerX, playerY;
+        let score = 0;
+        let gameLoopId;
+        let gameRunning = false;
+        let nextDirection = 'right'; // Arah yang akan dipindahkan
+        let currentDirection = 'right'; // Arah saat ini
+        let movementInterval = null;
+        const SPEED_MS = 150; // Kecepatan pergerakan (dalam milidetik)
+
+        // Skema Peta (Maze) - 0: Jalan, 1: Dinding, 2: Permen/Candy Cane (Dot), 3: Power Pellet (Kapsul), 4: Hantu
+        // Dibuat lebih sederhana untuk debug, fokus ke fungsi inti
+        const initialMaze = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1,1,1,2,1],
+            [1,3,1,1,1,2,1,1,1,2,2,2,2,1,1,1,2,1,1,1,3,1], // 3: Power Pellet
+            [1,2,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,2,1],
+            [1,1,1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1,1,1,1,1],
+            [1,1,1,1,1,2,1,4,0,0,0,0,0,0,4,1,2,1,1,1,1,1], // 4: Posisi Hantu Awal
+            [1,1,1,1,1,2,1,0,0,0,0,0,0,0,0,1,2,1,1,1,1,1], // 0: Area Hantu
+            [1,1,1,1,1,2,1,0,0,0,0,0,0,0,0,1,2,1,1,1,1,1],
+            [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+            [1,2,1,1,1,2,1,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+            [1,2,2,2,1,2,2,2,2,2,2,0,2,2,2,2,2,1,2,2,1], // 0: Posisi Pac-Man Awal
+            [1,1,1,2,1,1,1,1,1,1,1,0,1,1,1,1,1,1,2,1,1],
+            [1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,1],
+            [1,2,2,2,2,2,1,1,1,2,1,1,2,1,1,1,2,2,2,2,1],
+            [1,2,1,1,1,2,1,1,1,2,1,1,2,1,1,1,2,1,1,1,2,1],
+            [1,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,3,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+        
+        let maze = initialMaze.map(row => [...row]); // Kloning peta
+        
+        // Hantu
+        let ghosts = [
+            { x: 10, y: 6, color: 'rgb(255, 69, 0)', dir: 'left', speed: 1, isFrightened: false }, // Merah (Blinky - di tengah)
+            { x: 11, y: 6, color: 'rgb(0, 255, 255)', dir: 'right', speed: 1, isFrightened: false }, // Cyan (Inky - di tengah)
+            { x: 9, y: 7, color: 'rgb(255, 184, 255)', dir: 'up', speed: 1, isFrightened: false }, // Pink (Pinky)
+            { x: 12, y: 7, color: 'rgb(255, 184, 82)', dir: 'down', speed: 1, isFrightened: false } // Orange (Clyde)
+        ];
+        
+        let frightenedTimeout = null;
+        let lastUpdateTime = 0;
+        const GHOST_MOVE_INTERVAL = 300; // Hantu bergerak sedikit lebih lambat dari Pac-Man
+
+        // --- FUNGSI UTILITY UI/NAVIGASI ---
         function switchToScreen(screenId) {
             startScreen.classList.add('hidden');
             gameScreen.classList.add('hidden');
             document.getElementById(screenId).classList.remove('hidden');
         }
 
-        startGameBtn.addEventListener('click', () => {
-            switchToScreen('gameScreen');
-            if (typeof initGame === 'function') {
-                initGame();
-            }
-        });
-
-        connectWalletBtn.addEventListener('click', () => {
-             // Ini akan memicu startOnchain() di web3_game.js
-        });
-        
-        backMenuButton.addEventListener('click', () => {
-            switchToScreen('startScreen');
-            // Reset UI di menu utama
-            dbStatusElement.innerText = "Memuat status koneksi..."; 
-            playerNameElement.innerText = "Mencoba otentikasi ulang...";
-            
-            // Hentikan loop game
-            if (typeof stopGameLoop === 'function') {
-                stopGameLoop();
-            }
-        });
-
-        // Pastikan modal kustom hanya menutup jika klik di luar konten modal
         function closeModal(event) {
             if (event.target.classList.contains('modal-overlay')) {
                 event.target.style.display = 'none';
             }
         }
         
-        // Fungsi untuk menampilkan modal Leaderboard
-        async function showLeaderboardModal() {
-            document.getElementById('leaderboardModal').style.display = 'flex';
-            
-            if (typeof fetchLeaderboard === 'function') {
-                await fetchLeaderboard();
-            } else {
-                document.getElementById('leaderboardList').innerHTML = '<p class="text-center text-red-500">Error: Fungsi Leaderboard tidak tersedia.</p>';
-            }
-        }
-
-        // Untuk tombol dpad di game.html (untuk memicu logika di game_logic.js)
-        function movePlayer(direction) {
-            if (typeof handleMovement === 'function') {
-                handleMovement(direction);
-            }
-        }
-
-        function stopPlayer() {
-            if (typeof stopMovement === 'function') {
-                stopMovement();
-            }
-        }
-
-        // Listener Keyboard untuk desktop/laptop
-        document.addEventListener('keydown', (e) => {
-            if (typeof handleKeyDown === 'function') {
-                handleKeyDown(e);
-            }
-        });
-        document.addEventListener('keyup', (e) => {
-            if (typeof handleKeyUp === 'function') {
-                handleKeyUp(e);
-            }
-        });
-        
-        // Simpan fungsi update UI di window agar bisa dipanggil dari web3_game.js
-        window.updateFirebaseStatusUI = (statusMessage, playerText, isReady) => {
+        // Update Status Firebase UI
+        function updateFirebaseStatusUI(statusMessage, playerText, isReady) {
             dbStatusElement.innerText = statusMessage;
             playerNameElement.innerText = playerText;
             
-            // Mengubah style tombol status agar tetap Putih/Merah/Hijau
             if (isReady) {
-                // Status OK: Latar Putih, Teks Merah/Hijau
                 dbStatusContainer.style.backgroundColor = 'var(--christmas-snow)'; 
                 dbStatusContainer.style.color = 'var(--christmas-red)'; 
                 dbStatusContainer.style.borderColor = 'var(--christmas-green)'; 
                 dbStatusContainer.style.boxShadow = '0 4px 0 var(--christmas-green)';
                 playerNameElement.style.color = 'var(--christmas-green)'; 
             } else {
-                // Status Error: Latar Merah, Teks Putih/Hijau
                 dbStatusContainer.style.backgroundColor = 'var(--christmas-red)';
                 dbStatusContainer.style.color = 'var(--christmas-snow)';
                 dbStatusContainer.style.borderColor = 'var(--christmas-snow)';
                 dbStatusContainer.style.boxShadow = '0 4px 0 var(--christmas-snow)';
-                playerNameElement.style.color = 'var(--christmas-gold)'; // Emas untuk kontras di latar Merah
+                playerNameElement.style.color = 'var(--christmas-gold)'; 
             }
-        };
+        }
 
-        window.updateConnectButtonUI = (isConnected) => {
+        // Update Status Tombol Connect Wallet
+        function updateConnectButtonUI(isConnected) {
             if (isConnected) {
                 connectWalletBtn.innerText = "WALLET CONNECTED (SIMULASI)";
                 connectWalletBtn.disabled = true;
                 connectWalletBtn.classList.remove('active-glow');
-                connectWalletBtn.style.backgroundColor = 'var(--christmas-green)'; // Hijau saat terkoneksi
+                connectWalletBtn.style.backgroundColor = 'var(--christmas-green)'; 
                 connectWalletBtn.style.borderColor = 'var(--christmas-snow)';
                 connectWalletBtn.style.boxShadow = '0 6px 0 var(--christmas-red)';
-                // Setelah wallet terhubung, tombol PLAY GAME harus aktif jika auth sudah siap.
-                if (window.isAuthReady) {
+                if (isAuthReady) {
                     startGameBtn.disabled = false;
                 }
             } else {
                 connectWalletBtn.innerText = "CONNECT WALLET";
                 connectWalletBtn.disabled = false;
                 connectWalletBtn.classList.add('active-glow');
-                connectWalletBtn.style.backgroundColor = ''; // Kembali ke default CSS
-                connectWalletBtn.style.borderColor = ''; // Kembali ke default CSS
-                connectWalletBtn.style.boxShadow = ''; // Kembali ke default CSS
+                connectWalletBtn.style.backgroundColor = ''; 
+                connectWalletBtn.style.borderColor = ''; 
+                connectWalletBtn.style.boxShadow = ''; 
                 startGameBtn.disabled = true;
+            }
+        }
+        
+        // Tampilkan Modal
+        function showCustomModal(title, message) {
+            modalTitle.innerText = title;
+            modalMessage.innerHTML = message;
+            modalOverlay.style.display = 'flex';
+        }
+        window.showCustomModal = showCustomModal; // Dibuat global untuk dipanggil
+
+        // --- FUNGSI FIREBASE/WEB3 ---
+
+        async function initializeFirebase() {
+            // Pembaruan Status Awal (Mengganti "Memuat..." di HTML)
+            updateFirebaseStatusUI("MEMERIKSA KONFIGURASI", "Memulai otentikasi...", false);
+
+            if (!firebaseConfig) {
+                updateFirebaseStatusUI(
+                    "[KESALAHAN KONFIGURASI KRITIS]", 
+                    "Variabel Firebase (__firebase_config) tidak terdefinisi.", 
+                    false
+                );
+                console.error("Kesalahan: Variabel __firebase_config hilang atau tidak valid.");
+                return; 
+            }
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        
+                        if (!localStorage.getItem('displayName')) {
+                            displayName = "User#" + userId.substring(0, 6);
+                            localStorage.setItem('displayName', displayName); 
+                        }
+                        
+                        isAuthReady = true;
+                        updateFirebaseStatusUI("KONEKSI BERHASIL", `ID Pemain: ${displayName} (${userId.substring(0, 8)}...)`, true);
+                        
+                        saveDisplayNameBtn.disabled = false;
+                        
+                        if (isWalletConnected) {
+                             startGameBtn.disabled = false;
+                        }
+                        
+                        listenToLeaderboard();
+                        
+                    } else {
+                        userId = null;
+                        isAuthReady = true; 
+                        updateFirebaseStatusUI("[Gagal Otentikasi]", "Tidak dapat masuk. Silakan muat ulang.", false);
+                    }
+                });
+                
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+            } catch (error) {
+                console.error("Gagal saat inisialisasi atau otentikasi Firebase:", error);
+                updateFirebaseStatusUI("[ERROR KRITIS]", `Kode: ${error.code} | Pesan: ${error.message}`, false);
+            }
+        }
+
+        // Simulasi Wallet
+        window.startOnchain = () => {
+            if (typeof ethers !== 'undefined' && ethers.providers) {
+                isWalletConnected = true;
+                updateConnectButtonUI(true);
+                
+                if (isAuthReady) {
+                    startGameBtn.disabled = false;
+                }
+            } else {
+                showCustomModal("Simulasi Gagal", "Ethers.js gagal dimuat. Coba muat ulang halaman.");
             }
         };
 
+        // Menyimpan Nama Tampilan
+        saveDisplayNameBtn.addEventListener('click', async () => {
+            const input = prompt("Masukkan nama tampilan Anda (maks 15 karakter):");
+            if (input && input.trim().length > 0) {
+                const newName = input.trim().substring(0, 15);
+                displayName = newName;
+                localStorage.setItem('displayName', newName);
+                
+                if (db && userId) {
+                    try {
+                        const userRef = doc(db, `artifacts/${appId}/public/data/users/${userId}`);
+                        await setDoc(userRef, { displayName: newName, lastUpdate: new Date().toISOString() }, { merge: true });
+                        updateFirebaseStatusUI("KONEKSI BERHASIL", `ID Pemain: ${newName} (${userId.substring(0, 8)}...)`, true);
+                    } catch (e) {
+                        console.error("Error menyimpan nama tampilan:", e);
+                        showCustomModal("Error", "Gagal menyimpan nama tampilan ke database.");
+                    }
+                } else {
+                     updateFirebaseStatusUI("KONEKSI GAGAL", "Silakan coba otentikasi ulang.", false);
+                }
+            }
+        });
+
+        // Menyimpan Skor
+        window.saveScore = async (score) => {
+            if (!db || !userId) {
+                console.error("Database belum siap atau UID tidak ditemukan.");
+                return;
+            }
+
+            try {
+                const userRef = doc(db, `artifacts/${appId}/public/data/users/${userId}`);
+                
+                await setDoc(userRef, { 
+                    displayName: displayName, 
+                    score: score, 
+                    lastPlayed: new Date().toISOString() 
+                }, { merge: true });
+                
+                console.log(`Skor ${score} berhasil disimpan.`);
+                
+            } catch (e) {
+                console.error("Gagal menyimpan skor:", e);
+                showCustomModal("Error Database", "Gagal menyimpan skor tertinggi Anda.");
+            }
+        };
+
+        // Listener Leaderboard
+        function listenToLeaderboard() {
+            if (!db) return;
+            
+            const leaderboardCollectionRef = collection(db, `artifacts/${appId}/public/data/users`);
+            const q = query(leaderboardCollectionRef);
+
+            onSnapshot(q, (snapshot) => {
+                let scores = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    if (data.score && typeof data.score === 'number') {
+                        scores.push({
+                            id: doc.id,
+                            name: data.displayName || `User#${doc.id.substring(0, 6)}`,
+                            score: data.score
+                        });
+                    }
+                });
+
+                scores.sort((a, b) => b.score - a.score);
+                const topScores = scores.slice(0, 10);
+                
+                updateLeaderboardUI(topScores);
+            }, (error) => {
+                console.error("Error mendengarkan leaderboard:", error);
+                leaderboardList.innerHTML = `<p class="text-center text-red-500">Error memuat data leaderboard: ${error.message}</p>`;
+            });
+        }
+
+        function updateLeaderboardUI(scores) {
+            if (leaderboardList) {
+                if (scores.length === 0) {
+                    leaderboardList.innerHTML = '<p class="text-center text-gray-500">Belum ada skor yang tercatat.</p>';
+                    return;
+                }
+
+                leaderboardList.innerHTML = scores.map((item, index) => `
+                    <div class="leaderboard-item">
+                        <span class="leaderboard-name">#${index + 1} - ${item.name}</span>
+                        <span class="leaderboard-score">${item.score}</span>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        window.fetchLeaderboard = () => {
+             // Listener onSnapshot sudah dipanggil, jadi data sudah diperbarui
+        };
+        
+        // --- LOGIKA GAME PAC-MAN CHRISTMAS ---
+
+        function initGame() {
+            // Reset peta dan posisi
+            maze = initialMaze.map(row => [...row]); 
+            playerX = 11; 
+            playerY = 12; 
+            score = 0;
+            ghosts = [
+                { x: 10, y: 6, color: 'rgb(255, 69, 0)', dir: 'left', speed: 1, isFrightened: false }, 
+                { x: 11, y: 6, color: 'rgb(0, 255, 255)', dir: 'right', speed: 1, isFrightened: false }, 
+                { x: 9, y: 7, color: 'rgb(255, 184, 255)', dir: 'up', speed: 1, isFrightened: false }, 
+                { x: 12, y: 7, color: 'rgb(255, 184, 82)', dir: 'down', speed: 1, isFrightened: false }
+            ];
+            
+            currentDirection = 'right';
+            nextDirection = 'right';
+            scoreDisplay.innerText = score;
+            playerNameGame.innerText = displayName;
+
+            if (!gameRunning) {
+                gameRunning = true;
+                if (movementInterval) clearInterval(movementInterval);
+                movementInterval = setInterval(gameLoop, SPEED_MS);
+                gameLoopId = requestAnimationFrame(drawGame);
+            }
+        }
+        
+        function stopGameLoop() {
+            gameRunning = false;
+            if (movementInterval) clearInterval(movementInterval);
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+        }
+
+        // --- Pergerakan Pemain ---
+        function movePlayerInDirection(dir) {
+            let newX = playerX;
+            let newY = playerY;
+
+            if (dir === 'up') newY--;
+            else if (dir === 'down') newY++;
+            else if (dir === 'left') newX--;
+            else if (dir === 'right') newX++;
+
+            // Cek Tabrakan Dinding (1)
+            if (maze[newY][newX] !== 1) {
+                playerX = newX;
+                playerY = newY;
+                currentDirection = dir;
+                
+                // Cek Koleksi
+                if (maze[playerY][playerX] === 2) {
+                    score += 10;
+                    maze[playerY][playerX] = 0; // Hapus dot
+                } else if (maze[playerY][playerX] === 3) {
+                    score += 50;
+                    maze[playerY][playerX] = 0; // Hapus power pellet
+                    activateFrightenedMode();
+                }
+                
+                scoreDisplay.innerText = score;
+                checkWinCondition();
+                return true;
+            }
+            return false;
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 1. Coba pindah ke nextDirection
+            let moved = movePlayerInDirection(nextDirection);
+            
+            // 2. Jika gagal (tabrak dinding), coba currentDirection
+            if (!moved && nextDirection !== currentDirection) {
+                movePlayerInDirection(currentDirection);
+            }
+            
+            // 3. Pergerakan Hantu
+            const currentTime = Date.now();
+            if (currentTime - lastUpdateTime > GHOST_MOVE_INTERVAL) {
+                moveGhosts();
+                lastUpdateTime = currentTime;
+            }
+            
+            // 4. Cek Tabrakan Hantu
+            checkCollision();
+        }
+
+        function moveGhosts() {
+            ghosts.forEach(ghost => {
+                let possibleDirections = ['up', 'down', 'left', 'right'];
+                let bestDir = ghost.dir;
+                let moved = false;
+                
+                // Jika sedang ketakutan, coba arah acak
+                if (ghost.isFrightened) {
+                    possibleDirections.sort(() => Math.random() - 0.5); // Acak
+                }
+                
+                // Coba 4 arah untuk bergerak
+                for (let dir of possibleDirections) {
+                    let newX = ghost.x;
+                    let newY = ghost.y;
+
+                    if (dir === 'up') newY--;
+                    else if (dir === 'down') newY++;
+                    else if (dir === 'left') newX--;
+                    else if (dir === 'right') newX++;
+
+                    // Pastikan tidak tabrak dinding (1)
+                    if (maze[newY][newX] !== 1) {
+                        ghost.x = newX;
+                        ghost.y = newY;
+                        ghost.dir = dir; // Update arah untuk iterasi berikutnya
+                        moved = true;
+                        break;
+                    }
+                }
+                
+                // Jika tidak bisa bergerak, balik arah
+                if (!moved) {
+                    if (ghost.dir === 'up') ghost.dir = 'down';
+                    else if (ghost.dir === 'down') ghost.dir = 'up';
+                    else if (ghost.dir === 'left') ghost.dir = 'right';
+                    else if (ghost.dir === 'right') ghost.dir = 'left';
+                    
+                    // Coba bergerak lagi setelah balik arah
+                    let newX = ghost.x;
+                    let newY = ghost.y;
+                    if (ghost.dir === 'up') newY--;
+                    else if (ghost.dir === 'down') newY++;
+                    else if (ghost.dir === 'left') newX--;
+                    else if (ghost.dir === 'right') newX++;
+                    
+                    if (maze[newY][newX] !== 1) {
+                        ghost.x = newX;
+                        ghost.y = newY;
+                    }
+                }
+            });
+        }
+
+        function checkCollision() {
+            for (let i = 0; i < ghosts.length; i++) {
+                const ghost = ghosts[i];
+                if (ghost.x === playerX && ghost.y === playerY) {
+                    if (ghost.isFrightened) {
+                        // Pac-Man makan Hantu (Mode Ketakutan)
+                        score += 200;
+                        scoreDisplay.innerText = score;
+                        
+                        // Kirim hantu kembali ke posisi awal
+                        ghosts.splice(i, 1);
+                        ghosts.push({ 
+                            x: 10 + (i % 2), 
+                            y: 6 + (i % 2), 
+                            color: 'rgb(128, 128, 128)', // Abu-abu saat kembali
+                            dir: 'up', 
+                            speed: 1, 
+                            isFrightened: false 
+                        });
+                        break; // Keluar dari loop setelah makan hantu
+                        
+                    } else {
+                        // Hantu makan Pac-Man (Game Over)
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+        }
+        
+        function activateFrightenedMode() {
+            clearTimeout(frightenedTimeout);
+            
+            // Atur semua hantu ke mode ketakutan
+            ghosts.forEach(ghost => {
+                ghost.isFrightened = true;
+            });
+            
+            // Set timeout untuk mengakhiri mode ketakutan (8 detik)
+            frightenedTimeout = setTimeout(() => {
+                ghosts.forEach(ghost => {
+                    ghost.isFrightened = false;
+                });
+            }, 8000); 
+        }
+
+        function checkWinCondition() {
+            let remainingDots = 0;
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    if (maze[y][x] === 2 || maze[y][x] === 3) {
+                        remainingDots++;
+                    }
+                }
+            }
+
+            if (remainingDots === 0) {
+                stopGameLoop();
+                window.saveScore(score);
+                showCustomModal("SELAMAT, MISI SELESAI!", 
+                    `<p>Anda berhasil mengumpulkan semua Candy Cane dan Power Pellet!</p>
+                     <p class="mt-2 font-bold text-lg">Skor Akhir Anda: ${score}</p>`);
+            }
+        }
+
+        function gameOver() {
+            stopGameLoop();
+            window.saveScore(score); 
+            showCustomModal("GAME OVER!", 
+                `<p>Anda tertangkap oleh Hantu Natal!</p>
+                 <p class="mt-2 font-bold text-lg">Skor Akhir Anda: ${score}</p>`);
+        }
+
+        // --- FUNGSI GAMBAR (DRAWING) ---
+        function drawTile(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        }
+
+        function drawMaze() {
+            for (let y = 0; y < maze.length; y++) {
+                for (let x = 0; x < maze[y].length; x++) {
+                    const cell = maze[y][x];
+                    
+                    if (cell === 1) {
+                        // Dinding - Hijau Natal
+                        drawTile(x, y, 'var(--christmas-green)');
+                    } else if (cell === 0 || cell === 2 || cell === 3) {
+                        // Jalan/Latar Belakang - Hitam
+                        drawTile(x, y, 'black'); 
+                        
+                        if (cell === 2) {
+                            // Candy Cane (Dot) - Putih Salju
+                            ctx.fillStyle = 'var(--christmas-snow)';
+                            ctx.beginPath();
+                            ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 8, 0, 2 * Math.PI);
+                            ctx.fill();
+                        } else if (cell === 3) {
+                            // Power Pellet (Kapsul) - Emas
+                            ctx.fillStyle = 'var(--christmas-gold)';
+                            ctx.beginPath();
+                            ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 4, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawPlayer() {
+            const x = playerX * TILE_SIZE + TILE_SIZE / 2;
+            const y = playerY * TILE_SIZE + TILE_SIZE / 2;
+            const radius = TILE_SIZE / 2 - 2;
+            
+            let angleStart = 0.25;
+            let angleEnd = 1.75;
+            
+            // Sesuaikan sudut mulut berdasarkan arah (efek animasi makan)
+            if (currentDirection === 'up') { angleStart = 0.75; angleEnd = 2.25; }
+            else if (currentDirection === 'down') { angleStart = 1.25; angleEnd = 2.75; }
+            else if (currentDirection === 'left') { angleStart = 1.0; angleEnd = 3.0; }
+            else if (currentDirection === 'right') { angleStart = 0.0; angleEnd = 2.0; }
+            
+            // Menggambar Pac-Man (Lingkaran Kuning)
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            // Animasi Mulut: buka/tutup berdasarkan waktu
+            const mouthOpen = (Date.now() % 500 < 250); 
+            const mouthOffset = mouthOpen ? 0.1 : 0.0;
+            
+            ctx.arc(x, y, radius, (angleStart + mouthOffset) * Math.PI, (angleEnd - mouthOffset) * Math.PI);
+            ctx.lineTo(x, y);
+            ctx.fill();
+        }
+
+        function drawGhosts() {
+            ghosts.forEach(ghost => {
+                const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+                const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+                const radius = TILE_SIZE / 2 - 2;
+                
+                // Warna berdasarkan status (Biru tua saat ketakutan)
+                const color = ghost.isFrightened ? 'blue' : ghost.color;
+                
+                ctx.fillStyle = color;
+                
+                // Badan Hantu (Setengah lingkaran + kotak)
+                ctx.beginPath();
+                ctx.arc(x, y - 2, radius, Math.PI, 0, false); // Bagian atas (setengah lingkaran)
+                ctx.lineTo(x + radius, y + radius); // Sisi Kanan
+                
+                // Kaki/Gigi Gergaji (Simulasi Rok Hantu)
+                const footSize = TILE_SIZE / 5;
+                for (let i = -radius; i < radius; i += footSize * 2) {
+                    ctx.lineTo(x + i + footSize, y + radius);
+                    ctx.lineTo(x + i, y + radius - footSize / 2); // Naik sedikit
+                }
+                
+                ctx.lineTo(x - radius, y + radius); // Sisi Kiri
+                ctx.closePath();
+                ctx.fill();
+                
+                // Mata (Putih)
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(x - 5, y - 5, 3, 0, 2 * Math.PI);
+                ctx.arc(x + 5, y - 5, 3, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Pupil (Hitam/Merah - Berubah saat ketakutan)
+                ctx.fillStyle = ghost.isFrightened ? 'black' : 'red';
+                ctx.beginPath();
+                ctx.arc(x - 5, y - 5, 1, 0, 2 * Math.PI);
+                ctx.arc(x + 5, y - 5, 1, 0, 2 * Math.PI);
+                ctx.fill();
+            });
+        }
+
+        function drawGame() {
+            // Hapus Kanvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // Gambar Maze, Dots, Pellets
+            drawMaze();
+            
+            // Gambar Hantu
+            drawGhosts();
+            
+            // Gambar Pemain
+            drawPlayer();
+
+            // Loop Gambar
+            if (gameRunning) {
+                gameLoopId = requestAnimationFrame(drawGame);
+            }
+        }
+
+        // --- INPUT HANDLING ---
+        function handleMovement(direction) {
+            nextDirection = direction;
+        }
+        window.handleMovement = handleMovement;
+
+        function stopMovement() {
+            // Untuk D-Pad sentuh, biarkan nextDirection tetap, hanya currentDirection yang penting di gameLoop
+        }
+        window.stopMovement = stopMovement;
+        
+        function handleKeyDown(e) {
+            if (!gameRunning) return;
+            let dir = nextDirection;
+            
+            if (e.key === 'ArrowUp') dir = 'up';
+            else if (e.key === 'ArrowDown') dir = 'down';
+            else if (e.key === 'ArrowLeft') dir = 'left';
+            else if (e.key === 'ArrowRight') dir = 'right';
+
+            handleMovement(dir);
+        }
+        window.handleKeyDown = handleKeyDown;
+
+        function handleKeyUp(e) {
+            // Untuk skema Pac-Man, tidak perlu logika key up
+        }
+        window.handleKeyUp = handleKeyUp;
+        
+        // --- EVENT LISTENERS UI ---
+        
+        startGameBtn.addEventListener('click', () => {
+            switchToScreen('gameScreen');
+            initGame();
+        });
+
+        backMenuButton.addEventListener('click', () => {
+            switchToScreen('startScreen');
+            updateFirebaseStatusUI("KONEKSI BERHASIL", `ID Pemain: ${displayName} (${userId.substring(0, 8)}...)`, true);
+            stopGameLoop();
+        });
+
+        async function showLeaderboardModal() {
+            document.getElementById('leaderboardModal').style.display = 'flex';
+            window.fetchLeaderboard(); // Panggil fungsi dummy untuk memicu update data
+        }
+        window.showLeaderboardModal = showLeaderboardModal;
+
+        // --- INISIALISASI ---
+        initializeFirebase();
+        updateConnectButtonUI(false); 
+        
     </script>
 </body>
 </html>
