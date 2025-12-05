@@ -1,11 +1,20 @@
+// --- PEMBARUAN UI SINKRON H-0: GANTI PESAN DEFAULT SEBELUM OPERASI LAIN ---
+// Ini harus dieksekusi segera saat modul dimuat untuk mengganti pesan error default.
+if (typeof window.updateFirebaseStatusUI === 'function') {
+    window.updateFirebaseStatusUI("MEMERIKSA KONFIGURASI", "Memulai otentikasi...", false);
+}
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+// --- REVISI KRITIS: Ambil Variabel Global dari window ---
 // Variabel Global dari Lingkungan Canvas
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'somnia-default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+const appId = typeof window.__app_id !== 'undefined' ? window.__app_id : 'somnia-default-app-id';
+// Pastikan konfigurasi diambil dengan benar dan diparse
+const firebaseConfig = typeof window.__firebase_config !== 'undefined' && window.__firebase_config ? JSON.parse(window.__firebase_config) : null;
+const initialAuthToken = typeof window.__initial_auth_token !== 'undefined' ? window.__initial_auth_token : null;
+
 
 let app;
 let db;
@@ -18,7 +27,6 @@ let displayName = localStorage.getItem('displayName') || "Player Anon";
 // Elemen UI
 const startGameBtn = document.getElementById('startGameBtn');
 const saveDisplayNameBtn = document.getElementById('saveDisplayNameBtn');
-const playerNameGameDisplay = document.getElementById('playerNameGame');
 const leaderboardList = document.getElementById('leaderboardList');
 const modalOverlay = document.getElementById('customModal');
 const modalTitle = document.getElementById('modalTitle');
@@ -31,12 +39,15 @@ const modalMessage = document.getElementById('modalMessage');
 async function initializeFirebase() {
     console.log("Memulai inisialisasi Firebase...");
     
-    // --- FIX: Segera update status UI untuk mengganti error default ---
-    window.updateFirebaseStatusUI("MENCARI KONEKSI", "Mencoba otentikasi Firebase...", false);
-
     if (!firebaseConfig) {
-        window.updateFirebaseStatusUI("[ERROR KRITIS]", "Konfigurasi Firebase Hilang!", false);
-        return;
+        // Jika konfigurasi tetap null, tampilkan error kritis yang sangat spesifik
+        window.updateFirebaseStatusUI(
+            "[KESALAHAN KONFIGURASI KRITIS]", 
+            "Variabel Firebase (__firebase_config) tidak terdefinisi.", 
+            false
+        );
+        console.error("Kesalahan: Variabel __firebase_config hilang atau tidak valid.");
+        return; // Hentikan eksekusi jika tidak ada konfigurasi
     }
 
     try {
@@ -126,10 +137,11 @@ saveDisplayNameBtn.addEventListener('click', async () => {
         // Update di Firestore (di koleksi publik)
         if (db && userId) {
             try {
+                // Lokasi penyimpanan skor/profil publik: artifacts/{appId}/public/data/users/{userId}
                 const userRef = doc(db, `artifacts/${appId}/public/data/users/${userId}`);
-                await setDoc(userRef, { displayName: newName, lastUpdate: new Date() }, { merge: true });
+                await setDoc(userRef, { displayName: newName, lastUpdate: new Date().toISOString() }, { merge: true });
                 console.log("Nama tampilan berhasil disimpan di Firestore.");
-                window.updateFirebaseStatusUI("KONEKSI BERHASIL", `ID Pemain: ${displayName} (${userId.substring(0, 8)}...)`, true);
+                window.updateFirebaseStatusUI("KONEKSI BERHASIL", `ID Pemain: ${newName} (${userId.substring(0, 8)}...)`, true);
             } catch (e) {
                 console.error("Error menyimpan nama tampilan:", e);
                 showCustomModal("Error", "Gagal menyimpan nama tampilan ke database.");
@@ -164,13 +176,14 @@ window.saveScore = async (score) => {
     }
 
     try {
+        // Lokasi penyimpanan skor/profil publik: artifacts/{appId}/public/data/users/{userId}
         const userRef = doc(db, `artifacts/${appId}/public/data/users/${userId}`);
         
         // Menyimpan/memperbarui skor
         await setDoc(userRef, { 
             displayName: displayName, 
             score: score, 
-            lastPlayed: new Date() 
+            lastPlayed: new Date().toISOString() 
         }, { merge: true });
         
         console.log(`Skor ${score} berhasil disimpan.`);
@@ -188,6 +201,7 @@ window.saveScore = async (score) => {
 function listenToLeaderboard() {
     if (!db) return;
     
+    // Lokasi koleksi publik: artifacts/{appId}/public/data/users
     const leaderboardCollectionRef = collection(db, `artifacts/${appId}/public/data/users`);
     const q = query(leaderboardCollectionRef);
 
@@ -242,7 +256,7 @@ window.fetchLeaderboard = () => {
     console.log("Leaderboard dipanggil. Data diperbarui melalui listener onSnapshot.");
 };
 
-// --- EKSEKUSI: Panggil langsung saat modul dimuat ---
+// --- EKSEKUSI: Panggil inisialisasi ---
 initializeFirebase();
 // Juga set status awal tombol koneksi Wallet
 window.updateConnectButtonUI(false); 
