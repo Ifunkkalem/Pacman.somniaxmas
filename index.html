@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Somnia Christmas Quest: Web3 Arcade</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* --- General Theme & Fonts --- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Mountains+of+Christmas:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d3625; /* Deep Festive Green */
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden; 
+        }
+        
+        /* --- Snow Effect --- */
+        .snow {
+            position: absolute;
+            top: -10px;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.8;
+            z-index: 100; /* Ensure snow is above all content */
+            filter: blur(0.5px); /* Added blur for softer look */
+            animation: snowFall linear infinite;
+        }
+        @keyframes snowFall {
+            from { transform: translateY(0); }
+            to { transform: translateY(120vh); }
+        }
+
+        /* --- Layout & Components --- */
+        #container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            z-index: 10; /* Above snow */
+        }
+        .sidebar {
+            width: 200px;
+            min-width: 200px;
+            background-color: #0a2d1f; 
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            padding: 1rem;
+        }
+        .main-content {
+            flex-grow: 1;
+            padding: 2rem;
+            background-color: #123e2d; 
+            overflow-y: auto;
+        }
+        
+        .nav-btn {
+            @apply flex items-center p-3 w-full rounded-xl text-left transition duration-200 ease-in-out font-semibold text-lg hover:bg-red-700 hover:shadow-lg;
+            color: #ffffff;
+            background-color: #8c2727; /* Deep Red Button */
+            margin-top: 0.75rem;
+        }
+        .nav-btn.active {
+            @apply bg-red-600 shadow-xl border-l-4 border-yellow-300;
+        }
+        .nav-btn svg {
+            @apply mr-3;
+        }
+
+        /* Candy Cane Border for Game */
+        .game-canvas-area {
+            height: 65vh; /* DITINGKATKAN untuk desktop */
+            max-height: 520px; /* Batas tinggi maksimal agar tombol terlihat */
+            background-color: #000000;
+            border: 5px solid #ff0000; 
+            border-image: linear-gradient(45deg, #ff0000 25%, #ffffff 25%, #ffffff 50%, #ff0000 50%, #ff0000 75%, #ffffff 75%); 
+            border-image-slice: 1;
+            border-image-width: 15px;
+            box-shadow: 0 0 35px rgba(255, 69, 0, 0.9);
+            animation: pulse-shadow 2s infinite alternate;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Canvas Styling */
+        #pacmanCanvas {
+            background-color: #0d3625; /* Maze color */
+            display: block;
+            border-radius: 8px;
+        }
+
+        @keyframes pulse-shadow {
+            from { box-shadow: 0 0 30px rgba(255, 69, 0, 0.7); }
+            to { box-shadow: 0 0 40px rgba(255, 255, 0, 0.9); }
+        }
+
+        /* Styling for the Win/Lose Overlays */
+        .game-overlay {
+            z-index: 30;
+            font-family: 'Mountains of Christmas', cursive;
+            animation: fadeIn 1s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .win-message {
+            text-shadow: 0 0 10px #ffd700, 0 0 20px #ff0000;
+        }
+        .lose-message {
+            text-shadow: 0 0 10px #ffffff, 0 0 20px #00ff00;
+        }
+
+        /* D-Pad Styling */
+        .dpad-button {
+            @apply bg-red-600 text-white p-3 rounded-xl shadow-lg border-b-4 border-red-800 transition duration-100 ease-in-out;
+        }
+        .dpad-button:active {
+            @apply translate-y-0.5 border-b-0 shadow-inner;
+        }
+
+        /* Mobile Layout */
+        @media (max-width: 768px) {
+            #container {
+                flex-direction: column;
+                height: auto;
+            }
+            .sidebar {
+                width: 100%;
+                min-width: 100%;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+            }
+            .main-content {
+                padding: 1rem;
+            }
+            .game-canvas-area {
+                height: 60vh; /* DITINGKATKAN untuk mobile */
+                max-height: none;
+            }
+            /* MAKE MOBILE CONTROLS LARGER */
+            #game-controls .dpad-button {
+                 padding: 1rem;
+                 font-size: 1.5rem;
+            }
+            #game-controls .w-12 {
+                width: 4rem;
+                height: 4rem;
+            }
+        }
+    </style>
+    <!-- Load Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            onSnapshot, 
+            collection, 
+            query, 
+            limit, 
+            orderBy,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set Firestore log level to Debug
+        setLogLevel('Debug');
+
+        // Global variables from the Canvas environment (MUST BE USED)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'somnia-christmas-quest';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth;
+        let currentUserId = null;
+        let currentDisplayName = "Gingerbread Fan";
+        let isAuthReady = false;
+        let isDbReady = false;
+        let currentView = 'preview'; 
+        
+        // --- WEB3 SIMULATION STATE ---
+        let isWalletConnected = false;
+        let somiBalance = 0.00;
+        let hasPaidForGame = false;
+        let gameActive = false;
+        let currentScore = 0;
+        const COST_TO_PLAY = 0.01; // ETH cost
+
+        // --- GAME STATE VARIABLES ---
+        let canvas, ctx;
+        let tileSize = 20;
+        let gameLoopId = null;
+        let pelletsRemaining = 0;
+        let powerMode = false;
+        let powerModeTimer = 0;
+        let gameResult = { score: 0, won: false }; // To hold temporary results
+
+        // Player (Pac-Man) Properties
+        let player = { x: 1, y: 1, dx: 0, dy: 0, radius: 8, color: '#ffc04d', angle: 0, mouthOpen: 0 };
+        
+        // Ghost Properties
+        const GHOST_START_POSITIONS = [
+            { x: 9, y: 9, color: '#FF0000', name: 'Blinky', dx: 1, dy: 0 }, // Red - Aggressive
+            { x: 10, y: 9, color: '#FFB8FF', name: 'Pinky', dx: -1, dy: 0 }, // Pink - Ambush
+            { x: 8, y: 9, color: '#00FFFF', name: 'Inky', dx: 0, dy: 1 }, // Cyan - Scatter
+            { x: 11, y: 9, color: '#FFB852', name: 'Clyde', dx: 0, dy: -1 } // Orange - Random
+        ];
+        let ghosts = [];
+
+        // Map Keys: 0: Wall, 1: Regular Pellet (10 pts), 2: Empty Path, 3: Power Pellet (100 pts)
+        const originalMap = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,3,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,3,0], // Power Pellets at (1,1) and (18,1)
+            [0,1,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0,1,0],
+            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+            [0,1,0,0,1,0,1,0,0,0,0,0,0,1,0,1,0,0,1,0],
+            [0,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,1,1,0],
+            [0,0,0,0,1,0,0,0,1,0,0,1,0,0,0,1,0,0,0,0],
+            [0,0,0,0,1,0,1,1,1,2,2,1,1,1,0,1,0,0,0,0], // Center path for ghosts
+            [0,0,0,0,1,0,1,0,0,2,2,0,0,1,0,1,0,0,0,0], // Center path for ghosts
+            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
+            [0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0],
+            [0,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,0], // Power Pellets at (1,11) and (18,11)
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        ];
+        let map; // Map working copy
+
+        // --- UTILITY FUNCTIONS (Modal) ---
+        function showMessageModal(title, message, isError = false) {
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            const modalContainer = document.getElementById('messageModal');
+
+            modalTitle.textContent = title;
+            modalBody.innerHTML = message;
+            
+            const card = modalContainer.querySelector('.modal-card');
+            card.classList.toggle('border-red-500', isError);
+            card.classList.toggle('border-green-500', !isError);
+
+            modalContainer.classList.remove('hidden');
+        }
+
+        function hideMessageModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+        window.hideMessageModal = hideMessageModal;
+
+        // --- VIEW MANAGEMENT ---
+        function renderView(viewName) {
+            currentView = viewName;
+            
+            // Stop game loop if leaving the game view
+            if (viewName !== 'game' && gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameActive = false;
+            }
+
+            ['preview', 'game', 'leaderboard'].forEach(view => {
+                const el = document.getElementById(view + 'View');
+                if (el) {
+                    el.classList.toggle('hidden', view !== viewName);
+                }
+            });
+
+            ['connectWalletBtn', 'playGameBtn', 'leaderboardBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.remove('active');
+                }
+            });
+
+            if (viewName === 'game') {
+                document.getElementById('playGameBtn').classList.add('active');
+                resetGameDisplay();
+            } else if (viewName === 'leaderboard') {
+                document.getElementById('leaderboardBtn').classList.add('active');
+                if (isDbReady) fetchLeaderboard();
+            } else if (viewName === 'preview') {
+                document.getElementById('playGameBtn').classList.remove('active');
+                document.getElementById('leaderboardBtn').classList.remove('active');
+            }
+        }
+        window.renderView = renderView;
+
+        // --- FIREBASE INITIALIZATION & AUTHENTICATION (Unchanged) ---
+        async function initApp() {
+            try {
+                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Firebase configuration not found.");
+                }
+                
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                    } else {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                    isAuthReady = true;
+                    isDbReady = true;
+                    updateUIState();
+                    // Load the default preview view after auth
+                    renderView('preview'); 
+                });
+
+                document.getElementById('criticalError').classList.add('hidden');
+            } catch (error) {
+                console.error("[CRITICAL ERROR] Failed to initialize Firebase:", error);
+                document.getElementById('criticalError').classList.remove('hidden');
+                document.getElementById('criticalError').textContent = `[CRITICAL ERROR] Initialization failed: ${error.message}`;
+            }
+        }
+
+        // --- WEB3 SIMULATION LOGIC ---
+        function connectWallet() {
+            // This simulates MetaMask connection success
+            if (isWalletConnected) {
+                showMessageModal("Info", `Wallet sudah terhubung. Saldo SOMI: ${somiBalance.toFixed(2)}.`);
+                return;
+            }
+
+            isWalletConnected = true;
+            somiBalance = (Math.random() * 100 + 10).toFixed(2); // Ensure positive balance for display
+            showMessageModal("Koneksi Berhasil!", `Wallet terhubung. Saldo SOMI Anda: ${somiBalance} SOMI.`);
+            updateUIState();
+        }
+        window.connectWallet = connectWallet;
+
+        async function payToPlay() {
+            if (!isWalletConnected) {
+                showMessageModal("Perhatian", "Harap hubungkan Wallet Anda terlebih dahulu.", true);
+                return;
+            }
+            
+            // Simulation of contract call for 0.01 ETH
+            document.getElementById('payToPlayBtn').textContent = "Transaksi sedang diproses...";
+            document.getElementById('payToPlayBtn').disabled = true;
+
+            // REDUCED TO 1 SECOND FOR BETTER SANDBOX EXPERIENCE
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            
+            // Simulate transaction success
+            hasPaidForGame = true;
+            startGame();
+            
+            showMessageModal("Pembayaran Berhasil!", `${COST_TO_PLAY} ETH telah dibayarkan. Kontrol Game sekarang diaktifkan!`);
+            updateUIState();
+        }
+        window.payToPlay = payToPlay;
+
+        // --- GAME LOGIC ---
+        
+        // Helper: Check if a tile is a wall (0)
+        function isWall(x, y) {
+            return map[y] && map[y][x] === 0;
+        }
+
+        // Helper: Check if a tile is an intersection (more than 2 path options)
+        function isIntersection(x, y) {
+            if (isWall(x, y) || map[y][x] === 2) return false;
+            let options = 0;
+            if (!isWall(x + 1, y)) options++;
+            if (!isWall(x - 1, y)) options++;
+            if (!isWall(x, y + 1)) options++;
+            if (!isWall(x, y - 1)) options++;
+            return options > 2;
+        }
+
+        function initializeCanvas() {
+            canvas = document.getElementById('pacmanCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+            
+            // Set canvas size dynamically based on map size
+            canvas.width = originalMap[0].length * tileSize;
+            canvas.height = originalMap.length * tileSize;
+            
+            // Setup keyboard listeners
+            document.removeEventListener('keydown', handleKeyDown);
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // NOTE: Touch/Swipe listeners removed as D-Pad buttons are now the primary mobile input
+        }
+
+        /**
+         * Sets the player's intended direction based on input (D-Pad or Keyboard).
+         * @param {number} newDx - Change in X (1, 0, or -1)
+         * @param {number} newDy - Change in Y (1, 0, or -1)
+         */
+        function setPlayerDirection(newDx, newDy) {
+            if (!gameActive) return;
+            
+            // Set direction only if it's not blocked by a wall immediately
+            const checkX = Math.round(player.x) + newDx;
+            const checkY = Math.round(player.y) + newDy;
+
+            if (map[checkY] && map[checkY][checkX] !== 0) {
+                player.dx = newDx;
+                player.dy = newDy;
+            }
+        }
+        window.setPlayerDirection = setPlayerDirection; // Expose for D-Pad buttons
+        
+        function handleKeyDown(e) {
+            if (!gameActive) return;
+            let newDx = 0, newDy = 0;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': newDy = -1; break;
+                case 'ArrowDown': case 's': newDy = 1; break;
+                case 'ArrowLeft': case 'a': newDx = -1; break;
+                case 'ArrowRight': case 'd': newDx = 1; break;
+                default: return;
+            }
+            e.preventDefault(); 
+            setPlayerDirection(newDx, newDy);
+        }
+
+        function drawMap() {
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    const center = { x: x * tileSize + tileSize / 2, y: y * tileSize + tileSize / 2 };
+                    
+                    if (map[y][x] === 0) {
+                        // Wall (Candy Cane)
+                        ctx.fillStyle = '#ff0000'; 
+                        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+                        ctx.fillStyle = '#ffffff'; 
+                        ctx.fillRect(x * tileSize + 0, y * tileSize, 5, tileSize);
+                        ctx.fillRect(x * tileSize + 10, y * tileSize, 5, tileSize);
+                        
+                    } else if (map[y][x] === 1) {
+                        // Regular Pellet (10 pts)
+                        ctx.fillStyle = '#ffd700'; // Gold Star
+                        ctx.shadowBlur = 4;
+                        ctx.shadowColor = '#ffd700'; 
+                        ctx.fillRect(center.x - 3, center.y - 3, 6, 6);
+                        ctx.shadowBlur = 0; 
+                    } else if (map[y][x] === 3) {
+                         // Power Pellet (100 pts)
+                        ctx.fillStyle = '#ffffff'; // White/Diamond
+                        ctx.shadowBlur = 8;
+                        ctx.shadowColor = '#00FFFF'; // Icy Blue Glow
+                        ctx.beginPath();
+                        ctx.arc(center.x, center.y, 6 + Math.sin(Date.now() / 200) * 1, 0, Math.PI * 2); // Pulsing effect
+                        ctx.fill();
+                        ctx.shadowBlur = 0; 
+                    }
+                }
+            }
+        }
+        
+        function drawPlayer() {
+            const centerX = player.x * tileSize + tileSize / 2;
+            const centerY = player.y * tileSize + tileSize / 2;
+            
+            // 1. Draw PAC-MAN BODY (Yellow/Gold)
+            player.mouthOpen = Math.cos(Date.now() / 100) * 0.15 + 0.15;
+
+            // Determine angle for drawing
+            if (player.dx === 1) player.angle = 0;
+            else if (player.dx === -1) player.angle = Math.PI;
+            else if (player.dy === -1) player.angle = -Math.PI / 2;
+            else if (player.dy === 1) player.angle = Math.PI / 2;
+
+            ctx.fillStyle = player.color; 
+            ctx.beginPath();
+            ctx.arc(
+                centerX, 
+                centerY, 
+                player.radius, 
+                player.angle + player.mouthOpen, 
+                player.angle + 2 * Math.PI - player.mouthOpen
+            );
+            ctx.lineTo(centerX, centerY);
+            ctx.fill();
+
+            // 2. Draw Santa Hat (Topi Santa)
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(player.angle);
+
+            // Red Hat Triangle
+            ctx.fillStyle = '#cc0000'; 
+            ctx.beginPath();
+            ctx.moveTo(player.radius - 2, -player.radius); 
+            ctx.lineTo(player.radius + 8, -player.radius - 8); 
+            ctx.lineTo(player.radius + 5, -player.radius + 2); 
+            ctx.fill();
+
+            // White Pom-Pom
+            ctx.fillStyle = '#ffffff'; 
+            ctx.beginPath();
+            ctx.arc(player.radius + 8, -player.radius - 8, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore(); 
+        }
+
+        function drawGhosts() {
+            const ghostRadius = 8;
+            for (const ghost of ghosts) {
+                const centerX = ghost.x * tileSize + tileSize / 2;
+                const centerY = ghost.y * tileSize + tileSize / 2;
+
+                // Ghost Body Color (Scared or Normal)
+                ctx.fillStyle = powerMode ? (powerModeTimer < 2000 ? (Date.now() % 500 < 250 ? '#0000FF' : '#ffffff') : '#0000FF') : ghost.color;
+                
+                ctx.beginPath();
+                // Top half circle
+                ctx.arc(centerX, centerY, ghostRadius, Math.PI, 0, false);
+                // Bottom skirt (3 waves)
+                ctx.lineTo(centerX + ghostRadius, centerY + ghostRadius);
+                ctx.lineTo(centerX + ghostRadius * 0.5, centerY + ghostRadius * 0.5);
+                ctx.lineTo(centerX, centerY + ghostRadius);
+                ctx.lineTo(centerX - ghostRadius * 0.5, centerY + ghostRadius * 0.5);
+                ctx.lineTo(centerX - ghostRadius, centerY + ghostRadius);
+                ctx.lineTo(centerX - ghostRadius, centerY);
+                ctx.fill();
+
+                // Eyes
+                const eyeColor = powerMode ? '#ffffff' : '#ffffff';
+                ctx.fillStyle = eyeColor;
+                ctx.beginPath();
+                ctx.arc(centerX - 3, centerY - 3, 2, 0, Math.PI * 2);
+                ctx.arc(centerX + 3, centerY - 3, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Pupils (Scared Ghost only has white eyes)
+                if (!powerMode) {
+                    const pupilColor = '#000000';
+                    ctx.fillStyle = pupilColor;
+                    ctx.beginPath();
+                    // Simple pupil looking forward
+                    ctx.arc(centerX - 3, centerY - 3, 1, 0, Math.PI * 2);
+                    ctx.arc(centerX + 3, centerY - 3, 1, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+            }
+        }
+
+        function moveGhosts() {
+            const speed = powerMode ? 0.5 : 1; // Slower when scared
+            
+            for (const ghost of ghosts) {
+                // Determine new direction (simple aggressive AI)
+                const targetX = player.x;
+                const targetY = player.y;
+
+                if (isIntersection(ghost.x, ghost.y)) {
+                    let bestDirX = ghost.dx;
+                    let bestDirY = ghost.dy;
+                    let minDistance = Infinity;
+
+                    const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                    
+                    for (const [newDx, newDy] of directions) {
+                        const nextX = ghost.x + newDx;
+                        const nextY = ghost.y + newDy;
+                        
+                        // Prevent 180-degree turn
+                        if (newDx === -ghost.dx && newDy === -ghost.dy) continue;
+                        
+                        // Check if path is open
+                        if (!isWall(nextX, nextY)) {
+                            // Calculate Manhattan distance to player
+                            const distance = Math.abs(targetX - nextX) + Math.abs(targetY - nextY);
+
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                bestDirX = newDx;
+                                bestDirY = newDy;
+                            }
+                        }
+                    }
+                    ghost.dx = bestDirX;
+                    ghost.dy = bestDirY;
+                }
+
+                // Move the ghost
+                const nextX = ghost.x + ghost.dx * speed;
+                const nextY = ghost.y + ghost.dy * speed;
+
+                if (!isWall(Math.round(nextX), Math.round(nextY))) {
+                    ghost.x = nextX;
+                    ghost.y = nextY;
+                } else {
+                    // Blocked, change direction randomly at the wall
+                    const directions = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                    let newDir = directions[Math.floor(Math.random() * directions.length)];
+                    ghost.dx = newDir[0];
+                    ghost.dy = newDir[1];
+                }
+            }
+        }
+
+        function checkCollisions() {
+            for (let i = 0; i < ghosts.length; i++) {
+                const ghost = ghosts[i];
+                
+                // Use a simple distance check between player and ghost center points
+                const dist = Math.sqrt(Math.pow(player.x - ghost.x, 2) + Math.pow(player.y - ghost.y, 2));
+                
+                if (dist < 1.0) { // Collision threshold (1 tile size)
+                    if (powerMode) {
+                        // EAT GHOST!
+                        currentScore += 200;
+                        document.getElementById('gameScoreDisplay').textContent = currentScore.toLocaleString();
+                        
+                        // Reset ghost to start position
+                        ghosts[i] = { 
+                            ...GHOST_START_POSITIONS[i], 
+                            x: GHOST_START_POSITIONS[i].x, 
+                            y: GHOST_START_POSITIONS[i].y 
+                        };
+                    } else {
+                        // GAME OVER!
+                        endGame(false);
+                        return; 
+                    }
+                }
+            }
+        }
+
+        function updateGame() {
+            if (!gameActive) return;
+
+            // --- Player Movement ---
+            // Only move if the next tile is not a wall. Player x/y is continuously updated.
+            const targetX = player.x + player.dx * 0.1;
+            const targetY = player.y + player.dy * 0.1;
+
+            const nextGridX = Math.round(targetX);
+            const nextGridY = Math.round(targetY);
+
+            // Check if the intended next grid position is a wall
+            if (map[nextGridY] && map[nextGridY][nextGridX] !== 0) {
+                player.x = targetX;
+                player.y = targetY;
+            } else {
+                // If blocked, try to snap to the grid center of the current cell
+                player.x = player.x + player.dx * 0.1; 
+                player.y = player.y + player.dy * 0.1;
+                
+                // If we hit the wall, stop movement in that direction
+                if (isWall(Math.round(player.x), Math.round(player.y))) {
+                     player.dx = 0;
+                     player.dy = 0;
+                     player.x = Math.round(player.x);
+                     player.y = Math.round(player.y);
+                }
+            }
+
+            // --- Pellet/Power Pellet Collection ---
+            const pelletX = Math.round(player.x);
+            const pelletY = Math.round(player.y);
+
+            if (map[pelletY] && map[pelletY][pelletX]) {
+                const tileType = map[pelletY][pelletX];
+                
+                if (tileType === 1 || tileType === 3) {
+                    map[pelletY][pelletX] = 2; // Mark as collected
+                    pelletsRemaining--;
+
+                    if (tileType === 1) { // Regular Pellet
+                        currentScore += 10;
+                    } else if (tileType === 3) { // Power Pellet
+                        currentScore += 100;
+                        powerMode = true;
+                        powerModeTimer = 8000; // 8 seconds power mode
+                    }
+                    
+                    document.getElementById('gameScoreDisplay').textContent = currentScore.toLocaleString();
+                }
+            }
+            
+            // --- Power Mode Timer ---
+            if (powerMode) {
+                powerModeTimer -= 16; // Approx 60 FPS update time
+                if (powerModeTimer <= 0) {
+                    powerMode = false;
+                    powerModeTimer = 0;
+                }
+            }
+
+            // --- Ghost Update ---
+            moveGhosts();
+            checkCollisions(); // Check collision after player and ghosts move
+
+            // --- Win condition ---
+            if (pelletsRemaining === 0) {
+                endGame(true);
+                return;
+            }
+
+            // Redraw everything
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            drawGhosts();
+            drawPlayer();
+
+            // Loop the game
+            gameLoopId = requestAnimationFrame(updateGame);
+        }
+
+        function showWinOverlay(score) {
+            document.getElementById('winScore').textContent = score.toLocaleString();
+            document.getElementById('winOverlay').classList.remove('hidden');
+        }
+
+        function showGameOverOverlay(score) {
+            document.getElementById('loseScore').textContent = score.toLocaleString();
+            document.getElementById('gameOverOverlay').classList.remove('hidden');
+        }
+        
+        function resetGameDisplay() {
+            // Ensure canvas is initialized when view is set to game
+            if (!canvas) initializeCanvas(); 
+            
+            gameActive = false;
+            currentScore = 0;
+            powerMode = false;
+            powerModeTimer = 0;
+
+            document.getElementById('gameScoreDisplay').textContent = '0';
+            
+            const payBtn = document.getElementById('payToPlayBtn');
+            payBtn.textContent = `Bayar ${COST_TO_PLAY} ETH untuk Mulai`;
+            payBtn.disabled = !isWalletConnected;
+            
+            // Hide all overlays and controls
+            document.getElementById('payToPlayContainer').classList.add('hidden');
+            document.getElementById('winOverlay').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+            
+            // Reset map, player, and ghosts
+            map = originalMap.map(row => [...row]);
+            pelletsRemaining = map.flat().filter(tile => tile === 1 || tile === 3).length;
+            
+            // Reset player position and direction
+            player.x = 1; player.y = 1; player.dx = 0; player.dy = 0;
+            
+            // Reset ghosts
+            ghosts = GHOST_START_POSITIONS.map(g => ({ ...g }));
+
+            if (!hasPaidForGame) {
+                document.getElementById('payToPlayContainer').classList.remove('hidden');
+            } else {
+                // Auto start if paid
+                startGame();
+            }
+            
+            // Draw initial state
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawMap();
+            drawGhosts();
+            drawPlayer();
+
+            updateUIState();
+        }
+        
+        function startGame() {
+            if (!hasPaidForGame || gameActive) return;
+            
+            gameActive = true;
+            document.getElementById('payToPlayContainer').classList.add('hidden');
+            
+            // Start the actual game loop
+            updateGame(); 
+        }
+        
+        function endGame(won = false) {
+            if (gameLoopId) cancelAnimationFrame(gameLoopId);
+            gameActive = false;
+            
+            if (won) {
+                // Apply WIN BONUS: 1000 points
+                currentScore += 1000;
+                // Update display immediately for dramatic effect
+                document.getElementById('gameScoreDisplay').textContent = currentScore.toLocaleString();
+                
+                gameResult.score = currentScore;
+                gameResult.won = true;
+                showWinOverlay(currentScore);
+            } else {
+                gameResult.score = currentScore;
+                gameResult.won = false;
+                showGameOverOverlay(currentScore);
+            }
+            
+            // The score submission is now handled by the overlay's button click
+        }
+
+        async function submitScoreAndReset(score) {
+            if (!isWalletConnected || !currentUserId || !score) {
+                showMessageModal("Gagal Mengirim", "Skor tidak valid atau Wallet tidak terhubung.", true);
+                return;
+            }
+
+            // Hide overlays
+            document.getElementById('winOverlay').classList.add('hidden');
+            document.getElementById('gameOverOverlay').classList.add('hidden');
+
+            // Set button to submitting state
+            const submitBtn = document.getElementById(gameResult.won ? 'winSubmitBtn' : 'loseSubmitBtn');
+            submitBtn.textContent = "Mengirim...";
+            submitBtn.disabled = true;
+
+            showMessageModal("Mengirim Skor", `Skor akhir Anda sebesar ${score.toLocaleString()} sedang dicatat ke Leaderboard...`);
+
+            // --- SIMULATE SMART CONTRACT/API INTERACTION (1 second) ---
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            
+            // Record score to Firestore Leaderboard (Persistence)
+            if (isDbReady) {
+                await saveToFirestoreLeaderboard(score);
+            }
+
+            showMessageModal("Skor Berhasil Dicatat!", `Skor ${score.toLocaleString()} telah ditambahkan ke Leaderboard resmi.`);
+            
+            // Reset game status and show leaderboard
+            hasPaidForGame = false; 
+            updateUIState();
+            renderView('leaderboard'); 
+        }
+        window.submitScoreAndReset = submitScoreAndReset; // Expose to global scope for HTML button
+
+        async function saveToFirestoreLeaderboard(score) {
+            try {
+                // Public data path: /artifacts/{appId}/public/data/leaderboard/{userId}
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', currentUserId);
+                
+                await setDoc(docRef, {
+                    userId: currentUserId,
+                    displayName: currentDisplayName,
+                    score: score,
+                    timestamp: serverTimestamp() 
+                }, { merge: true }); 
+
+            } catch (error) {
+                console.error("Gagal mencatat skor ke Firestore:", error);
+            }
+        }
+
+        // --- LEADERBOARD LOGIC (Unchanged) ---
+        let unsubscribeLeaderboard = null;
+
+        function fetchLeaderboard() {
+            if (!isDbReady) return;
+
+            if (unsubscribeLeaderboard) {
+                unsubscribeLeaderboard(); 
+            }
+            
+            const leaderboardCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            const q = query(
+                leaderboardCollectionRef, 
+                limit(100) 
+            );
+
+            document.getElementById('leaderboardList').innerHTML = '<p class="text-center text-yellow-300">Memuat skor meriah...</p>';
+            
+            unsubscribeLeaderboard = onSnapshot(q, (snapshot) => {
+                const leaderboard = [];
+                snapshot.forEach((doc) => {
+                    leaderboard.push({ ...doc.data(), id: doc.id });
+                });
+                
+                // Sort in memory by score (descending)
+                leaderboard.sort((a, b) => b.score - a.score);
+
+                renderLeaderboard(leaderboard.slice(0, 10)); // Show only top 10
+            }, (error) => {
+                console.error("Gagal mengambil Leaderboard:", error);
+                document.getElementById('leaderboardList').innerHTML = `<p class="text-center text-red-400">Gagal memuat Leaderboard: ${error.message}</p>`;
+            });
+        }
+
+        function renderLeaderboard(data) {
+            const listEl = document.getElementById('leaderboardList');
+            if (data.length === 0) {
+                listEl.innerHTML = '<p class="text-center text-gray-400 mt-4">Belum ada skor yang tercatat. Jadilah yang pertama!</p>';
+                return;
+            }
+            
+            const html = `
+                <table class="min-w-full divide-y divide-gray-700 rounded-xl overflow-hidden">
+                    <thead class="bg-red-900">
+                        <tr class="text-left text-sm font-semibold text-white">
+                            <th class="px-4 py-3">#</th>
+                            <th class="px-4 py-3">ID Pemain</th>
+                            <th class="px-4 py-3 text-right">Skor Tertinggi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-red-900/50">
+                        ${data.map((entry, index) => `
+                            <tr class="${entry.userId === currentUserId ? 'bg-yellow-800 bg-opacity-30 font-bold' : 'hover:bg-red-900'} text-gray-200">
+                                <td class="px-4 py-3 whitespace-nowrap text-sm">${index + 1}</td>
+                                <td class="px-4 py-3 text-sm">
+                                    <span class="text-white">${entry.displayName || 'Anonim'}</span> 
+                                    <span class="text-xs text-gray-500 block">${entry.userId}</span>
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-yellow-300 font-extrabold">${entry.score.toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            listEl.innerHTML = html;
+        }
+
+        // --- UI STATE UPDATE GLOBAL (Unchanged) ---
+        function updateUIState() {
+            // Sidebar: Wallet Status
+            const walletStatusEl = document.getElementById('walletStatus');
+            const connectBtn = document.getElementById('connectWalletBtn');
+            
+            if (isWalletConnected) {
+                walletStatusEl.innerHTML = `<span class="text-green-400 font-bold">Terhubung</span> | ${somiBalance} $SOMI`;
+                connectBtn.classList.add('active');
+            } else {
+                walletStatusEl.innerHTML = `<span class="text-red-400">Terputus</span> | 0 $SOMI`;
+                connectBtn.classList.remove('active');
+            }
+            
+            // Sidebar: User ID
+            const userIdEl = document.getElementById('currentUserIdDisplay');
+            if (userIdEl) {
+                 userIdEl.textContent = `User ID: ${currentUserId || 'N/A'}`;
+            }
+
+            // Game View: Pay Button State
+            const payBtn = document.getElementById('payToPlayBtn');
+            if (payBtn) {
+                payBtn.disabled = !isWalletConnected;
+            }
+        }
+
+        // Run app initialization when the window loads
+        window.onload = initApp;
+
+    </script>
+</head>
+<body class="antialiased">
+
+    <!-- SNOW EFFECT INTEGRATION - DENSITY INCREASED -->
+    <script>
+        for(let i=0;i<100;i++){ 
+            const snow=document.createElement("div");
+            snow.className="snow";
+            snow.style.left=Math.random()*100+"vw";
+            snow.style.animationDuration=(Math.random()*5+5)+"s";
+            snow.style.animationDelay=(Math.random()*5)+"s";
+            snow.style.width = snow.style.height = (Math.random() * 5 + 3) + "px"; 
+            snow.style.opacity=Math.random() * 0.8 + 0.4; 
+            document.body.appendChild(snow);
+        }
+    </script>
+    <!-- END SNOW EFFECT -->
+
+    <!-- CRITICAL ERROR BANNER -->
+    <div id="criticalError" class="hidden fixed top-0 left-0 right-0 p-3 bg-red-700 text-white text-center font-bold z-50">
+        [CRITICAL ERROR] Failed to connect to Firebase services.
+    </div>
+    
+    <div id="container">
+        <!-- === LEFT SIDEBAR (FIXED) === -->
+        <nav class="sidebar z-20">
+            
+            <!-- App Title / Logo - HANYA MENAMPILKAN ID USER UNTUK MENGHEMAT RUANG -->
+            <div class="p-2 border-b-2 border-yellow-300 mb-4">
+                <p class="text-base font-extrabold text-red-500 font-[Mountains of Christmas]">MENU AKUN</p>
+                <p class="text-xs text-gray-400 mt-1" id="currentUserIdDisplay">User ID: Memuat...</p>
+            </div>
+
+            <!-- Wallet Status -->
+            <button id="connectWalletBtn" onclick="connectWallet()" class="nav-btn bg-green-800 hover:bg-green-700">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5M7 12h4m-4 0v-4m12-5v.01"/></svg>
+                Hubungkan Wallet
+            </button>
+            <div id="walletStatus" class="text-xs text-gray-300 text-center mb-4">Terputus | 0 $SOMI</div>
+            
+            <hr class="border-red-600 my-4">
+
+            <!-- Navigation Buttons -->
+            <button id="playGameBtn" onclick="renderView('game')" class="nav-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Main Game
+            </button>
+            
+            <button id="leaderboardBtn" onclick="renderView('leaderboard')" class="nav-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"></path></svg>
+                Papan Peringkat
+            </button>
+
+            <!-- Footer -->
+            <footer class="mt-auto pt-4 text-xs text-red-300 text-center border-t border-red-600/50">
+                Dibuat oleh: @ifunkkalem
+            </footer>
+        </nav>
+        
+        <!-- === RIGHT MAIN CONTENT (DYNAMIC) === -->
+        <main class="main-content">
+            
+            <!-- JUDUL UTAMA - DITARUH DI SINI SESUAI PERMINTAAN -->
+            <h2 class="text-5xl font-black mb-4 text-yellow-300 font-[Mountains of Christmas] text-center">
+                🎄 SOMNIA CHRISTMAS CARNIVAL 🎁
+            </h2>
+
+            <!-- 1. DEFAULT/PREVIEW VIEW -->
+            <div id="previewView" class="view-section">
+                <div class="bg-red-800 bg-opacity-70 p-8 rounded-2xl shadow-xl border border-yellow-300">
+                    <div class="flex flex-col md:flex-row items-center">
+                        <div class="md:w-1/2">
+                            <h3 class="text-3xl font-extrabold text-white mb-4">
+                                Selamat Datang, Pengelana Natal!
+                            </h3>
+                            <p class="text-gray-200 mb-4">
+                                Edisi Pac-Man meriah ini memungkinkan Anda bersaing dan mencatat skor tinggi Anda ke Papan Peringkat dengan membayar biaya kecil **0.01 ETH** per sesi.
+                            </p>
+                            <p class="font-bold text-yellow-300">
+                                Hubungkan wallet Anda untuk memulai Misi Natal Anda!
+                            </p>
+                        </div>
+                        <div class="md:w-1/2 flex justify-center mt-6 md:mt-0">
+                            <!-- Christmas Pac-Man SVG Icon -->
+                            <svg class="w-28 h-28 text-yellow-300 animate-pulse" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M50 0 A50 50 0 0 1 85.355 14.645 L50 50 Z M50 0 A50 50 0 0 0 14.645 14.645 L50 50 Z" fill="currentColor"/>
+                                <circle cx="50" cy="50" r="50" fill="currentColor" mask="url(#pacmask)" />
+                                <path d="M50 50 L 78.88 78.88 L 50 50 L 78.88 21.12 L 50 50 Z" fill="#123e2d" transform="rotate(270 50 50)"/>
+                                <polygon points="50,15 70,35 75,30 65,5" fill="#FF0000" stroke="#FFFFFF" stroke-width="2"/>
+                                <circle cx="65" cy="5" r="4" fill="#FFFFFF"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. GAME VIEW -->
+            <div id="gameView" class="view-section hidden">
+                <h3 class="text-3xl font-bold text-white mb-2">Zona Game Misi Natal</h3>
+
+                <!-- Game Canvas Area -->
+                <div class="game-canvas-area w-full flex items-center justify-center rounded-xl relative">
+                    <!-- HTML Canvas element for the game -->
+                    <canvas id="pacmanCanvas" class="w-full h-full"></canvas>
+
+                    <!-- Overlay Pay to Play -->
+                    <div id="payToPlayContainer" class="absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center space-y-6 rounded-xl game-overlay">
+                        <p class="text-2xl font-bold text-red-400">BAYAR UNTUK MENGAKTIFKAN KONTROL</p>
+                        <p class="text-lg text-gray-300">Bayar <span class="text-yellow-400 font-bold">${COST_TO_PLAY} ETH</span> untuk memulai sesi Anda.</p>
+                        <button id="payToPlayBtn" onclick="payToPlay()" class="bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-8 rounded-full shadow-lg transition duration-300 disabled:opacity-50">
+                            Bayar ${COST_TO_PLAY} ETH untuk Mulai
+                        </button>
+                    </div>
+
+                    <!-- GAME OVER OVERLAY -->
+                    <div id="gameOverOverlay" class="absolute inset-0 bg-[#0d3625] bg-opacity-95 flex flex-col items-center justify-center space-y-6 hidden game-overlay border-8 border-red-500 rounded-xl">
+                        <p class="text-6xl font-extrabold text-red-400 lose-message tracking-wider">GAME OVER</p>
+                        <p class="text-3xl text-white font-bold mb-4">MERRY DEFEAT!</p>
+                        <p class="text-2xl text-yellow-300">Skor Akhir Anda: <span id="loseScore" class="font-extrabold">0</span></p>
+                        <button id="loseSubmitBtn" onclick="submitScoreAndReset(gameResult.score)" class="bg-red-700 hover:bg-red-800 text-white font-extrabold py-3 px-8 rounded-full shadow-lg transition duration-300">
+                            KIRIM SKOR & KE PAPAN PERINGKAT
+                        </button>
+                        <button onclick="resetGameDisplay()" class="text-gray-300 underline mt-4">Main Lagi (Sesi Baru)</button>
+                    </div>
+
+                    <!-- WIN OVERLAY -->
+                    <div id="winOverlay" class="absolute inset-0 bg-red-900 bg-opacity-95 flex flex-col items-center justify-center space-y-6 hidden game-overlay border-8 border-yellow-300 rounded-xl">
+                        <p class="text-6xl font-extrabold text-yellow-300 win-message tracking-wider">YOU WON!</p>
+                        <p class="text-3xl text-white font-bold">A MERRY CHRISTMAS QUEST COMPLETED!</p>
+                        <div class="text-center p-4 bg-red-800 rounded-xl">
+                            <p class="text-lg text-gray-300">Skor Total (Termasuk Bonus 1000 Poin):</p>
+                            <p class="text-4xl text-green-400 font-extrabold"><span id="winScore">0</span></p>
+                        </div>
+                        <button id="winSubmitBtn" onclick="submitScoreAndReset(gameResult.score)" class="bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-8 rounded-full shadow-lg transition duration-300">
+                            KIRIM SKOR KEMENANGAN!
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Game Info & Controls -->
+                <div class="flex flex-col md:flex-row justify-between items-center bg-gray-800 p-4 mt-4 rounded-xl shadow-inner border border-red-600">
+                    <div>
+                        <p class="text-lg font-semibold text-gray-400">Skor Saat Ini:</p>
+                        <p id="gameScoreDisplay" class="text-4xl font-extrabold text-green-400">0</p>
+                    </div>
+
+                    <!-- MOBILE D-PAD CONTROLS - SEKARANG SELALU TERLIHAT -->
+                    <div id="game-controls" class="flex flex-col items-center p-2 rounded-xl bg-gray-900/50 mt-4 md:mt-0">
+                        <p class="text-xs text-yellow-300 mb-1">Kontrol Sentuh / Keyboard (W,A,S,D atau Panah)</p>
+                        <div class="grid grid-cols-3 gap-1">
+                            <div></div>
+                            <button class="dpad-button" ontouchstart="setPlayerDirection(0, -1); event.preventDefault();" onclick="setPlayerDirection(0, -1); event.preventDefault();">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m-7 7l7-7 7 7"/></svg>
+                            </button>
+                            <div></div>
+                            <button class="dpad-button" ontouchstart="setPlayerDirection(-1, 0); event.preventDefault();" onclick="setPlayerDirection(-1, 0); event.preventDefault();">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M5 12l7-7M5 12l7 7"/></svg>
+                            </button>
+                            <div class="w-12 h-12"></div> <!-- Center spacer -->
+                            <button class="dpad-button" ontouchstart="setPlayerDirection(1, 0); event.preventDefault();" onclick="setPlayerDirection(1, 0); event.preventDefault();">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m14 0l-7-7m7 7l-7 7"/></svg>
+                            </button>
+                            <div></div>
+                            <button class="dpad-button" ontouchstart="setPlayerDirection(0, 1); event.preventDefault();" onclick="setPlayerDirection(0, 1); event.preventDefault();">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m7-7l-7 7-7-7"/></svg>
+                            </button>
+                            <div></div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- 3. LEADERBOARD VIEW -->
+            <div id="leaderboardView" class="view-section hidden">
+                <h3 class="text-3xl font-bold text-white mb-4">Top 10 Papan Peringkat (Real-time)</h3>
+                
+                <div id="leaderboardList" class="bg-gray-900 p-4 rounded-xl shadow-lg border border-red-600">
+                    <p class="text-center text-gray-400">Memuat data...</p>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MESSAGE MODAL (Custom Alert Box) -->
+    <div id="messageModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="modal-card bg-white p-6 rounded-2xl w-full max-w-sm border-4 border-green-500 shadow-2xl">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-3 text-gray-900">Judul</h3>
+            <p id="modalBody" class="text-gray-700 mb-6"></p>
+            <button onclick="hideMessageModal()" class="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition duration-150">
+                TUTUP
+            </button>
+        </div>
+    </div>
+
+</body>
+</html>
+
