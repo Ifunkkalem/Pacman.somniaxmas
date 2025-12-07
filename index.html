@@ -1,220 +1,256 @@
-<!<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>SOMNIA CHRISTMAS CARNIVAL 🎅</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Somnia Christmas — Pacman (Parent)</title>
 
-<script src="https://cdn.ethers.io/lib/ethers-5.umd.min.js"></script>
-
-</head>
-<body>
-
-<script src="app.js" defer></script>
-
-
-</body>
-</html>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 
 <style>
-/* --- TATA LETAK UTAMA --- */
-html, body {
-    height: 100%; margin: 0; 
-    /* WARNA LATAR BELAKANG DENGAN GRADIENT NATAL */
-    background: radial-gradient(circle at top, #8b0000 0%, #440000 70%, #000000 100%);
-    font-family: Arial, sans-serif; color: #fff;
-    display: flex; flex-direction: column; align-items: center;
-    overflow-x: hidden;
-    position: relative; 
-}
-h1 { 
-    color: #ff0000; margin: 10px 0; 
-    text-shadow: 0 0 8px #ffcccc, 0 0 15px #ffffff; 
-}
-.label { font-size: 12px; color: #aaa; margin-top: 5px; }
-#gameMessage { color: #facc15; font-weight: bold; padding: 5px; background: rgba(0,0,0,0.5); border-radius: 4px; display: block; margin-bottom: 10px;}
+/* --- STYLING UTAMA --- */
+*{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS, sans-serif}
+body{height:100vh;background:linear-gradient(to right,#fff,#ff0000);color:#fff;overflow:hidden}
+#wrap{display:flex;height:100%;width:100%}
+#sidebar{width:160px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px}
+#main{flex:1;padding:10px;position:relative;display:flex;flex-direction:column;align-items:center;background:linear-gradient(to bottom,#ff0000,#800000)}
+button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff;cursor:pointer;font-weight:bold}
+#title{color:#00ffae;font-size:26px;text-shadow:0 0 0px #ff0;margin-bottom:12px}
+.footer{position:absolute;bottom:8px;color:#0ff;text-shadow:0 0 8px #0ff}
 
-#main-container {
-    display: flex; 
-    max-width: 1000px; 
-    width: 100%; 
-    flex-grow: 1; 
-    margin-top: 10px;
-}
-
-/* --- SIDEBAR KIRI (KONTROL) --- */
-#sidebar {
-    width: 250px; 
-    padding: 10px; flex-shrink: 0;
-    background: rgba(68, 0, 0, 0.9); /* Sedikit Transparan */
-    border-radius: 8px;
-    box-shadow: 0 0 15px #00ff00, inset 0 0 8px #ff0000; /* Shadow Merah & Hijau */
-    display: flex; flex-direction: column;
-}
-.control-group { 
-    margin-bottom: 15px; padding: 10px; 
-    border: 1px dashed #00ff00; /* Border Hijau */
-    border-radius: 6px; 
-}
-button {
-    width: 100%; padding: 12px; margin-bottom: 8px;
-    font-size: 16px; border: none; border-radius: 8px;
-    cursor: pointer; font-weight: bold;
-    transition: background-color 0.2s;
-}
-#connectWalletBtn { background: #16a34a; color: white; }
-#playBtn { background: #fbbf24; color: #000; display: none; }
-#leaderboardBtn { background: #ef4444; color: white; }
-
-/* --- AREA GAME/LEADERBOARD --- */
-#game-area {
-    flex-grow: 1; padding: 0 10px;
-    display: flex; flex-direction: column; align-items: center;
-}
-.game-iframe, #leaderboardFrame {
-    width: 100%; 
-    height: 100%; 
-    border: none;
-    background: rgba(0, 0, 0, 0.7); /* Latar belakang semi transparan */
-    min-height: 450px; 
-    border-radius: 8px;
-    box-shadow: 0 0 15px #00ff00;
-}
-#leaderboardFrame { display: none; }
-
-/* --- D-PAD VIRTUAL (SALIB STYLE) --- */
-#mobile-controls {
-    display: flex; justify-content: center; margin-top: 15px;
-    margin-bottom: 20px;
-}
-#dpad-container-cross {
-    display: flex;
-    flex-direction: column;
+/* --- Area Tampilan Utama (Image/Iframe) --- */
+.content-area{
+    width: 100%;
+    flex: 1;
+    display: flex; /* Memungkinkan konten di tengah */
+    justify-content: center;
     align-items: center;
-    width: 180px; 
+    background: rgba(0,0,0,0.2); /* Sedikit transparansi */
+    border-radius: 8px;
+    max-height: 80vh;
 }
-.dpad-btn {
-    width: 55px; height: 55px; padding: 0; margin: 3px 0;
-    font-size: 24px; border-radius: 10px; 
-    background: #ef4444; color: white;
-    border: 3px solid #ffcccc;
-    box-shadow: 0 4px #8b0000;
-    transition: background-color 0.1s, box-shadow 0.1s;
+iframe{
+    width:100%;
+    height:100%;
+    border-radius:8px;
+    border:0;
+    display:none; /* Kontrol display melalui JS */
 }
-.row-center {
-    display: flex;
-    width: 100%; 
-    justify-content: space-between;
-}
-.center-filler {
-    width: 55px; height: 55px; margin: 3px 0;
-    visibility: hidden; 
-}
-.dpad-btn:active {
-    background: #8b0000;
-    box-shadow: 0 0px #8b0000;
-    transform: translateY(4px);
+#logoPlaceholder img {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
 }
 
-/* --- EFEK SALJU --- */
-.snow {
-  position: absolute;
-  top: -10px;
-  color: white;
-  font-size: 14px;
-  opacity: 0.8;
-  animation: fall linear forwards;
-  pointer-events: none; 
-  z-index: 10;
-}
-@keyframes fall {
-  to { transform: translateY(105vh); }
-}
-
-/* --- RESPONSIVITAS MOBILE --- */
-@media (max-width: 768px) {
-    #main-container { 
-        flex-direction: column; 
-        padding: 0 10px; 
-    }
-    #sidebar { 
-        width: 100%; 
-        margin-bottom: 15px; 
-        box-sizing: border-box; 
-    }
-    #game-area { 
-        padding: 0; 
-        width: 100%; 
-    }
-    .game-iframe, #leaderboardFrame { 
-        min-height: 400px; 
-    }
-    #dpad-container-cross { margin: 10px auto; }
-}
+/* --- Info Wallet dan Salju --- */
+#walletAddr{word-break:break-all;font-size:12px;color:#000}
+#walletBal{font-size:12px;color:#000}
+.snow{position:absolute;top:-20px;width:8px;height:8px;border-radius:50%;background:#fff;opacity:.85;animation:snowFall linear infinite}
+@keyframes snowFall{from{transform:translateY(0)}to{transform:translateY(120vh)}}
 </style>
 </head>
 <body>
+<div id="wrap">
+  <div id="sidebar">
+    <button id="btnConnect">Connect Wallet</button>
+    <div id="walletAddr">Wallet: -</div>
+    <div id="walletBal">SOMI: -</div>
+    <button id="btnPlay">Play Game</button>
+    <button id="btnLeaderboard">Leaderboard</button>
+  </div>
 
-<h1>SOMNIA CHRISTMAS CARNIVAL 🎅</h1>
-
-<div id="main-container">
-    <div id="sidebar">
-        <div class="control-group">
-            <button id="connectWalletBtn">Connect Wallet</button>
-            <div class="label">Wallet: <span id="walletDisplay">Disconnected</span></div>
-            <div class="label">Balance: <span id="walletBalance">0.00</span> SOMI</div>
-        </div>
-
-        <div class="control-group">
-            <button id="playBtn" onclick="payToPlay()">PLAY (Pay Fee)</button>
-            <button id="leaderboardBtn" onclick="loadLeaderboardFrame()">Leaderboard</button>
-            <div class="label">Fee: <span id="feeDisplay">...</span> SOMI</div>
-            <div class="label" id="gameMessage">Hubungkan Wallet untuk memulai.</div>
-        </div>
-        
-        <div id="mobile-controls">
-            <div id="dpad-container-cross">
-                <button data-direction="up" class="dpad-btn up">⬆️</button>
-
-                <div class="row-center">
-                    <button data-direction="left" class="dpad-btn left">⬅️</button>
-                    <div class="center-filler"></div>
-                    <button data-direction="right" class="dpad-btn right">➡️</button>
-                </div>
-                
-                <button data-direction="down" class="dpad-btn down">⬇️</button>
-            </div>
-        </div>
-        
+  <div id="main">
+    <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
+    
+    <div id="topScoreSummary" style="color: #fff; padding: 10px; margin-bottom: 15px; border-radius: 6px; background: rgba(0, 0, 0, 0.4); width: 80%; text-align: center;">
+        💰 **Jackpot Pool Saat Ini:** <span id="poolValue">0.00 SOMI</span> | 🏆 **High Score Global:** <span id="topScoreValue">0</span>
     </div>
 
-    <div id="game-area">
-        <iframe id="gameFrame" class="game-iframe" src="pacman/pacman_natal.html" allow="autoplay; encrypted-media" style="display: none;"></iframe>
-        
-        <iframe id="leaderboardFrame" src="leaderboard.html"></iframe>
+    <div class="content-area">
+        <div id="logoPlaceholder" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+            <img src="assets/logo.png" alt="Somnia Christmas Logo"> 
+        </div>
+
+        <iframe id="gameFrame" src="pacman_game.html" title="Pacman Game"></iframe>
+        <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
     </div>
+
+    <div class="footer">created by: ifunkkalem | @Ifunkkalem91</div>
+  </div>
 </div>
 
-<script src="app.js"></script>
-
 <script>
-    // JS untuk membuat efek salju secara berkala
-    setInterval(()=>{
-      // Hanya buat salju jika layar tidak terlalu kecil 
-      if(window.innerWidth > 500) { 
-          const s = document.createElement('div');
-          s.className = 'snow';
-          s.innerText = '❅'; 
-          s.style.left = (Math.random() * 100) + 'vw';
-          s.style.fontSize = (10 + Math.random() * 10) + 'px';
-          s.style.animationDuration = (5 + Math.random() * 8) + 's';
-          s.style.animationDelay = (Math.random() * -5) + 's';
-          document.body.appendChild(s);
-          
-          setTimeout(() => s.remove(), 15000);
-      }
-    }, 200); 
+for(let i=0;i<40;i++){
+  const s=document.createElement('div');
+  s.className='snow';
+  s.style.left = Math.random()*100+'vw';
+  s.style.animationDuration = (Math.random()*6+4)+'s';
+  s.style.opacity = Math.random();
+  document.body.appendChild(s);
+}
 </script>
 
+<script>
+// ========== CONFIG (Web3) ==========
+const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365"; 
+const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"}],"name":"GameStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"score","type":"uint256"}],"name":"ScoreSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdraw","type":"event"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"allPlayers","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxScorePerSubmit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"players","outputs":[{"internalType":"uint256","name":"totalScore","type":"uint256"},{"internalType":"uint256","name":"lastPlayed","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startFeeWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startGame","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"score","type":"uint256"}],"name":"submitScore","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+
+// ========== ELEMENTS ==========
+const btnConnect = document.getElementById('btnConnect');
+const btnPlay = document.getElementById('btnPlay');
+const btnLeaderboard = document.getElementById('btnLeaderboard');
+const walletAddrEl = document.getElementById('walletAddr');
+const walletBalEl = document.getElementById('walletBal');
+const gameFrame = document.getElementById('gameFrame');
+const leaderFrame = document.getElementById('leaderFrame');
+const logoPlaceholder = document.getElementById('logoPlaceholder'); // Elemen baru
+
+let provider, signer, userAddress, gameContract, startFeeWei;
+
+// Utility: show minimal alert
+function info(msg){ console.log(msg); alert(msg); }
+
+// FUNGSI BARU: Mengatur tampilan utama (Logo, Game, Leaderboard)
+function showMainContent(contentId) {
+    // Sembunyikan semua
+    logoPlaceholder.style.display = 'none';
+    gameFrame.style.display = 'none';
+    leaderFrame.style.display = 'none';
+
+    // Tampilkan yang diminta
+    document.getElementById(contentId).style.display = 'flex'; // Menggunakan flex untuk logo, block untuk iframe
+    if (contentId === 'gameFrame' || contentId === 'leaderFrame') {
+        document.getElementById(contentId).style.display = 'block';
+    }
+}
+
+// FUNGSI BARU: Update Jackpot Pool dan Top Score
+async function updateSummaryData() {
+    // 1. Ambil Top Score Global
+    try {
+        const [topPlayers, scores] = await gameContract.getTop10();
+        if (scores.length > 0) {
+            document.getElementById('topScoreValue').innerText = scores[0].toString();
+        } else {
+             document.getElementById('topScoreValue').innerText = 'N/A';
+        }
+    } catch (e) {
+        console.warn("Gagal mengambil Top Score:", e);
+        document.getElementById('topScoreValue').innerText = '0 (Error)';
+    }
+    
+    // 2. Ambil Jackpot Pool (Asumsi: Kontrak itu sendiri yang menahan dana)
+    try {
+        if (provider) {
+             const poolWei = await provider.getBalance(CONTRACT_ADDRESS);
+             const poolEth = ethers.utils.formatEther(poolWei);
+             document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; // Potong untuk tampilan rapi
+        }
+    } catch (e) {
+        console.warn("Gagal mengambil Pool Value:", e);
+        document.getElementById('poolValue').innerText = '0.00 SOMI';
+    }
+}
+
+// ========== CONNECT WALLET ==========
+btnConnect.addEventListener('click', async () => {
+  if(typeof ethers === 'undefined'){ alert("Eror: Library Ethers.js tidak terdefinisi."); return; }
+  if(!window.ethereum){ alert("No wallet found."); return; }
+  try{
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    walletAddrEl.innerText = "Wallet: " + userAddress.substring(0, 6) + '...' + userAddress.substring(userAddress.length - 4);
+    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    const balWei = await provider.getBalance(userAddress);
+    walletBalEl.innerText = `${ethers.utils.formatEther(balWei)} SOMI`;
+
+    try {
+      startFeeWei = await gameContract.startFeeWei();
+      const feeDisplay = ethers.utils.formatEther(startFeeWei);
+      info(`Wallet connected. Fee: ${feeDisplay} SOMI`);
+    } catch(e){
+      startFeeWei = ethers.utils.parseEther("0.01"); 
+      info("Wallet connected. Fee fallback to 0.01 SOMI");
+    }
+    await updateSummaryData(); // Update data summary setelah connect
+  }catch(err){
+    console.error(err);
+    alert("Connect failed: " + (err && err.message ? err.message : String(err)));
+  }
+});
+
+// ========== PLAY (pay-to-play via contract.startGame) ==========
+btnPlay.addEventListener('click', async () => {
+  if(!signer || !userAddress){ alert("Please connect wallet first."); return; }
+  try{
+    const balWei = await provider.getBalance(userAddress);
+    if(!startFeeWei) startFeeWei = ethers.utils.parseEther("0.01"); 
+    if(balWei.lt(startFeeWei)){ alert("Insufficient SOMI native balance to pay start fee."); return; }
+
+    const tx = await gameContract.startGame({ value: startFeeWei });
+    info("Transaction sent: " + tx.hash);
+    await tx.wait();
+    info("Payment confirmed — game started on-chain.");
+
+    gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+    showMainContent('gameFrame'); // Tampilkan game
+    await updateSummaryData(); // Update pool setelah game dimulai
+  }catch(err){
+    console.error("startGame error", err);
+    if(err.code === 4001) { alert("User rejected the transaction"); } 
+    else { alert("Payment failed: " + (err && err.message ? err.message : String(err))); }
+  }
+});
+
+// ========== LEADERBOARD BUTTON ==========
+btnLeaderboard.addEventListener('click', () => {
+  leaderFrame.src = "leaderboard.html";
+  showMainContent('leaderFrame'); // Tampilkan leaderboard
+});
+
+// ========== MESSAGE FROM IFRAME (submitScore & requestStartFee) ==========
+window.addEventListener("message", async (event) => {
+  const data = event.data;
+  if(!data || typeof data !== 'object') return;
+
+  if(data.type === "submitScore") {
+    if(!signer || !userAddress) { alert("Please connect wallet before submitting score."); return; }
+    try{
+      const score = Number(data.score || 0);
+      if(isNaN(score)) { alert("Invalid score"); return; }
+
+      if(!gameContract) gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      const tx = await gameContract.submitScore(score);
+      console.log("submitScore tx:", tx.hash);
+      await tx.wait();
+      alert("Score submitted on-chain. Thank you!");
+      updateSummaryData(); // Update summary setelah submit
+    }catch(err){
+      console.error("submitScore error", err);
+      alert("Failed to submit score: " + (err && err.message ? err.message : String(err)));
+    }
+  }
+
+  if(data.type === "requestStartFee") {
+    try{
+      if(!gameContract) gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+      const fee = await gameContract.startFeeWei();
+      const feeEth = ethers.utils.formatEther(fee);
+      gameFrame.contentWindow.postMessage({ type: "startFee", feeWei: fee.toString(), feeEth }, "*");
+    }catch(e){ console.warn("error reading fee", e); }
+  }
+});
+
+// ========== INISIALISASI SAAT LOAD ==========
+document.addEventListener('DOMContentLoaded', () => {
+    // Tampilkan logo placeholder saat pertama kali dimuat
+    showMainContent('logoPlaceholder');
+    // Coba update summary data (walaupun mungkin gagal jika belum connect)
+    updateSummaryData(); 
+});
+</script>
 </body>
 </html>
