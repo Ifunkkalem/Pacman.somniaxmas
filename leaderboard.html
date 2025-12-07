@@ -19,48 +19,49 @@
     }
 
     h1 {
-      margin-top: 20px;
+      margin: 14px 0;
       color: #fff;
+      font-size: 20px;
       text-shadow: 0 0 10px red;
     }
 
     .board {
-      margin: 20px auto;
+      margin: 10px auto;
       max-width: 480px;
-      background: rgba(255,255,255,0.92);
+      background: rgba(255,255,255,0.96);
       border-radius: 14px;
-      padding: 16px;
+      padding: 12px;
       box-shadow: 0 0 15px red;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      font-size: 13px;
     }
 
     th {
       background: #dc2626;
       color: white;
-      padding: 8px;
-      font-size: 14px;
+      padding: 7px;
     }
 
     td {
-      padding: 8px;
+      padding: 7px;
       border-bottom: 1px solid #ddd;
-      font-size: 13px;
     }
 
     .status {
-      margin-top: 10px;
-      font-size: 13px;
-      color: #111;
+      margin-top: 6px;
+      font-size: 11px;
+      opacity: 0.8;
     }
 
     .error {
       color: red;
-      margin-top: 10px;
       font-weight: bold;
+      font-size: 12px;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -69,8 +70,8 @@
   <h1>🏆 SOMNIA CHRISTMAS LEADERBOARD</h1>
 
   <div class="board">
-    <div id="leaderboard">Loading blockchain data...</div>
-    <div id="status" class="status"></div>
+    <div id="leaderboard">Loading leaderboard...</div>
+    <div id="status" class="status">Connecting to blockchain...</div>
   </div>
 
   <script>
@@ -89,16 +90,17 @@
       }
     ];
 
-    async function loadLeaderboard() {
-      const box = document.getElementById("leaderboard");
-      const status = document.getElementById("status");
+    let lastCache = "";
 
+    async function loadLeaderboard() {
       try {
-        box.innerHTML = "Loading blockchain data...";
-        status.innerText = "";
+        const board = document.getElementById("leaderboard");
+        const status = document.getElementById("status");
 
         if (!window.ethereum) {
-          throw new Error("Wallet tidak tersedia");
+          board.innerHTML = "<div class='error'>Wallet provider tidak terdeteksi</div>";
+          status.innerText = "No wallet provider";
+          return;
         }
 
         const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -106,10 +108,11 @@
 
         const data = await contract.getTop10();
         const players = data[0];
-        const scores = data[1];
+        const scores  = data[1];
 
-        if (players.length === 0) {
-          box.innerHTML = "Belum ada skor masuk";
+        if (!players.length) {
+          board.innerHTML = "Belum ada skor masuk";
+          status.innerText = "Waiting for first score...";
           return;
         }
 
@@ -134,20 +137,26 @@
         }
 
         html += "</table>";
-        box.innerHTML = html;
-        status.innerText = "✅ Data berhasil dimuat dari blockchain";
+
+        // ✅ ANTI-KEDIP: update hanya jika data berubah
+        if (html !== lastCache) {
+          board.innerHTML = html;
+          lastCache = html;
+          status.innerText = "✅ Leaderboard updated";
+        }
 
       } catch (err) {
         console.error("LEADERBOARD ERROR:", err);
-        box.innerHTML = "<div class='error'>❌ Gagal terhubung ke blockchain</div>";
-        status.innerText = err.message;
+        document.getElementById("leaderboard").innerHTML =
+          "<div class='error'>❌ Gagal membaca data blockchain</div>";
+        document.getElementById("status").innerText = err.message;
       }
     }
 
     // Load pertama
     loadLeaderboard();
 
-    // Auto refresh setiap 10 detik
+    // Auto refresh tiap 10 detik TANPA kedip
     setInterval(loadLeaderboard, 10000);
   </script>
 
