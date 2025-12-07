@@ -1,76 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Leaderboard</title>
+<meta charset="UTF-8">
+<title>Pacman Somnia Leaderboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<!-- ✅ ETHERS v5 STABIL -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
 
 <style>
-body{
-  font-family:Trebuchet MS;
-  background:#0b0b0b;
-  color:#fff;
-  padding:16px
+body {
+  margin: 0;
+  font-family: Trebuchet MS, sans-serif;
+  background: linear-gradient(135deg, #7f0000, #ffffff);
+  color: #000;
+  padding: 20px;
 }
-h2{color:#00ffd5;text-shadow:0 0 10px #00ffd5}
-ul{list-style:none;padding:0}
-li{
-  padding:10px;
-  margin-bottom:8px;
-  border-radius:10px;
-  background:linear-gradient(90deg,#ff0000,#00ff9d);
-  color:#000;
-  font-weight:bold
+h2 {
+  text-align: center;
+  color: #b00000;
+  text-shadow: 0 0 8px #ff0000;
+}
+ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+li {
+  background: linear-gradient(90deg, gold, white);
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  font-weight: bold;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+.error {
+  color: red;
+  text-align: center;
+  font-weight: bold;
 }
 </style>
 </head>
+
 <body>
 
 <h2>🏆 TOP 10 PACMAN SOMNIA</h2>
 <ul id="leaderboard-list">Loading...</ul>
 
 <script>
-(async function(){
-
-  const CONTRACT = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
+(async function () {
+  const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
 
   const ABI = [
-    {"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
-    {"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"}
+    {
+      "inputs": [],
+      "name": "getTop10",
+      "outputs": [
+        { "internalType": "address[]", "name": "topPlayers", "type": "address[]" },
+        { "internalType": "uint256[]", "name": "scores", "type": "uint256[]" }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
   ];
 
+  const list = document.getElementById("leaderboard-list");
+
   try {
-    // ✅ PAKAI RPC READ-ONLY (TIDAK BUTUH WALLET)
-    const RPC = "https://rpc.somnia.network";  // jika nanti kamu punya RPC resmi lain, boleh ganti
-    const provider = new ethers.providers.JsonRpcProvider(RPC);
+    // ✅ RPC READ-ONLY (TIDAK BUTUH WALLET)
+    const RPC_URL = "https://rpc.somnia.network"; 
+    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 
-    const contract = new ethers.Contract(CONTRACT, ABI, provider);
-    const res = await contract.getTop10();
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      ABI,
+      provider
+    );
 
-    const players = res[0];
-    const scores  = res[1];
+    const data = await contract.getTop10();
+    const players = data[0];
+    const scores  = data[1];
 
-    const ul = document.getElementById('leaderboard-list');
-    ul.innerHTML = "";
+    list.innerHTML = "";
 
     if (players.length === 0) {
-      ul.innerHTML = "<li>Belum ada skor</li>";
+      list.innerHTML = "<li>Belum ada skor tersimpan</li>";
       return;
     }
 
     for (let i = 0; i < players.length; i++) {
       const li = document.createElement("li");
       li.textContent = `${i+1}. ${players[i]} — ${scores[i].toString()} PTS`;
-      ul.appendChild(li);
+      list.appendChild(li);
     }
 
-  } catch (e) {
-    console.error("Leaderboard Error:", e);
-    document.getElementById('leaderboard-list').innerHTML = "<li>Gagal memuat leaderboard</li>";
+  } catch (err) {
+    console.error("LEADERBOARD ERROR:", err);
+    list.innerHTML = `<li class="error">Gagal memuat leaderboard</li>`;
   }
-
 })();
 </script>
 
