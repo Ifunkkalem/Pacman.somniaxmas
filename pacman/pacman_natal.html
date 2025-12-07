@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pacman Natal - Final</title>
+<title>Pacman Natal - Final (Fixed)</title>
 <style>
   html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS;overflow:hidden}
   #ui{position:fixed;top:10px;left:10px;color:#fff;z-index:99}
@@ -15,15 +15,12 @@
   .levelBtn{margin:10px;padding:14px 26px;font-size:20px;border-radius:12px;border:none;background:#fbbf24;color:#000;cursor:pointer}
   #countdown{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;font-size:120px;font-weight:bold;color:gold;z-index:300;text-shadow:0 0 30px gold}
   #victoryOverlay{position:fixed;inset:0;background:radial-gradient(circle,#00ffcc33,#000);display:none;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:gold;z-index:400;text-shadow:0 0 20px gold}
-  /* sparkles & shake */
   .coin-sparkle{position:absolute;pointer-events:none;width:10px;height:10px;border-radius:50%;background:gold;opacity:1;animation:sparkle 0.6s forwards;z-index:110}
   @keyframes sparkle{from{transform:scale(1);opacity:1}to{transform:scale(2.8);opacity:0}}
   .shake{animation:shake 0.42s}
   @keyframes shake{0%{transform:translate(2px,1px)}25%{transform:translate(-2px,-3px)}50%{transform:translate(3px,2px)}75%{transform:translate(-2px,2px)}100%{transform:translate(0,0)}}
-  /* snow */
   .snow{position:fixed;top:-10px;color:white;font-size:12px;opacity:0.9;animation:fall linear forwards;z-index:10}
   @keyframes fall{to{transform:translateY(110vh)}}
-  /* responsive tweak */
   @media (min-width:900px){
     canvas{max-width:800px}
     .ctl-btn{width:56px;height:56px}
@@ -66,12 +63,12 @@
 <audio id="sndLose" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-retro-game-over-213.wav"></audio>
 
 <script>
-/* -------------------------
-   FULL GAME + UPGRADES
-   ------------------------- */
+/* ============================
+   Pacman Final (cleaned)
+   ============================ */
 
 /* CONFIG */
-const TILE_SIZE = 20; // keep same characters scale
+const TILE_SIZE = 20;
 const canvas = document.getElementById('pacman-canvas');
 const ctx = canvas.getContext('2d');
 
@@ -100,17 +97,17 @@ const GAME_MAP = [
 const MAP_WIDTH = GAME_MAP[0].length;
 const MAP_HEIGHT = GAME_MAP.length;
 
-/* keep pixel-perfect canvas size */
 canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
-/* GAME STATE */
-let pacman, ghosts, score, gameRunning=false, mapData=[];
-let animationFrameId=null;
-let lastTime=0;
+/* STATE */
+let pacman, ghosts, score, mapData;
+let gameRunning = false;
+let animationFrameId = null;
+let lastTick = 0;
 let GAME_UPDATE_INTERVAL = 150; // default normal
 
-/* RESET & INIT */
+/* INITIAL RESET */
 function resetMapData(){
   mapData = GAME_MAP.map(row=>[...row]);
   score = 0;
@@ -123,30 +120,22 @@ function resetMapData(){
   document.getElementById('current-score-display').textContent = score;
 }
 
-function resetGame(){
-  resetMapData();
-  gameRunning=false;
-  const gm=document.getElementById('game-message'); gm.style.display='none';
-  drawOnce();
-}
-
-/* DRAW */
 function drawMap(){
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
-      const t=mapData[y][x];
-      if(t===1){
-        ctx.fillStyle='#b91c1c';
+      const t = mapData[y][x];
+      if(t === 1){
+        ctx.fillStyle = '#b91c1c';
         ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
-        ctx.strokeStyle='#ffffff'; ctx.lineWidth=1;
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
         ctx.strokeRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
       } else {
-        ctx.fillStyle='#020617';
+        ctx.fillStyle = '#020617';
         ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
-        if(t===2){
-          ctx.fillStyle='#facc15';
+        if(t === 2){
+          ctx.fillStyle = '#facc15';
           ctx.beginPath();
-          ctx.arc(x*TILE_SIZE+TILE_SIZE/2,y*TILE_SIZE+TILE_SIZE/2, Math.max(2, TILE_SIZE/8),0,Math.PI*2);
+          ctx.arc(x*TILE_SIZE + TILE_SIZE/2, y*TILE_SIZE + TILE_SIZE/2, Math.max(2, TILE_SIZE/8), 0, Math.PI*2);
           ctx.fill();
         }
       }
@@ -175,18 +164,14 @@ function drawGhosts(){
     const y = g.y*TILE_SIZE + TILE_SIZE/2;
     ctx.fillStyle = g.color;
     ctx.beginPath();
-    // semicircle head
     ctx.arc(x,y,TILE_SIZE/2,Math.PI,0,false);
-    // body rectangle
     ctx.fillRect(x-TILE_SIZE/2, y, TILE_SIZE, TILE_SIZE/2);
-    // eyes
-    ctx.fillStyle='white';
+    ctx.fillStyle = 'white';
     ctx.beginPath();
     ctx.arc(x - TILE_SIZE/4, y - TILE_SIZE/4, TILE_SIZE/8, 0, Math.PI*2);
     ctx.arc(x + TILE_SIZE/4, y - TILE_SIZE/4, TILE_SIZE/8, 0, Math.PI*2);
     ctx.fill();
-    // pupils
-    ctx.fillStyle='black';
+    ctx.fillStyle = 'black';
     ctx.beginPath();
     ctx.arc(x - TILE_SIZE/4 + 1, y - TILE_SIZE/4, TILE_SIZE/16, 0, Math.PI*2);
     ctx.arc(x + TILE_SIZE/4 + 1, y - TILE_SIZE/4, TILE_SIZE/16, 0, Math.PI*2);
@@ -211,7 +196,6 @@ function movePacman(){
     const cy = pacman.y + (pacman.dir==='down'?1:pacman.dir==='up'?-1:0);
     if(canMove(cx,cy)){ pacman.x = cx; pacman.y = cy; }
   }
-  // teleport horizontally
   if(pacman.x < 0) pacman.x = MAP_WIDTH - 1;
   if(pacman.x >= MAP_WIDTH) pacman.x = 0;
 }
@@ -219,29 +203,39 @@ function movePacman(){
 let ghostMoveSkip = 0;
 function moveGhosts(){
   ghostMoveSkip++;
-  // slow ghosts on easiest frame cadence; overall speed controlled by GAME_UPDATE_INTERVAL
   if(ghostMoveSkip % 2 !== 0) return;
   ghosts.forEach(g=>{
-    const possible=[];
-    const moves=[{dx:1,dy:0,dir:'right'},{dx:-1,dy:0,dir:'left'},{dx:0,dy:1,dir:'down'},{dx:0,dy:-1,dir:'up'}];
+    const possible = [];
+    const moves = [{dx:1,dy:0,dir:'right'},{dx:-1,dy:0,dir:'left'},{dx:0,dy:1,dir:'down'},{dx:0,dy:-1,dir:'up'}];
     moves.forEach(m=>{
-      const nx=g.x+m.dx, ny=g.y+m.dy;
+      const nx = g.x + m.dx, ny = g.y + m.dy;
       if(canMove(nx,ny)) possible.push(m);
     });
-    if(possible.length>0){
-      // bias chasing
+    if(possible.length > 0){
       possible.sort((a,b)=>{
-        const ax = g.x+a.dx-pacman.x, ay=g.y+a.dy-pacman.y;
-        const bx = g.x+b.dx-pacman.x, by=g.y+b.dy-pacman.y;
+        const ax = g.x + a.dx - pacman.x, ay = g.y + a.dy - pacman.y;
+        const bx = g.x + b.dx - pacman.x, by = g.y + b.dy - pacman.y;
         return Math.hypot(ax,ay) - Math.hypot(bx,by);
       });
-      const pick = Math.random() < 0.7 ? possible[0] : possible[Math.floor(Math.random()*possible.length)];
+      const pick = Math.random() < 0.7 ? possible[0] : possible[Math.floor(Math.random() * possible.length)];
       g.x += pick.dx; g.y += pick.dy; g.dir = pick.dir;
     }
   });
 }
 
-/* COLLISIONS & SCORE */
+/* COLLISION & SCORE */
+function spawnSparkle(gridX, gridY){
+  const el = document.createElement('div');
+  el.className = 'coin-sparkle';
+  const rect = canvas.getBoundingClientRect();
+  const left = rect.left + gridX * TILE_SIZE + TILE_SIZE/2 - 5;
+  const top = rect.top + gridY * TILE_SIZE + TILE_SIZE/2 - 5;
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),700);
+}
+
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
@@ -249,25 +243,22 @@ function checkCollision(){
     if(score > 3000) score = 3000;
     document.getElementById('current-score-display').textContent = score;
     spawnSparkle(pacman.x, pacman.y);
-    // coin sound
-    try{ document.getElementById('sndCoin').currentTime=0; document.getElementById('sndCoin').play(); } catch(e){}
+    try{ document.getElementById('sndCoin').currentTime = 0; document.getElementById('sndCoin').play(); } catch(e){}
   }
-  // ghosts collision
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
-      triggerEnd(false); return;
+      endGame(false); return;
     }
   }
-  const dotsRemaining = mapData.flat().filter(c=>c===2).length;
-  if(dotsRemaining === 0) triggerEnd(true);
+  const dotsRemaining = mapData.flat().filter(c => c === 2).length;
+  if(dotsRemaining === 0) endGame(true);
 }
 
-/* END GAME wrapper to allow visual effects and postMessage */
-function triggerEnd(isWin){
+/* END GAME */
+function endGame(isWin){
   if(!gameRunning) return;
-  gameRunning=false;
+  gameRunning = false;
   cancelAnimationFrame(animationFrameId);
-  // shake canvas and show message
   canvas.classList.add('shake');
   setTimeout(()=>canvas.classList.remove('shake'),420);
 
@@ -276,8 +267,16 @@ function triggerEnd(isWin){
   gm.textContent = msg + " Skor: " + score;
   gm.style.display = 'block';
 
-  // victory overlay & sounds handled in endGame hook later
-  // send score to parent for on-chain submit
+  // audio + overlay
+  try{ bgm.pause(); bgm.currentTime = 0; } catch(e){}
+  if(isWin){
+    try{ sndWin.play(); } catch(e){}
+    victoryOverlay.style.display = 'flex';
+    setTimeout(()=>victoryOverlay.style.display='none',3500);
+  } else {
+    try{ sndLose.play(); } catch(e){}
+  }
+
   if(score > 0 || isWin){
     window.parent.postMessage({ type: 'submitScore', score: score }, '*');
   } else {
@@ -285,18 +284,16 @@ function triggerEnd(isWin){
   }
 
   setTimeout(()=>{
-    gm.style.display='none';
+    gm.style.display = 'none';
     window.parent.postMessage({ type: 'showLeaderboard' }, '*');
   }, 4000);
 }
 
 /* GAME LOOP */
-let lastTick=0;
 function gameLoop(timestamp){
   if(!gameRunning) return;
   const dt = timestamp - lastTick;
   lastTick = timestamp;
-  // update only on interval
   if(dt >= GAME_UPDATE_INTERVAL){
     movePacman();
     moveGhosts();
@@ -307,162 +304,71 @@ function gameLoop(timestamp){
   animationFrameId = requestAnimationFrame(gameLoop);
 }
 
-/* DRAW sparkle */
-function spawnSparkle(gridX, gridY){
-  const el=document.createElement('div');
-  el.className='coin-sparkle';
-  // position relative to viewport: compute canvas rect
-  const rect = canvas.getBoundingClientRect();
-  const left = rect.left + gridX * TILE_SIZE + TILE_SIZE/2 - 5; // center minus half sparkle
-  const top  = rect.top + gridY * TILE_SIZE + TILE_SIZE/2 - 5;
-  el.style.left = left + 'px';
-  el.style.top  = top + 'px';
-  document.body.appendChild(el);
-  setTimeout(()=>el.remove(),700);
-}
-
 /* -------------------------
-   Visual & audio hooks
+   Level / Countdown / Start
    ------------------------- */
+const levelPanel = document.getElementById('levelPanel');
+const countdownEl = document.getElementById('countdown');
 const bgm = document.getElementById('bgm');
 const sndCoin = document.getElementById('sndCoin');
 const sndWin = document.getElementById('sndWin');
 const sndLose = document.getElementById('sndLose');
 const victoryOverlay = document.getElementById('victoryOverlay');
 
-/* Hook into triggerEnd to play sounds & overlay */
-const originalTriggerEnd = triggerEnd;
-function endGameHook(isWin){
-  // stop bgm
-  try{ bgm.pause(); bgm.currentTime = 0; } catch(e){}
-  if(isWin){
-    try{ sndWin.play(); }catch(e){}
-    victoryOverlay.style.display='flex';
-    setTimeout(()=>victoryOverlay.style.display='none',3500);
-  } else {
-    try{ sndLose.play(); }catch(e){}
-  }
-  originalTriggerEnd(isWin);
-}
-triggerEnd = endGameHook;
-
-/* -------------------------
-   Level system & countdown
-   ------------------------- */
-const levelPanel = document.getElementById('levelPanel');
-const countdownEl = document.getElementById('countdown');
-
 function setLevel(lvl){
   if(lvl === 'easy') GAME_UPDATE_INTERVAL = 220;
   if(lvl === 'normal') GAME_UPDATE_INTERVAL = 150;
   if(lvl === 'hard') GAME_UPDATE_INTERVAL = 95;
-  levelPanel.style.display='none';
-  // start countdown then game
-  startCountdownThenStart();
+  levelPanel.style.display = 'none';
+  startCountdownAndStart();
 }
 
-function startCountdownAndPlay() {
-  const gm = document.getElementById('game-message');
-  let count = 3;
-
-  gm.style.display = 'block';
-  gm.textContent = count;
-
-  const timer = setInterval(() => {
-    count--;
-
-    if (count > 0) {
-      gm.textContent = count;
-    } else {
-      clearInterval(timer);
-      gm.style.display = 'none';
-
-      // ✅ INI KUNCI AGAR GAME BENAR-BENAR JALAN
-      gameRunning = true;
-      lastTime = performance.now();
-      animationFrameId = requestAnimationFrame(gameLoop);
-    }
-  }, 1000);
-}
-  resetMapData(); // ensure fresh
-  countdownEl.style.display='flex';
+function startCountdownAndStart(){
+  // ensure fresh state
+  resetMapData();
+  countdownEl.style.display = 'flex';
   let n = 3;
   countdownEl.textContent = n;
-  const timer = setInterval(()=>{
+  const t = setInterval(()=>{
     n--;
-    if(n === 0){ countdownEl.textContent = 'GO!'; }
-    else if(n < 0){ clearInterval(timer); countdownEl.style.display='none'; startGameLoop(); }
-    else countdownEl.textContent = n;
+    if(n === 0){
+      countdownEl.textContent = 'GO!';
+    } else if(n < 0){
+      clearInterval(t);
+      countdownEl.style.display = 'none';
+      startGameLoop();
+    } else {
+      countdownEl.textContent = n;
+    }
   },1000);
 }
 
 function startGameLoop(){
-  // start bgm
-  try{ bgm.volume = 0.5; bgm.play(); }catch(e){}
+  try{ bgm.volume = 0.35; bgm.play(); } catch(e){}
   gameRunning = true;
   lastTick = performance.now();
   animationFrameId = requestAnimationFrame(gameLoop);
 }
 
-  function startCountdownAndPlay() {
-  const gm = document.getElementById('game-message');
-  let count = 3;
-
-  gm.style.display = 'block';
-  gm.textContent = count;
-
-  const timer = setInterval(() => {
-    count--;
-
-    if (count > 0) {
-      gm.textContent = count;
-    } 
-    else {
-      clearInterval(timer);
-      gm.style.display = 'none';
-
-      // ✅ INI KUNCI UTAMA YANG TADI HILANG
-      gameRunning = true;
-      lastTime = performance.now();
-      animationFrameId = requestAnimationFrame(gameLoop);
-    }
-  }, 1000);
- }
-
-   function resetGame() {
-  resetMapData();
-
-  score = 0;
-  document.getElementById('current-score-display').textContent = score;
-
-  const gm = document.getElementById('game-message');
-  gm.style.display = 'none';
-
-  // ✅ PAKSA GAME OFF
-  gameRunning = false;
-  cancelAnimationFrame(animationFrameId);
-
-  drawOnce();
-}
 /* -------------------------
    Parent communication (pay + fee)
    ------------------------- */
-window.addEventListener('message', (ev)=>{
-  const d = ev.data || {};
-
-  if (d.type === 'paySuccess') {
-  // ✅ PAKSA STOP GAME SEBELUM MULAI BARU
+function safeResetAndShowLevel(){
+  // stop any running loop
   gameRunning = false;
-  cancelAnimationFrame(animationFrameId);
+  if(animationFrameId) cancelAnimationFrame(animationFrameId);
+  resetMapData();
+  drawOnce();
+  levelPanel.style.display = 'flex';
+}
 
-  // ✅ RESET TOTAL POSISI & SCORE
-  resetGame();
-
-  // ✅ BARU HITUNG MUNDUR
-  startCountdownAndPlay();
+window.addEventListener('message',(ev)=>{
+  const d = ev.data || {};
+  if(d.type === 'paySuccess'){
+    // stop any existing game and show level selection (or start immediately if you prefer)
+    safeResetAndShowLevel();
   }
-
-  if (d.type === 'startFee') {
+  if(d.type === 'startFee'){
     const gm = document.getElementById('game-message');
     gm.textContent = `Fee to start: ${d.feeEth} SOMI`;
     gm.style.display = 'block';
@@ -470,11 +376,11 @@ window.addEventListener('message', (ev)=>{
   }
 });
 
-/* request fee once */
+/* ask parent for fee info once */
 window.parent.postMessage({ type:'requestStartFee' }, '*');
 
 /* -------------------------
-   Mobile & keyboard controls
+   Controls
    ------------------------- */
 document.querySelectorAll('#mobileControls button').forEach(b=>{
   b.addEventListener('touchstart', (e)=>{ e.preventDefault(); pacman.nextDir = b.getAttribute('data-dir'); });
@@ -490,18 +396,36 @@ window.addEventListener('keydown',(e)=>{
 /* -------------------------
    Snow effect
    ------------------------- */
-setInterval(()=>{ const s=document.createElement('div'); s.className='snow'; s.innerText='❄'; s.style.left=Math.random()*100 + 'vw'; s.style.fontSize=(8+Math.random()*18)+'px'; s.style.animationDuration=(3+Math.random()*6)+'s'; document.body.appendChild(s); setTimeout(()=>s.remove(),9000); },140);
+setInterval(()=>{
+  const s=document.createElement('div');
+  s.className='snow';
+  s.innerText='❄';
+  s.style.left = (Math.random()*100) + 'vw';
+  s.style.fontSize = (8 + Math.random()*18) + 'px';
+  s.style.animationDuration = (3 + Math.random()*6) + 's';
+  document.body.appendChild(s);
+  setTimeout(()=>s.remove(),9000);
+},140);
 
 /* -------------------------
-   INITIALIZE
+   Initialization
    ------------------------- */
+function resetGame(){
+  resetMapData();
+  score = 0;
+  document.getElementById('current-score-display').textContent = score;
+  const gm = document.getElementById('game-message');
+  gm.style.display = 'none';
+  gameRunning = false;
+  if(animationFrameId) cancelAnimationFrame(animationFrameId);
+  drawOnce();
+}
+
 resetGame();
 
-/* -------------------------
-   Auto fallback: If parent not present and you want to test:
-   (uncomment for local testing)
+/* dev: uncomment to simulate pay for quick local testing
+setTimeout(()=>{ window.postMessage({type:'paySuccess'}, '*'); }, 800);
 */
-// setTimeout(()=>{ /* simulate paySuccess for dev testing */ /* levelPanel.style.display='flex'; */ },1000);
 
 </script>
 
