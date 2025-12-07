@@ -5,26 +5,36 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Pacman Natal - Final (Fixed Timing & Audio)</title>
 <style>
+  /* --- STYLES DIPERBARUI UNTUK RESPONSIVITAS --- */
   html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS;overflow:hidden}
+  
+  /* UI elements positioning (relative to viewport/iframe) */
   #ui{position:fixed;top:10px;left:10px;color:#fff;z-index:99}
   #gameMessage{position:fixed;top:8px;right:8px;color:#fff;z-index:99}
-  canvas{background:#071024;border-radius:8px;box-shadow:0 0 25px #00ffcc,inset 0 0 20px #00ffcc;display:block;max-width:95vw;height:auto}
-  #mobileControls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:12px;z-index:99}
-  .ctl-btn{width:64px;height:64px;border-radius:50%;border:none;background:linear-gradient(90deg,#ef4444,#10b981);color:#fff;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,0.4)}
+  
+  /* CANVAS: Responsif di dalam wadah iframe */
+  canvas{
+    background:#071024;
+    border-radius:8px;
+    box-shadow:0 0 25px #00ffcc,inset 0 0 20px #00ffcc;
+    display:block;
+    width: 95%; /* Akan disesuaikan oleh JS */
+    height: auto; /* Akan disesuaikan oleh JS */
+  }
+  
+  /* Level panel and overlays (tetap) */
   #levelPanel{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;flex-direction:column;color:#fff;z-index:200}
   .levelBtn{margin:10px;padding:14px 26px;font-size:20px;border-radius:12px;border:none;background:#fbbf24;color:#000;cursor:pointer}
   #countdown{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:none;align-items:center;justify-content:center;font-size:120px;font-weight:bold;color:gold;z-index:300;text-shadow:0 0 30px gold}
   #victoryOverlay{position:fixed;inset:0;background:radial-gradient(circle,#00ffcc33,#000);display:none;align-items:center;justify-content:center;font-size:48px;font-weight:bold;color:gold;z-index:400;text-shadow:0 0 20px gold}
+
+  /* Effects */
   .coin-sparkle{position:absolute;pointer-events:none;width:10px;height:10px;border-radius:50%;background:gold;opacity:1;animation:sparkle 0.6s forwards;z-index:110}
   @keyframes sparkle{from{transform:scale(1);opacity:1}to{transform:scale(2.8);opacity:0}}
   .shake{animation:shake 0.42s}
   @keyframes shake{0%{transform:translate(2px,1px)}25%{transform:translate(-2px,-3px)}50%{transform:translate(3px,2px)}75%{transform:translate(-2px,2px)}100%{transform:translate(0,0)}}
   .snow{position:fixed;top:-10px;color:white;font-size:12px;opacity:0.9;animation:fall linear forwards;z-index:10}
   @keyframes fall{to{transform:translateY(110vh)}}
-  @media (min-width:900px){
-    canvas{max-width:800px}
-    .ctl-btn{width:56px;height:56px}
-  }
 </style>
 </head>
 <body>
@@ -36,15 +46,6 @@
 
 <canvas id="pacman-canvas"></canvas>
 
-<!-- Mobile controls -->
-<div id="mobileControls">
-  <button class="ctl-btn" data-dir="up">↑</button>
-  <button class="ctl-btn" data-dir="left">←</button>
-  <button class="ctl-btn" data-dir="down">↓</button>
-  <button class="ctl-btn" data-dir="right">→</button>
-</div>
-
-<!-- Level panel (appears after pay) -->
 <div id="levelPanel">
   <h2 style="margin:0 0 12px 0;color:#fff">Pilih Level</h2>
   <button class="levelBtn" onclick="setLevel('easy')">EASY</button>
@@ -52,11 +53,9 @@
   <button class="levelBtn" onclick="setLevel('hard')">HARD</button>
 </div>
 
-<!-- Countdown and victory -->
 <div id="countdown">3</div>
 <div id="victoryOverlay">🏆 YOU WIN!</div>
 
-<!-- Audio (CDN) -->
 <audio id="bgm" loop src="https://cdn.pixabay.com/audio/2022/10/25/audio_87c07c7a1f.mp3"></audio>
 <audio id="sndCoin" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-coin-216.wav"></audio>
 <audio id="sndWin" src="https://assets.mixkit.co/sfx/preview/mixkit-ethereal-fairy-win-sound-2019.wav"></audio>
@@ -68,7 +67,7 @@
    ============================ */
 
 /* CONFIG */
-const TILE_SIZE = 20;
+const TILE_SIZE = 20; // Nilai awal (default)
 const canvas = document.getElementById('pacman-canvas');
 const ctx = canvas.getContext('2d');
 
@@ -97,28 +96,52 @@ const GAME_MAP = [
 const MAP_WIDTH = GAME_MAP[0].length;
 const MAP_HEIGHT = GAME_MAP.length;
 
-canvas.width = MAP_WIDTH * TILE_SIZE;
-canvas.height = MAP_HEIGHT * TILE_SIZE;
-
 /* STATE */
 let pacman, ghosts, score, mapData;
 let gameRunning = false;
 let animationFrameId = null;
 let lastTime = 0;
-let GAME_UPDATE_INTERVAL = 150; // default normal
+let GAME_UPDATE_INTERVAL = 150; 
+window.currentTileSize = TILE_SIZE; // Variabel global untuk ukuran tile responsif
 
 /* AUDIO ELEMENTS */
 const bgm = document.getElementById('bgm');
-const sndCoin = document.getElementById('sndCoin');
 const sndWin = document.getElementById('sndWin');
 const sndLose = document.getElementById('sndLose');
 const victoryOverlay = document.getElementById('victoryOverlay');
 
+/* --- FUNGSI BARU: SKALA RESPONSIVE (PENTING!) --- */
+function resizeCanvas(){
+    const maxDim = Math.min(window.innerWidth, window.innerHeight);
+    let effectiveWidth;
+    
+    if(window.innerWidth > window.innerHeight){
+        effectiveWidth = Math.min(maxDim * 0.9, 800); 
+    } else {
+        effectiveWidth = window.innerWidth * 0.9;
+    }
+
+    const newCanvasWidth = Math.floor(effectiveWidth / MAP_WIDTH) * MAP_WIDTH;
+    
+    canvas.width = newCanvasWidth;
+    canvas.height = newCanvasWidth / MAP_WIDTH * MAP_HEIGHT;
+    
+    window.currentTileSize = canvas.width / MAP_WIDTH; 
+
+    drawOnce(); 
+}
+
+window.addEventListener('resize', resizeCanvas);
+/* --- AKHIR FUNGSI SKALA RESPONSIVE --- */
+
+
 /* RESET/INIT */
 function resetMapData(){
+  const ts = window.currentTileSize;
   mapData = GAME_MAP.map(row=>[...row]);
   score = 0;
-  pacman = { x:1, y:1, dir:'right', nextDir:'right', radius:TILE_SIZE/2.5 };
+  // Menggunakan currentTileSize di sini
+  pacman = { x:1, y:1, dir:'right', nextDir:'right', radius:ts/2.5 };
   ghosts = [
     { x:9, y:9, color:'#cc0000', dir:'up' },
     { x:10, y:9, color:'#16a34a', dir:'down' },
@@ -128,21 +151,22 @@ function resetMapData(){
 }
 
 function drawMap(){
+  const ts = window.currentTileSize;
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
       const t = mapData[y][x];
       if(t === 1){
         ctx.fillStyle = '#b91c1c';
-        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+        ctx.fillRect(x*ts,y*ts,ts,ts);
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1;
-        ctx.strokeRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+        ctx.strokeRect(x*ts,y*ts,ts,ts);
       } else {
         ctx.fillStyle = '#020617';
-        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+        ctx.fillRect(x*ts,y*ts,ts,ts);
         if(t === 2){
           ctx.fillStyle = '#facc15';
           ctx.beginPath();
-          ctx.arc(x*TILE_SIZE + TILE_SIZE/2, y*TILE_SIZE + TILE_SIZE/2, Math.max(2, TILE_SIZE/8), 0, Math.PI*2);
+          ctx.arc(x*ts + ts/2, y*ts + ts/2, Math.max(2, ts/8), 0, Math.PI*2);
           ctx.fill();
         }
       }
@@ -150,41 +174,115 @@ function drawMap(){
   }
 }
 
+/* --- FUNGSI BARU: drawPacman (Tema Natal) --- */
 function drawPacman(){
-  const x = pacman.x*TILE_SIZE + TILE_SIZE/2;
-  const y = pacman.y*TILE_SIZE + TILE_SIZE/2;
+  const ts = window.currentTileSize;
+  const radius = ts/2.5; 
+  const x = pacman.x*ts + ts/2;
+  const y = pacman.y*ts + ts/2;
+  
+  // 1. Gambar Pac-Man (Kuning, mulut menganga)
   ctx.fillStyle = '#facc15';
   ctx.beginPath();
   const mouthOpen = Math.abs(Math.sin(Date.now()/100));
   const angleOffset = { 'right':0,'left':Math.PI,'up':-Math.PI/2,'down':Math.PI/2 }[pacman.dir];
   const startAngle = angleOffset + mouthOpen*0.4;
   const endAngle = angleOffset - mouthOpen*0.4 + 2*Math.PI;
-  ctx.arc(x,y,pacman.radius,startAngle,endAngle,false);
+  ctx.arc(x,y,radius,startAngle,endAngle,false);
   ctx.lineTo(x,y);
   ctx.closePath();
   ctx.fill();
-}
 
+  // 2. Tambah Topi Santa 🎅
+  const hatX = x;
+  const hatY = y - radius * 0.8; 
+
+  // Topi Merah (Kerucut)
+  ctx.fillStyle = '#cc0000'; 
+  ctx.beginPath();
+  ctx.moveTo(hatX - radius*0.7, hatY); 
+  ctx.lineTo(hatX + radius*0.8, hatY); 
+  ctx.lineTo(hatX + radius*0.5, hatY - radius * 1.5); 
+  ctx.closePath();
+  ctx.fill();
+
+  // Trim Putih (Pinggiran topi)
+  ctx.fillStyle = '#ffffff'; 
+  ctx.beginPath();
+  ctx.arc(hatX, hatY, radius*0.8, 0, Math.PI, true); 
+  ctx.fill();
+
+  // Pom-pom (Ujung topi)
+  ctx.beginPath();
+  ctx.arc(hatX + radius*0.5, hatY - radius*1.5, radius*0.3, 0, Math.PI*2);
+  ctx.fill();
+}
+/* --- AKHIR FUNGSI drawPacman --- */
+
+/* --- FUNGSI BARU: drawGhosts (Tema Natal) --- */
 function drawGhosts(){
+  const ts = window.currentTileSize;
   ghosts.forEach(g=>{
-    const x = g.x*TILE_SIZE + TILE_SIZE/2;
-    const y = g.y*TILE_SIZE + TILE_SIZE/2;
+    const x = g.x*ts + ts/2;
+    const y = g.y*ts + ts/2;
+    
+    // 1. Gambar Ghost Dasar (Tubuh)
     ctx.fillStyle = g.color;
     ctx.beginPath();
-    ctx.arc(x,y,TILE_SIZE/2,Math.PI,0,false);
-    ctx.fillRect(x-TILE_SIZE/2, y, TILE_SIZE, TILE_SIZE/2);
+    ctx.arc(x,y,ts/2,Math.PI,0,false);
+    ctx.fillRect(x-ts/2, y, ts, ts/2);
+    ctx.fill();
+
+    // 2. Tambah Topi Santa 🎄
+    const hatX = x;
+    const hatY = y - ts/2 * 0.9; 
+
+    // Topi Merah
+    ctx.fillStyle = '#cc0000'; 
+    ctx.beginPath();
+    ctx.moveTo(hatX - ts/3, hatY); 
+    ctx.lineTo(hatX + ts/3, hatY); 
+    ctx.lineTo(hatX + ts/4, hatY - ts * 0.7); 
+    ctx.closePath();
+    ctx.fill();
+
+    // Trim Putih
+    ctx.fillStyle = '#ffffff'; 
+    ctx.beginPath();
+    ctx.arc(hatX, hatY, ts/3, 0, Math.PI, true); 
+    ctx.fill();
+
+    // Pom-pom
+    ctx.beginPath();
+    ctx.arc(hatX + ts/4, hatY - ts*0.7, ts*0.1, 0, Math.PI*2);
+    ctx.fill();
+
+    // 3. Tambah Syal Natal (Hijau & Putih) 🧣
+    // Bagian Utama Syal (Hijau)
+    ctx.fillStyle = '#10b981'; // Hijau Natal
+    ctx.fillRect(x - ts/2, y + ts/4, ts, ts/8); // Melintang di leher
+    
+    // Ekor Syal (Kain menggantung)
+    ctx.fillRect(x - ts/4, y + ts/4, ts/10, ts/3); 
+
+    // Aksen Putih (Garis tengah syal)
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(x - ts/2, y + ts/4 + ts/40, ts, ts/40); 
+
+    // 4. Ghost Eyes (LOGIC LAMA: harus di gambar terakhir)
     ctx.fillStyle = 'white';
     ctx.beginPath();
-    ctx.arc(x - TILE_SIZE/4, y - TILE_SIZE/4, TILE_SIZE/8, 0, Math.PI*2);
-    ctx.arc(x + TILE_SIZE/4, y - TILE_SIZE/4, TILE_SIZE/8, 0, Math.PI*2);
+    ctx.arc(x - ts/4, y - ts/4, ts/8, 0, Math.PI*2);
+    ctx.arc(x + ts/4, y - ts/4, ts/8, 0, Math.PI*2);
     ctx.fill();
     ctx.fillStyle = 'black';
     ctx.beginPath();
-    ctx.arc(x - TILE_SIZE/4 + 1, y - TILE_SIZE/4, TILE_SIZE/16, 0, Math.PI*2);
-    ctx.arc(x + TILE_SIZE/4 + 1, y - TILE_SIZE/4, TILE_SIZE/16, 0, Math.PI*2);
+    ctx.arc(x - ts/4 + 1, y - ts/4, ts/16, 0, Math.PI*2);
+    ctx.arc(x + ts/4 + 1, y - ts/4, ts/16, 0, Math.PI*2);
     ctx.fill();
   });
 }
+/* --- AKHIR FUNGSI drawGhosts --- */
 
 function drawOnce(){ ctx.clearRect(0,0,canvas.width,canvas.height); drawMap(); drawPacman(); drawGhosts(); }
 
@@ -192,6 +290,7 @@ function drawOnce(){ ctx.clearRect(0,0,canvas.width,canvas.height); drawMap(); d
 function canMove(x,y){ return mapData[y] && mapData[y][x] !== 1; }
 
 function movePacman(){
+  // Logic pergerakan Pacman (tidak diubah)
   const nd = pacman.nextDir;
   const nx = pacman.x + (nd==='right'?1:nd==='left'?-1:0);
   const ny = pacman.y + (nd==='down'?1:nd==='up'?-1:0);
@@ -232,11 +331,12 @@ function moveGhosts(){
 
 /* COLLISION & SCORE */
 function spawnSparkle(gridX, gridY){
+  const ts = window.currentTileSize;
   const el = document.createElement('div');
   el.className = 'coin-sparkle';
   const rect = canvas.getBoundingClientRect();
-  const left = rect.left + gridX * TILE_SIZE + TILE_SIZE/2 - 5;
-  const top = rect.top + gridY * TILE_SIZE + TILE_SIZE/2 - 5;
+  const left = rect.left + gridX * ts + ts/2 - 5;
+  const top = rect.top + gridY * ts + ts/2 - 5;
   el.style.left = left + 'px';
   el.style.top = top + 'px';
   document.body.appendChild(el);
@@ -250,7 +350,9 @@ function checkCollision(){
     if(score > 3000) score = 3000;
     document.getElementById('current-score-display').textContent = score;
     spawnSparkle(pacman.x, pacman.y);
-    try{ sndCoin.currentTime = 0; sndCoin.play(); } catch(e){ console.warn('sndCoin play failed', e); }
+    
+    // --- INTEGRASI SUARA BARU: Kirim pesan ke parent (app.js) ---
+    window.parent.postMessage({ type: 'dotEaten' }, '*');
   }
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
@@ -290,12 +392,11 @@ function endGame(isWin){
   }, 4000);
 }
 
-/* GAME LOOP (uses single lastTime var) */
+/* GAME LOOP */
 function gameLoop(timestamp){
   if(!gameRunning) return;
   if(!lastTime) lastTime = timestamp;
   const dt = timestamp - lastTime;
-  // update game at interval
   if(dt >= GAME_UPDATE_INTERVAL){
     movePacman();
     moveGhosts();
@@ -322,7 +423,6 @@ function setLevel(lvl){
 }
 
 function startCountdownAndStart(){
-  // reset lastTime to avoid dt huge/negative
   lastTime = 0;
   resetMapData();
   countdownEl.style.display = 'flex';
@@ -343,7 +443,6 @@ function startCountdownAndStart(){
 }
 
 function startGameLoop(){
-  // try to play bgm - since user clicked levelBtn, browser should allow
   try{
     bgm.volume = 0.35;
     const playPromise = bgm.play();
@@ -355,12 +454,12 @@ function startGameLoop(){
   } catch(e){ console.warn('bgm play error', e); }
 
   gameRunning = true;
-  lastTime = 0; // reset so first dt is measured properly
+  lastTime = 0; 
   animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 /* -------------------------
-   Parent communication (pay + fee)
+   Parent communication (pay + fee + mobile input)
    ------------------------- */
 function safeResetAndShowLevel(){
   gameRunning = false;
@@ -381,18 +480,23 @@ window.addEventListener('message',(ev)=>{
     gm.style.display = 'block';
     setTimeout(()=>gm.style.display='none',4000);
   }
+  
+  // --- INTEGRASI KONTROL MOBILE BARU ---
+  if(d.type === 'mobileInput' && gameRunning){
+      const dir = d.direction.toLowerCase();
+      if(dir !== 'stop'){
+          pacman.nextDir = dir;
+      }
+  }
 });
 
 /* ask parent for fee info once */
 window.parent.postMessage({ type:'requestStartFee' }, '*');
 
 /* -------------------------
-   Controls
+   Controls (Hanya Keyboard)
    ------------------------- */
-document.querySelectorAll('#mobileControls button').forEach(b=>{
-  b.addEventListener('touchstart', (e)=>{ e.preventDefault(); pacman.nextDir = b.getAttribute('data-dir'); });
-  b.addEventListener('mousedown', (e)=>{ e.preventDefault(); pacman.nextDir = b.getAttribute('data-dir'); });
-});
+// Menghapus listeners mobile controls lama
 window.addEventListener('keydown',(e)=>{
   if(e.key === 'ArrowUp') pacman.nextDir='up';
   if(e.key === 'ArrowDown') pacman.nextDir='down';
@@ -425,15 +529,13 @@ function resetGame(){
   gm.style.display = 'none';
   gameRunning = false;
   if(animationFrameId) cancelAnimationFrame(animationFrameId);
+  
+  // Panggil resizeCanvas agar game diskalakan di awal
+  resizeCanvas(); 
   drawOnce();
 }
 
 resetGame();
-
-/* dev helper: uncomment to simulate pay for local test
-// setTimeout(()=>{ window.postMessage({type:'paySuccess'}, window.location.origin); }, 1200);
-*/
-
 </script>
 
 </body>
