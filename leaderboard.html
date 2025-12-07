@@ -5,9 +5,7 @@
   <title>Somnia Pacman Leaderboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- ✅ WAJIB -->
-  <script src="./libs/ethers.min.js"></script>
-
+  
   <style>
     body {
       margin: 0;
@@ -49,11 +47,12 @@
   <ul id="leaderboard-list"></ul>
 
   <script>
-  <script>
-(async () => {
-  const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
+  <script src="libs/ethers.min.js"></script>
+<script>
+const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
 
-  const ABI = [{
+const ABI = [
+  {
     "inputs": [],
     "name": "getTop10",
     "outputs": [
@@ -62,50 +61,50 @@
     ],
     "stateMutability": "view",
     "type": "function"
-  }];
+  }
+];
 
-  const status = document.getElementById("status");
-  const list = document.getElementById("leaderboard-list");
-
+async function loadLeaderboard() {
   try {
+    document.getElementById("leaderboard").innerHTML = "Loading blockchain data...";
+
     if (!window.ethereum) {
-      status.innerText = "❌ Wallet tidak terdeteksi";
-      return;
+      throw new Error("Wallet tidak tersedia");
     }
 
     const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-
-    const network = await provider.getNetwork();
-    console.log("Connected Network:", network);
-
     const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-    status.innerText = "📡 Mengambil data leaderboard...";
+    const data = await contract.getTop10();
+    const players = data[0];
+    const scores = data[1];
 
-    const result = await contract.getTop10();
-    const players = result[0];
-    const scores  = result[1];
-
-    list.innerHTML = "";
-    status.innerText = "";
-
-    if (!players.length) {
-      list.innerHTML = "<li>Belum ada skor tersimpan</li>";
-      return;
-    }
+    let html = `
+      <table border="1" width="100%">
+        <tr><th>#</th><th>Wallet</th><th>Score</th></tr>
+    `;
 
     for (let i = 0; i < players.length; i++) {
-      const li = document.createElement("li");
-      li.innerText = `${i+1}. ${players[i]} — ${scores[i].toString()} PTS`;
-      list.appendChild(li);
+      html += `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${players[i].slice(0, 6)}...${players[i].slice(-4)}</td>
+          <td>${scores[i]}</td>
+        </tr>
+      `;
     }
+
+    html += "</table>";
+    document.getElementById("leaderboard").innerHTML = html;
 
   } catch (err) {
     console.error("LEADERBOARD ERROR:", err);
-    status.innerText = "❌ Gagal terhubung ke blockchain";
+    document.getElementById("leaderboard").innerHTML = "❌ Gagal terhubung ke blockchain";
   }
-})();
+}
+
+loadLeaderboard();
+setInterval(loadLeaderboard, 10000);
 </script>
 </body>
 </html>
