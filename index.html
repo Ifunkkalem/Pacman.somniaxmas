@@ -5,19 +5,115 @@
 <title>Somnia Christmas - Pacman</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
+/* --- BASE STYLES --- */
 *{margin:0;padding:0;box-sizing:border-box;font-family:Trebuchet MS, sans-serif}
 body{height:100vh;background:linear-gradient(to right,#fff,#ff0000);color:#fff;overflow:hidden}
-#wrap{display:flex;height:100%}
-#sidebar{width:140px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px}
+#wrap{display:flex;height:100%} /* Default: PC/Dekstop view (sidebar di samping) */
+
+/* SIDEBAR/BUTTONS (PC View) */
+#sidebar{width:140px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}
 #main{flex:1;padding:10px;position:relative;display:flex;flex-direction:column;align-items:center;background:linear-gradient(to bottom,#ff0000,#800000)}
+
 button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff;cursor:pointer}
 #title{color:#00ffae;font-size:26px;text-shadow:0 0 10px #ff0;margin-bottom:12px}
-iframe{width:100%;flex:1;border-radius:8px;border:0;display:none}
 .footer{position:absolute;bottom:8px;color:#0ff;text-shadow:0 0 8px #0ff}
+#walletDisplay, #walletBalance {word-break:break-all;font-size:12px;color:#000}
+
+/* Game Frame / Leaderboard */
+iframe{width:100%;flex:1;border-radius:8px;border:0;display:none}
+
+/* --- MOBILE CONTROLS STYLING --- */
+#mobile-controls {
+    display: none; /* Sembunyikan default (hanya untuk mobile) */
+    position: absolute;
+    bottom: 50px; /* Jarak dari bawah layar */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px; /* Ukuran D-Pad */
+    user-select: none;
+    z-index: 100;
+}
+
+#mobile-controls button {
+    padding: 15px 25px;
+    margin: 5px;
+    font-size: 18px;
+    background: #ff0000;
+    border: 2px solid #fff;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.dpad-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.dpad-row:nth-child(2) {
+    justify-content: space-between;
+}
+
+/* --- RESPONSIVENESS (MOBILE STYLES) --- */
+@media (max-width: 768px) {
+    /* Layout: Sidebar berubah menjadi Header/Footer (Stacking) */
+    #wrap{
+        flex-direction: column; /* Ubah layout dari samping ke atas-bawah */
+        height: auto;
+        min-height: 100vh;
+    }
+    
+    /* Sidebar (sekarang menjadi Header/Footer mobile) */
+    #sidebar{
+        width: 100%; /* Lebar penuh */
+        padding: 8px;
+        flex-direction: row; /* Tombol berjejer horizontal */
+        justify-content: space-around;
+        gap: 5px;
+        position: sticky; /* Tetap di atas saat scrolling jika ada */
+        top: 0;
+        z-index: 20;
+    }
+    
+    /* Display Wallet: Sembunyikan untuk menghemat ruang atau pindahkan */
+    #walletDisplay, #walletBalance {
+        display: none; /* Sembunyikan info wallet di header mobile */
+    }
+    
+    /* Main Content */
+    #main{
+        padding: 0; /* Hapus padding agar iframe lebih besar */
+        flex: 1;
+        width: 100vw;
+    }
+    
+    /* Game Frame: Scaling */
+    iframe#gameFrame {
+        width: 100vw;
+        height: 60vh; /* Alokasi 60% tinggi layar untuk game */
+        /* Anda masih perlu memastikan game content (pacman_natal.html) itu sendiri responsif */
+    }
+    
+    /* Tampilkan Kontrol Mobile */
+    #mobile-controls {
+        display: flex;
+        position: relative; /* Posisikan relatif agar mengalir di dokumen */
+        margin-top: 20px;
+        margin-bottom: 20px;
+        bottom: auto;
+        left: auto;
+        transform: none;
+    }
+    
+    .footer {
+        position: relative;
+    }
+}
+
+/* --- SNOW ANIMATION --- */
 .snow{position:absolute;top:-20px;width:8px;height:8px;border-radius:50%;background:#fff;opacity:.85;animation:snowFall linear infinite}
 @keyframes snowFall{from{transform:translateY(0)}to{transform:translateY(120vh)}}
-#walletDisplay{word-break:break-all;font-size:12px;color:#000}
-#walletBalance{font-size:12px;color:#000}
 </style>
 </head>
 <body>
@@ -33,13 +129,27 @@ iframe{width:100%;flex:1;border-radius:8px;border:0;display:none}
 
   <div id="main">
     <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
+    
     <iframe id="gameFrame" src="pacman/pacman_natal.html"></iframe>
     <iframe id="leaderboardFrame" src="leaderboard.html"></iframe>
+    
+    <div id="mobile-controls">
+        <div class="dpad-row">
+            <button id="up-btn" data-direction="UP">↑</button>
+        </div>
+        <div class="dpad-row">
+            <button id="left-btn" data-direction="LEFT">←</button>
+            <button id="right-btn" data-direction="RIGHT">→</button>
+        </div>
+        <div class="dpad-row">
+            <button id="down-btn" data-direction="DOWN">↓</button>
+        </div>
+    </div>
+    
     <div class="footer">created by: @ifunkkalem | @Ifunkkalem91</div>
   </div>
 </div>
 
-<!-- snow particles -->
 <script>
 for(let i=0;i<40;i++){
   const s=document.createElement('div');
@@ -51,10 +161,9 @@ for(let i=0;i<40;i++){
 }
 </script>
 
-<!-- ethers v5 UMD -->
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-<!-- contract + app -->
 <script src="contract.js"></script>
 <script src="app.js"></script>
 </body>
-</html>
+  </html>
+  
