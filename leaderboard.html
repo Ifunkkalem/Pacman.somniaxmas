@@ -104,15 +104,28 @@ const contract = new ethers.Contract(
 async function loadLeaderboard() {
   try {
     const [wallets, scores] = await contract.getTop10();
+    
+    // --- TAMBAHKAN KODE DEBUG INI DI SINI ---
+    console.log("Data Wallets Diterima:", wallets);
+    console.log("Data Scores Diterima:", scores);
+    console.log("Jumlah Entri:", wallets.length);
+    // ------------------------------------------
 
     bodyEl.innerHTML = "";
+
+    // Cek apakah ada data yang kembali sebelum looping
+    if (wallets.length === 0) {
+        statusEl.innerText = "Tidak ada skor yang tercatat di blockchain saat ini.";
+        statusEl.style.display = "block";
+        return; // Hentikan fungsi jika kosong
+    }
 
     for (let i = 0; i < wallets.length; i++) {
       bodyEl.innerHTML += `
         <tr>
           <td>${i + 1}</td>
           <td>${wallets[i].slice(0, 6)}...${wallets[i].slice(-4)}</td>
-          <td>${Number(scores[i])}</td>
+          <td>${Number(scores[i])}</td> 
         </tr>
       `;
     }
