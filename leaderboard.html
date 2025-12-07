@@ -2,109 +2,154 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Somnia Pacman Leaderboard</title>
+  <title>Somnia Christmas Leaderboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  
+  <!-- ETHERS -->
+  <script src="libs/ethers.min.js"></script>
+
   <style>
     body {
       margin: 0;
       padding: 0;
-      background: #0f172a;
-      color: white;
+      background: linear-gradient(135deg, #b91c1c, #ffffff);
       font-family: Arial, sans-serif;
+      color: #111;
       text-align: center;
     }
 
     h1 {
       margin-top: 20px;
+      color: #fff;
+      text-shadow: 0 0 10px red;
     }
 
-    #leaderboard-list {
+    .board {
       margin: 20px auto;
-      padding: 0;
-      width: 90%;
-      max-width: 400px;
-      list-style: none;
+      max-width: 480px;
+      background: rgba(255,255,255,0.92);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 0 15px red;
     }
 
-    #leaderboard-list li {
-      background: #1e293b;
-      margin: 10px 0;
-      padding: 12px;
-      border-radius: 10px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: #dc2626;
+      color: white;
+      padding: 8px;
       font-size: 14px;
-      word-break: break-all;
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+      font-size: 13px;
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #111;
+    }
+
+    .error {
+      color: red;
+      margin-top: 10px;
+      font-weight: bold;
     }
   </style>
 </head>
-
 <body>
 
-  <h1>🏆 LEADERBOARD</h1>
-  <p id="status">Loading blockchain data...</p>
+  <h1>🏆 SOMNIA CHRISTMAS LEADERBOARD</h1>
 
-  <ul id="leaderboard-list"></ul>
+  <div class="board">
+    <div id="leaderboard">Loading blockchain data...</div>
+    <div id="status" class="status"></div>
+  </div>
 
   <script>
-  <script src="libs/ethers.min.js"></script>
-<script>
-const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
+    const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
 
-const ABI = [
-  {
-    "inputs": [],
-    "name": "getTop10",
-    "outputs": [
-      { "internalType": "address[]", "name": "topPlayers", "type": "address[]" },
-      { "internalType": "uint256[]", "name": "scores", "type": "uint256[]" }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
+    const ABI = [
+      {
+        "inputs": [],
+        "name": "getTop10",
+        "outputs": [
+          { "internalType": "address[]", "name": "topPlayers", "type": "address[]" },
+          { "internalType": "uint256[]", "name": "scores", "type": "uint256[]" }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
 
-async function loadLeaderboard() {
-  try {
-    document.getElementById("leaderboard").innerHTML = "Loading blockchain data...";
+    async function loadLeaderboard() {
+      const box = document.getElementById("leaderboard");
+      const status = document.getElementById("status");
 
-    if (!window.ethereum) {
-      throw new Error("Wallet tidak tersedia");
+      try {
+        box.innerHTML = "Loading blockchain data...";
+        status.innerText = "";
+
+        if (!window.ethereum) {
+          throw new Error("Wallet tidak tersedia");
+        }
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+        const data = await contract.getTop10();
+        const players = data[0];
+        const scores = data[1];
+
+        if (players.length === 0) {
+          box.innerHTML = "Belum ada skor masuk";
+          return;
+        }
+
+        let html = `
+          <table>
+            <tr>
+              <th>#</th>
+              <th>Wallet</th>
+              <th>Score</th>
+            </tr>
+        `;
+
+        for (let i = 0; i < players.length; i++) {
+          const shortWallet = players[i].slice(0, 6) + "..." + players[i].slice(-4);
+          html += `
+            <tr>
+              <td>${i + 1}</td>
+              <td>${shortWallet}</td>
+              <td>${scores[i]}</td>
+            </tr>
+          `;
+        }
+
+        html += "</table>";
+        box.innerHTML = html;
+        status.innerText = "✅ Data berhasil dimuat dari blockchain";
+
+      } catch (err) {
+        console.error("LEADERBOARD ERROR:", err);
+        box.innerHTML = "<div class='error'>❌ Gagal terhubung ke blockchain</div>";
+        status.innerText = err.message;
+      }
     }
 
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    // Load pertama
+    loadLeaderboard();
 
-    const data = await contract.getTop10();
-    const players = data[0];
-    const scores = data[1];
+    // Auto refresh setiap 10 detik
+    setInterval(loadLeaderboard, 10000);
+  </script>
 
-    let html = `
-      <table border="1" width="100%">
-        <tr><th>#</th><th>Wallet</th><th>Score</th></tr>
-    `;
-
-    for (let i = 0; i < players.length; i++) {
-      html += `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${players[i].slice(0, 6)}...${players[i].slice(-4)}</td>
-          <td>${scores[i]}</td>
-        </tr>
-      `;
-    }
-
-    html += "</table>";
-    document.getElementById("leaderboard").innerHTML = html;
-
-  } catch (err) {
-    console.error("LEADERBOARD ERROR:", err);
-    document.getElementById("leaderboard").innerHTML = "❌ Gagal terhubung ke blockchain";
-  }
-}
-
-loadLeaderboard();
-setInterval(loadLeaderboard, 10000);
-</script>
 </body>
 </html>
