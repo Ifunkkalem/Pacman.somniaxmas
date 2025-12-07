@@ -2,163 +2,123 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Somnia Christmas Leaderboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOMNIA Leaderboard</title>
 
-  <!-- ETHERS -->
   <script src="libs/ethers.min.js"></script>
 
   <style>
     body {
       margin: 0;
-      padding: 0;
-      background: linear-gradient(135deg, #b91c1c, #ffffff);
+      background: #0b0b0b;
+      color: gold;
       font-family: Arial, sans-serif;
-      color: #111;
+    }
+
+    h2 {
       text-align: center;
-    }
-
-    h1 {
-      margin: 14px 0;
-      color: #fff;
-      font-size: 20px;
-      text-shadow: 0 0 10px red;
-    }
-
-    .board {
-      margin: 10px auto;
-      max-width: 480px;
-      background: rgba(255,255,255,0.96);
-      border-radius: 14px;
-      padding: 12px;
-      box-shadow: 0 0 15px red;
+      margin-top: 10px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 13px;
+      margin-top: 10px;
     }
 
-    th {
-      background: #dc2626;
-      color: white;
-      padding: 7px;
+    th, td {
+      border-bottom: 1px solid #333;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
     }
 
-    td {
-      padding: 7px;
-      border-bottom: 1px solid #ddd;
+    tr:hover {
+      background: rgba(255, 215, 0, 0.1);
     }
 
-    .status {
-      margin-top: 6px;
-      font-size: 11px;
-      opacity: 0.8;
-    }
-
-    .error {
-      color: red;
-      font-weight: bold;
-      font-size: 12px;
-      margin-top: 8px;
+    .loading {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 16px;
     }
   </style>
 </head>
+
 <body>
 
-  <h1>🏆 SOMNIA CHRISTMAS LEADERBOARD</h1>
+<h2>🏆 SOMNIA LEADERBOARD</h2>
+<div id="status" class="loading">Loading blockchain data...</div>
 
-  <div class="board">
-    <div id="leaderboard">Loading leaderboard...</div>
-    <div id="status" class="status">Connecting to blockchain...</div>
-  </div>
+<table id="leaderboardTable" style="display:none">
+  <thead>
+    <tr>
+      <th>No</th>
+      <th>Wallet</th>
+      <th>Total Score</th>
+    </tr>
+  </thead>
+  <tbody id="leaderboardBody"></tbody>
+</table>
 
-  <script>
-    const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
+<script>
+/* ================================
+   ✅ CONFIG WAJIB
+================================ */
+const CONTRACT_ADDRESS = "0xD76b767102f2610b0C97FEE84873c1fAA4c7C365";
 
-    const ABI = [
-      {
-        "inputs": [],
-        "name": "getTop10",
-        "outputs": [
-          { "internalType": "address[]", "name": "topPlayers", "type": "address[]" },
-          { "internalType": "uint256[]", "name": "scores", "type": "uint256[]" }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-      }
-    ];
+// ✅ RPC PUBLIC SOMNIA (GANTI JIKA PERLU)
+const RPC_URL = "https://rpc.somnia.network";
 
-    let lastCache = "";
+const CONTRACT_ABI = [
+  "function getTopPlayers() view returns (address[] memory, uint256[] memory)"
+];
 
-    async function loadLeaderboard() {
-      try {
-        const board = document.getElementById("leaderboard");
-        const status = document.getElementById("status");
+/* ================================
+   ✅ INIT READ-ONLY PROVIDER
+================================ */
+const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
-        if (!window.ethereum) {
-          board.innerHTML = "<div class='error'>Wallet provider tidak terdeteksi</div>";
-          status.innerText = "No wallet provider";
-          return;
-        }
+/* ================================
+   ✅ LOAD LEADERBOARD TANPA FLICKER
+================================ */
+async function loadLeaderboard() {
+  try {
+    const status = document.getElementById("status");
+    const table = document.getElementById("leaderboardTable");
+    const body  = document.getElementById("leaderboardBody");
 
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    const result = await contract.getTopPlayers();
+    const addrs  = result[0];
+    const scores = result[1];
 
-        const data = await contract.getTop10();
-        const players = data[0];
-        const scores  = data[1];
+    body.innerHTML = "";
 
-        if (!players.length) {
-          board.innerHTML = "Belum ada skor masuk";
-          status.innerText = "Waiting for first score...";
-          return;
-        }
+    for (let i = 0; i < addrs.length; i++) {
+      const tr = document.createElement("tr");
 
-        let html = `
-          <table>
-            <tr>
-              <th>#</th>
-              <th>Wallet</th>
-              <th>Score</th>
-            </tr>
-        `;
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${addrs[i].slice(0, 6)}...${addrs[i].slice(-4)}</td>
+        <td>${Number(scores[i])}</td>
+      `;
 
-        for (let i = 0; i < players.length; i++) {
-          const shortWallet = players[i].slice(0, 6) + "..." + players[i].slice(-4);
-          html += `
-            <tr>
-              <td>${i + 1}</td>
-              <td>${shortWallet}</td>
-              <td>${scores[i]}</td>
-            </tr>
-          `;
-        }
-
-        html += "</table>";
-
-        // ✅ ANTI-KEDIP: update hanya jika data berubah
-        if (html !== lastCache) {
-          board.innerHTML = html;
-          lastCache = html;
-          status.innerText = "✅ Leaderboard updated";
-        }
-
-      } catch (err) {
-        console.error("LEADERBOARD ERROR:", err);
-        document.getElementById("leaderboard").innerHTML =
-          "<div class='error'>❌ Gagal membaca data blockchain</div>";
-        document.getElementById("status").innerText = err.message;
-      }
+      body.appendChild(tr);
     }
 
-    // Load pertama
-    loadLeaderboard();
+    status.style.display = "none";
+    table.style.display = "table";
 
-    // Auto refresh tiap 10 detik TANPA kedip
-    setInterval(loadLeaderboard, 10000);
-  </script>
+  } catch (err) {
+    console.error("LEADERBOARD ERROR:", err);
+    document.getElementById("status").innerText =
+      "❌ Gagal terhubung ke blockchain leaderboard";
+  }
+}
+
+// ✅ Load 1x saja (TIDAK berkedip)
+loadLeaderboard();
+</script>
 
 </body>
 </html>
