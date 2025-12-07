@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pacman Natal</title>
+<style>
+html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS}
+#ui{position:fixed;top:8px;left:8px;color:#fff;z-index:9}
+#gameMessage{position:fixed;top:8px;right:8px;color:#fff;z-index:9}
+canvas{background:#071024;border-radius:6px}
+#mobileControls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:9}
+button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="current-score-display">0</div>
+  <div id="game-message" style="display:none;color:#fff;background:rgba(0,0,0,0.6);padding:6px;border-radius:6px;margin-top:6px"></div>
+</div>
+
+<canvas id="pacman-canvas"></canvas>
+
+<div id="mobileControls">
+  <button data-dir="up">↑</button>
+  <button data-dir="left">←</button>
+  <button data-dir="down">↓</button>
+  <button data-dir="right">→</button>
+</div>
+
+<script>
+// --- insert the Pac-Man logic (map + movement) from your map ---
+/* Use the game code you gave, with small glue to tie pay -> start & submit */
+(function(){
+  // Paste the game logic you provided, but adapt start/lock behavior:
+  const canvas = document.getElementById('pacman-canvas');
+  const ctx = canvas.getContext('2d');
+  const TILE_SIZE = 20;
+  const GAME_MAP = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+    [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1],
+    [1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1],
+    [1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
+    [0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
+    [1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+    [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+    [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+  ];
+
+  const MAP_WIDTH = GAME_MAP[0].length;
+  const MAP_HEIGHT = GAME_MAP.length;
+  canvas.width = MAP_WIDTH * TILE_SIZE;
+  canvas.height = MAP_HEIGHT * TILE_SIZE;
+
+  let pacman = { x: 1, y: 1, dir: 'right', nextDir: 'right', radius: TILE_SIZE / 2.5 };
+  let ghosts = [
+      { x: 9, y: 9, color: '#cc0000', dir: 'up', speed: 1 },
+      { x: 10, y: 9, color: '#16a34a', dir: 'down', speed: 1 },
+      { x: 8, y: 9, color: '#2563eb', dir: 'left', speed: 1 }
+  ];
+  let score = 0;
+  let gameRunning = false;
+  let mapData = [];
+
+  function resetMapData() {
+      mapData = GAME_MAP.map(row => [...row]);
+      score = 0;
+      pacman = { x: 1, y: 1, dir: 'right', nextDir: 'right', radius: TILE_SIZE / 2.5 };
+      ghosts = [
+          { x: 9, y: 9, color: '#cc0000', dir: 'up', speed: 1 },
+          { x: 10, y: 9, color: '#16a34a', dir: 'down', speed: 1 },
+          { x: 8, y: 9, color: '#2563eb', dir: 'left', speed: 1 }
+      ];
+  }
+
+  function resetGame() {
+      resetMapData();
+      document.getElementById('current-score-display').textContent = score;
+      document.getElementById('game-message').style.display = 'none';
+      gameRunning = false; // locked until pay
+      drawOnce();
+  }
+
+  function drawOnce(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawMap();
+    drawPacman();
+    drawGhosts();
+  }
+
+  function drawMap() {
+      for (let y = 0; y < MAP_HEIGHT; y++) {
+          for (let x = 0; x < MAP_WIDTH; x++) {
+              const type = mapData[y][x];
+
+              if (type === 1) {
+                  ctx.fillStyle = '#cc0000';
+                  ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                  ctx.strokeStyle = '#ffffff';
+                  ctx.lineWidth = 2;
+                  ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+              } else {
+                  ctx.fillStyle = '#1a2c42';
+                  ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+                  if (type === 2) {
+                      ctx.fillStyle = '#facc15';
+                      ctx.beginPath();
+                      ctx.arc(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE / 8, 0, Math.PI * 2);
+                      ctx.fill();
+                  }
+              }
+          }
+      }
+  }
+
+  function drawPacman() {
+      const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+
+      const mouthOpen = Math.abs(Math.sin(Date.now() / 100));
+      const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI / 2, 'down': Math.PI / 2 }[pacman.dir];
+      const startAngle = angleOffset + mouthOpen * 0.4;
+      const endAngle = angleOffset - mouthOpen * 0.4 + 2 * Math.PI;
+
+      ctx.arc(x, y, pacman.radius, startAngle, endAngle, false);
+      ctx.lineTo(x, y);
+      ctx.closePath();
+      ctx.fill();
+  }
+
+  function drawGhosts() {
+      ghosts.forEach(ghost => {
+          const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+          const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+
+          ctx.fillStyle = ghost.color;
+          ctx.beginPath();
+          ctx.arc(x, y, TILE_SIZE / 2, Math.PI, 0, false);
+          ctx.rect(x - TILE_SIZE / 2, y, TILE_SIZE, TILE_SIZE / 2);
+          const wobble = Math.sin(Date.now() / 200) * 2;
+          ctx.moveTo(x - TILE_SIZE / 2, y + TILE_SIZE / 2);
+          ctx.lineTo(x - TILE_SIZE / 2 + TILE_SIZE / 4 + wobble, y + TILE_SIZE / 2 - 3);
+          ctx.lineTo(x, y + TILE_SIZE / 2);
+          ctx.lineTo(x + TILE_SIZE / 2 - TILE_SIZE / 4 - wobble, y + TILE_SIZE / 2 - 3);
+          ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(x - TILE_SIZE / 4, y - TILE_SIZE / 4, TILE_SIZE / 8, 0, Math.PI * 2);
+          ctx.arc(x + TILE_SIZE / 4, y - TILE_SIZE / 4, TILE_SIZE / 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          ctx.arc(x - TILE_SIZE / 4 + 1, y - TILE_SIZE / 4, TILE_SIZE / 16, 0, Math.PI * 2);
+          ctx.arc(x + TILE_SIZE / 4 + 1, y - TILE_SIZE / 4, TILE_SIZE / 16, 0, Math.PI * 2);
+          ctx.fill();
+      });
+  }
+
+  function movePacman() {
+      const nextX = pacman.x + (pacman.nextDir === 'right' ? 1 : pacman.nextDir === 'left' ? -1 : 0);
+      const nextY = pacman.y + (pacman.nextDir === 'down' ? 1 : pacman.nextDir === 'up' ? -1 : 0);
+
+      if (mapData[nextY] && mapData[nextY][nextX] !== 1) {
+          pacman.dir = pacman.nextDir;
+          pacman.x = nextX;
+          pacman.y = nextY;
+      } else {
+          const currentX = pacman.x + (pacman.dir === 'right' ? 1 : pacman.dir === 'left' ? -1 : 0);
+          const currentY = pacman.y + (pacman.dir === 'down' ? 1 : pacman.dir === 'up' ? -1 : 0);
+
+          if (mapData[currentY] && mapData[currentY][currentX] !== 1) {
+              pacman.x = currentX;
+              pacman.y = currentY;
+          }
+      }
+
+      // Teleport
+      if (pacman.x < 0) pacman.x = MAP_WIDTH - 1;
+      if (pacman.x >= MAP_WIDTH) pacman.x = 0;
+  }
+
+  function moveGhosts() {
+      ghosts.forEach(ghost => {
+          const possibleMoves = [];
+          const moves = [
+              { dx: 1, dy: 0, dir: 'right' },
+              { dx: -1, dy: 0, dir: 'left' },
+              { dx: 0, dy: 1, dir: 'down' },
+              { dx: 0, dy: -1, dir: 'up' }
+          ];
+
+          moves.forEach(move => {
+              const nextX = ghost.x + move.dx;
+              const nextY = ghost.y + move.dy;
+
+              if (mapData[nextY] && mapData[nextY][nextX] !== 1) {
+                  possibleMoves.push(move);
+              }
+          });
+
+          if (possibleMoves.length > 0) {
+              // Simple chasing bias: prefer moves that reduce distance to pacman
+              possibleMoves.sort((a,b)=>{
+                const ax = ghost.x + a.dx - pacman.x; const ay = ghost.y + a.dy - pacman.y;
+                const bx = ghost.x + b.dx - pacman.x; const by = ghost.y + b.dy - pacman.y;
+                const da = Math.hypot(ax,ay), db = Math.hypot(bx,by);
+                return da - db;
+              });
+              // sometimes pick the best, sometimes randomize for challenge
+              const pick = Math.random() < 0.7 ? possibleMoves[0] : possibleMoves[Math.floor(Math.random()*possibleMoves.length)];
+              ghost.x += pick.dx;
+              ghost.y += pick.dy;
+              ghost.dir = pick.dir;
+          }
+      });
+  }
+
+  function checkCollision() {
+      if (mapData[pacman.y][pacman.x] === 2) {
+          mapData[pacman.y][pacman.x] = 0;
+          score += 10;
+          if (score > 3000) score = 3000;
+          document.getElementById('current-score-display').textContent = score;
+      }
+
+      ghosts.forEach(ghost => {
+          if (pacman.x === ghost.x && pacman.y === ghost.y) {
+              endGame(false);
+          }
+      });
+
+      let dotsRemaining = mapData.flat().filter(cell => cell === 2).length;
+      if (dotsRemaining === 0) endGame(true);
+  }
+
+  let lastTime = 0;
+  const GAME_UPDATE_INTERVAL = 150;
+  let gameUpdateTimer = 0;
+  let animationFrameId = null;
+
+  function gameLoop(timestamp) {
+      if (!gameRunning) return;
+      const deltaTime = timestamp - lastTime;
+      lastTime = timestamp;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      drawMap();
+      drawPacman();
+      drawGhosts();
+
+      gameUpdateTimer += deltaTime;
+      if (gameUpdateTimer > GAME_UPDATE_INTERVAL) {
+          movePacman();
+          moveGhosts();
+          checkCollision();
+          gameUpdateTimer = 0;
+      }
+
+      animationFrameId = requestAnimationFrame(gameLoop);
+  }
+
+  function endGame(isWin) {
+      if (!gameRunning) return;
+      gameRunning = false;
+      cancelAnimationFrame(animationFrameId);
+      const msg = isWin ? "SELAMAT! Anda menang dan membersihkan semua hadiah!" : "Misi Gagal! Grinch berhasil mencuri semua hadiah!";
+      const gm = document.getElementById('game-message');
+      gm.textContent = msg + " Skor: " + score;
+      gm.style.display = 'block';
+
+      // send score to parent to submit on-chain (only if >0 or win)
+      if (score > 0 || isWin) {
+        window.parent.postMessage({ type: 'submitScore', score: score }, '*');
+      } else {
+        // no submit
+        window.parent.postMessage({ type: 'notifyNoScore' }, '*');
+      }
+
+      // after 4s switch to leaderboard (parent will show)
+      setTimeout(()=>{
+        gm.style.display = 'none';
+        window.parent.postMessage({ type: 'showLeaderboard' }, '*');
+      }, 4000);
+  }
+
+  // keyboard controls
+  window.addEventListener('keydown', (e)=>{
+      if (e.key === "ArrowUp") pacman.nextDir = 'up';
+      if (e.key === "ArrowDown") pacman.nextDir = 'down';
+      if (e.key === "ArrowLeft") pacman.nextDir = 'left';
+      if (e.key === "ArrowRight") pacman.nextDir = 'right';
+  });
+
+  // mobile controls
+  document.querySelectorAll('#mobileControls button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const dir = b.getAttribute('data-dir');
+      pacman.nextDir = dir;
+    });
+  });
+
+  // receive messages from parent
+  window.addEventListener('message', (ev)=>{
+    const d = ev.data || {};
+    if (d.type === 'paySuccess') {
+      // allow play
+      gameRunning = true;
+      lastTime = performance.now();
+      requestAnimationFrame(gameLoop);
+    }
+    if (d.type === 'startFee') {
+      const gm = document.getElementById('game-message');
+      gm.textContent = `Fee to start: ${d.feeEth} SOMI. Click Play on parent.`;
+      gm.style.display = 'block';
+      setTimeout(()=>gm.style.display='none',4000);
+    }
+  });
+
+  // request fee info from parent on load (optional)
+  window.parent.postMessage({ type: 'requestStartFee' }, '*');
+
+  // initialize
+  resetGame();
+})();
+</script>
+</body>
+</html>
