@@ -385,16 +385,17 @@ function startGameLoop(){
 /* -------------------------
    Parent communication (pay + fee)
    ------------------------- */
-window.addEventListener('message',(ev)=>{
+window.addEventListener('message', (ev)=>{
   const d = ev.data || {};
-  if(d.type === 'paySuccess'){
-    // show level selection to user
-    levelPanel.style.display = 'flex';
+
+  if (d.type === 'paySuccess') {
+    startCountdownAndPlay();
   }
-  if(d.type === 'startFee'){
+
+  if (d.type === 'startFee') {
     const gm = document.getElementById('game-message');
-    gm.textContent = `Fee to start: ${d.feeEth} SOMI. Klik Play (Pay) di parent.`;
-    gm.style.display='block';
+    gm.textContent = `Fee to start: ${d.feeEth} SOMI`;
+    gm.style.display = 'block';
     setTimeout(()=>gm.style.display='none',4000);
   }
 });
