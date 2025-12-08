@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pacman XMAS</title>
+<title>Pacman XMAS - Santa vs Reindeer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
   html,body{margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100%}
-  canvas{background:#071024;border-radius:10px;display:block}
+  /* Dinding Merah Natal, Latar Belakang Biru Malam */
+  canvas{background:#020617;border-radius:10px;display:block} 
   #ui{position:fixed;top:10px;left:10px;color:#fff;font-family:Arial;z-index:12}
   #game-message{position:fixed;top:10px;right:10px;color:white;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:8px;display:none;z-index:12}
-  /* Mobile D-PAD */
+  /* Mobile D-PAD (styling tidak berubah) */
   #mobileControls{
     position:fixed;
     bottom:12px;
@@ -41,7 +42,6 @@
   <div id="game-message"></div>
   <canvas id="pacman-canvas"></canvas>
 
-  <!-- D-PAD (local to iframe) -->
   <div id="mobileControls" aria-hidden="false">
     <button data-dir="up" id="btn-up">↑</button>
     <div class="dpad-row">
@@ -97,9 +97,9 @@ function resetGame(){
   mapData = GAME_MAP.map(r=>[...r]);
   pacman = {x:1,y:1,dir:"right",next:"right"};
   ghosts = [
-    {x:9,y:9,color:"#ff0033"},
-    {x:10,y:9,color:"#00ff99"},
-    {x:8,y:9,color:"#3399ff"}
+    {x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000"}, // Merah (Rudolph)
+    {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F"}, // Hijau
+    {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"} // Biru
   ];
   score = 0;
   document.getElementById("current-score-display").textContent = score;
@@ -108,19 +108,26 @@ function resetGame(){
   ghostActive = false;
 }
 
-/* ========== DRAW ========== */
+/* ========== DRAW MAP (Christmas Look) ========== */
 function drawMap(){
   for(let y=0;y<MAP_H;y++){
     for(let x=0;x<MAP_W;x++){
       const t = mapData[y][x];
       if(t===1){
-        ctx.fillStyle="#cc0000";
+        // Dinding Merah
+        ctx.fillStyle="#b91c1c";
         ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+        // Border Putih Salju
+        ctx.strokeStyle="#f9fafb";
+        ctx.lineWidth=2;
+        ctx.strokeRect(x*TILE,y*TILE,TILE,TILE);
       } else {
+        // Latar Belakang Biru Malam
         ctx.fillStyle="#020617";
         ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
         if(t===2){
-          ctx.fillStyle="#fde047";
+          // DOTS: Hadiah Kecil (Kuning Emas)
+          ctx.fillStyle="#ffd700"; 
           ctx.beginPath();
           ctx.arc(x*TILE+TILE/2,y*TILE+TILE/2,3,0,Math.PI*2);
           ctx.fill();
@@ -130,59 +137,104 @@ function drawMap(){
   }
 }
 
+/* ========== DRAW PACMAN (SANTA CLAUS) - MODIFIKASI ANIMASI KAKI ========== */
 function drawPacman(){
+  // Hitung efek goyangan (wobble)
+  const wobbleY = Math.sin(Date.now() / 150) * 1.5; // Naik turun 1.5 pixel
+  
   const x = pacman.x*TILE + TILE/2;
-  const y = pacman.y*TILE + TILE/2;
+  // Tambahkan wobbleY ke posisi y
+  const y = pacman.y*TILE + TILE/2 + wobbleY;
+  
   const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
   const angle = {right:0,left:Math.PI,up:-Math.PI/2,down:Math.PI/2}[pacman.dir];
-  ctx.fillStyle="#facc15";
+  
+  // 1. Santa's Face (Kuning Kulit)
+  ctx.fillStyle="#facc15"; 
   ctx.beginPath();
   ctx.moveTo(x,y);
   ctx.arc(x,y,TILE/2-2,angle+mouth*0.6,angle-mouth*0.6+Math.PI*2);
   ctx.fill();
-  // simple santa hat rim
-  ctx.fillStyle="#cc0000";
+
+  // 2. Santa's Beard (Janggut Putih - membulat)
+  ctx.fillStyle="white";
   ctx.beginPath();
-  ctx.moveTo(x - TILE*0.18, y - TILE*0.45);
-  ctx.lineTo(x + TILE*0.18, y - TILE*0.45);
+  ctx.arc(x, y + TILE/8, TILE/3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 3. Topi Santa: Merah 
+  ctx.fillStyle="#cc0000"; 
+  ctx.beginPath();
+  ctx.moveTo(x - TILE*0.35, y - TILE*0.3);
+  ctx.lineTo(x + TILE*0.35, y - TILE*0.3);
   ctx.lineTo(x, y - TILE*0.8);
   ctx.closePath();
   ctx.fill();
+
+  // 4. Pompom Putih (Ujung Topi)
   ctx.fillStyle="white";
   ctx.beginPath();
-  ctx.arc(x, y - TILE*0.8, 3, 0, Math.PI*2);
+  ctx.arc(x, y - TILE*0.8, 3.5, 0, Math.PI*2);
   ctx.fill();
+  
+  // 5. Bulu Putih (Garis Bawah Topi)
+  ctx.fillStyle="white";
+  ctx.fillRect(x - TILE*0.35, y - TILE*0.3, TILE*0.7, 3);
 }
 
+/* ========== DRAW GHOSTS (REINDEER) - MODIFIKASI ANIMASI KAKI ========== */
 function drawGhosts(){
   ghosts.forEach(g=>{
+    // Hitung efek goyangan (wobble)
+    const wobbleY = Math.sin(Date.now() / 150 + g.x * 0.5) * 1.5; // Naik turun 1.5 pixel (offset agar tiap rusa beda)
+    
     const x = g.x*TILE + TILE/2;
-    const y = g.y*TILE + TILE/2;
-    // glow
+    // Tambahkan wobbleY ke posisi y
+    const y = g.y*TILE + TILE/2 + wobbleY;
+    
+    const size = TILE * 0.45; 
+    const headWobble = Math.sin(Date.now() / 200) * 1; 
+
+    // 1. Badan Rusa (Kotak dengan sudut bulat)
     ctx.save();
-    ctx.shadowBlur = 12;
+    ctx.shadowBlur = 8;
     ctx.shadowColor = g.color;
     ctx.fillStyle = g.color;
     ctx.beginPath();
-    ctx.arc(x,y,TILE/2,Math.PI,0);
-    ctx.rect(x-TILE/2,y,TILE,TILE/2);
+    ctx.roundRect(x - size, y - size, size * 2, size * 2, 5);
     ctx.fill();
     ctx.restore();
-    // eyes
+
+    // 2. Mata
     ctx.fillStyle="white";
     ctx.beginPath();
-    ctx.arc(x - TILE*0.18, y - TILE*0.18, TILE*0.08, 0, Math.PI*2);
-    ctx.arc(x + TILE*0.18, y - TILE*0.18, TILE*0.08, 0, Math.PI*2);
+    ctx.arc(x - TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);
+    ctx.arc(x + TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);
     ctx.fill();
     ctx.fillStyle="black";
     ctx.beginPath();
-    ctx.arc(x - TILE*0.16, y - TILE*0.18, TILE*0.04, 0, Math.PI*2);
-    ctx.arc(x + TILE*0.16, y - TILE*0.18, TILE*0.04, 0, Math.PI*2);
+    ctx.arc(x - TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);
+    ctx.arc(x + TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);
     ctx.fill();
+
+    // 3. Hidung (Nose)
+    ctx.fillStyle=g.noseColor;
+    ctx.beginPath();
+    ctx.arc(x, y + TILE*0.25, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    // 4. Tanduk (Antlers)
+    ctx.fillStyle=g.antlerColor;
+    // Kiri
+    ctx.fillRect(x - TILE*0.35, y - TILE*0.4, 2, 5);
+    ctx.fillRect(x - TILE*0.35 + 2, y - TILE*0.4 - 2, 5, 2);
+    // Kanan
+    ctx.fillRect(x + TILE*0.35 - 2, y - TILE*0.4, 2, 5);
+    ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
   });
 }
 
-/* ========== MOVEMENT ========== */
+/* ========== MOVEMENT (Tidak Berubah) ========== */
 function canMove(x,y){ return mapData[y] && mapData[y][x] !== 1; }
 
 function movePacman(){
@@ -206,24 +258,23 @@ function moveGhosts(){
   });
 }
 
-/* ========== COLLISIONS ========== */
+/* ========== COLLISIONS (Tidak Berubah) ========== */
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
-    // inform parent so app.js can play dot sound
     parent.postMessage({ type: "dotEaten" }, "*");
   }
 
   for(const g of ghosts){
+    // Periksa tabrakan (meski ada wobble, kita gunakan posisi grid utama)
     if(g.x === pacman.x && g.y === pacman.y){
       gameOver();
       return;
     }
   }
 
-  // win?
   let win = true;
   for(let y=0;y<mapData.length;y++){
     for(let x=0;x<mapData[y].length;x++){
@@ -248,7 +299,7 @@ function gameOver(){
   parent.postMessage({ type: "submitScore", score }, "*");
 }
 
-/* ========== LOOP ========== */
+/* ========== LOOP (Tidak Berubah) ========== */
 function loop(ts){
   if(gameRunning && ts - lastMove > MOVE_INTERVAL){
     movePacman();
@@ -264,7 +315,7 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 
-/* ========== MESSAGE HANDLER (from parent) ========== */
+/* ========== MESSAGE HANDLER & CONTROLS (Tidak Berubah) ========== */
 window.addEventListener("message", (e) => {
   const d = e.data || {};
   if(d.type === "paySuccess"){
@@ -273,27 +324,20 @@ window.addEventListener("message", (e) => {
     gameRunning = true;
   }
   if(d.type === "mobileInput"){
-    // parent D-PAD control (from main page)
     const dir = (d.direction || "").toLowerCase();
     if(["up","down","left","right"].includes(dir)){
       pacman.next = dir;
-    } else if(dir === "stop"){
-      // ignore for now
     }
   }
 });
 
-/* ========== LOCAL D-PAD: set pacman.next & notify parent ========== */
 function sendMobileInput(direction){
-  // local update (for immediate responsiveness)
   if(direction && typeof direction === "string"){
     pacman.next = direction.toLowerCase();
   }
-  // also notify parent app.js (so parent can react if needed)
   try{ parent.postMessage({ type: "mobileInput", direction }, "*"); }catch(e){}
 }
 
-/* attach events for local D-PAD (touch & mouse) */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
   const dir = btn.getAttribute("data-dir");
   const start = (ev) => {
@@ -311,7 +355,6 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
   btn.addEventListener("mouseup", end);
 });
 
-/* keyboard support inside iframe (optional) */
 window.addEventListener("keydown", (e)=>{
   if(e.key.includes("Arrow")){
     const dir = e.key.replace("Arrow","").toLowerCase();
