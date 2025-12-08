@@ -356,11 +356,11 @@ canvas{background:#071024;border-radius:6px}
   });
 
   // mobile controls
-  document.querySelectorAll("#mobileControls button").forEach(b=>{
-  const setDir = ()=> pacman.nextDir = b.dataset.dir;
+    document.querySelectorAll("#mobileControls button").forEach(b=>{
+    const setDir = ()=> pacman.nextDir = b.dataset.dir;
 
-  b.addEventListener("touchstart", setDir);
-  b.addEventListener("mousedown", setDir);
+    b.addEventListener("touchstart", setDir);
+    b.addEventListener("mousedown", setDir); 
   });
 
   // receive messages from parent
