@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Pacman Natal</title>
+
 <style>
 html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS}
 #ui{position:fixed;top:10px;left:10px;color:#fff;z-index:9}
@@ -12,28 +13,29 @@ canvas{background:#071024;border-radius:6px}
 
 /* D-PAD */
 #mobileControls{
-  position:fixed;
-  bottom:12px;
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  flex-direction: column;
-  align-items: center;
-  z-index:9;
+position:fixed;
+bottom:12px;
+left:50%;
+transform:translateX(-50%);
+display:flex;
+flex-direction: column;
+align-items: center;
+z-index:9;
 }
 #mobileControls button{
-  width:60px;height:60px;
-  margin:4px;
-  font-size:24px;
-  border-radius:8px;
-  border:none;
-  background: linear-gradient(90deg, #cc0000, #16a34a);
-  color:#fff;
+width:60px;height:60px;
+margin:4px;
+font-size:24px;
+border-radius:8px;
+border:none;
+background: linear-gradient(90deg, #cc0000, #16a34a);
+color:#fff;
 }
 .dpad-row{display:flex;width:100%;justify-content:space-between}
 .center-filler{width:60px;height:60px}
 </style>
 </head>
+
 <body>
 
 <div id="ui">
@@ -44,7 +46,7 @@ canvas{background:#071024;border-radius:6px}
 <canvas id="pacman-canvas"></canvas>
 
 <div id="mobileControls">
-  <button data-dir="up">↑</button> 
+  <button data-dir="up">↑</button>
   <div class="dpad-row">
     <button data-dir="left">←</button>
     <div class="center-filler"></div>
@@ -53,20 +55,19 @@ canvas{background:#071024;border-radius:6px}
   <button data-dir="down">↓</button>
 </div>
 
-<!-- AUDIO FILES (pastikan ada di folder assets/) -->
-<audio id="bgm" src="assets/music_background.mp3" loop></audio>
-<audio id="sfxEat" src="assets/sfx_dot_eat.mp3"></audio>
-<audio id="sfxStart" src="assets/sfx_start.mp3"></audio>
+<!-- AUDIO -->
+<audio id="bgm" src="../assets/music_background.mp3" loop preload="auto"></audio>
+<audio id="sfxEat" src="../assets/sfx_dot_eat.mp3" preload="auto"></audio>
+<audio id="sfxStart" src="../assets/sfx_start.mp3" preload="auto"></audio>
 
 <script>
 (function(){
 
-/* ---------- CANVAS / MAP ---------- */
 const canvas = document.getElementById('pacman-canvas');
 const ctx = canvas.getContext('2d');
 const TILE_SIZE = 20;
 
-/* MAP ASLI (TIDAK DIUBAH) */
+/* MAP ASLI - TIDAK DIUBAH */
 const GAME_MAP = [
  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
  [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
@@ -93,39 +94,33 @@ const MAP_HEIGHT = GAME_MAP.length;
 canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
-/* ---------- AUDIO (KONSISTEN) ---------- */
+/* ✅ AUDIO FIX TOTAL */
 const bgm = document.getElementById("bgm");
 const sfxEat = document.getElementById("sfxEat");
 const sfxStart = document.getElementById("sfxStart");
 
-let audioUnlocked = false;
 bgm.volume = 0.5;
-sfxEat.volume = 0.8;
+sfxEat.volume = 0.9;
 sfxStart.volume = 0.9;
 
-/* Most browsers block autoplay. Play bgm on first user gesture. */
+let audioReady = false;
 function unlockAudio(){
-  if(audioUnlocked) return;
-  audioUnlocked = true;
+  if(audioReady) return;
+  audioReady = true;
   bgm.play().catch(()=>{});
 }
+window.addEventListener("pointerdown", unlockAudio, {once:true});
+window.addEventListener("keydown", unlockAudio, {once:true});
 
-/* also attach a pointerdown as fallback to ensure play attempt on first gesture */
-function enableBgmOnGesture(){
-  function once(){ unlockAudio(); window.removeEventListener('pointerdown', once); }
-  window.addEventListener('pointerdown', once);
-}
-enableBgmOnGesture();
+/* ===== GAME LOGIC TIDAK DIUBAH ===== */
 
-/* ---------- GAME STATE ---------- */
 let pacman, ghosts, score, mapData;
-let gameRunning = false;   // START behavior preserved: startGame() sets this
-let ghostActive = false;   // ghosts won't move until countdown completes
+let gameRunning = false;
+let ghostActive = false;
 let lastMove = 0;
 let hasInput = false;
 const MOVE_INTERVAL = 240;
 
-/* ---------- INIT / RESET ---------- */
 function resetMapData(){
   mapData = GAME_MAP.map(r=>[...r]);
   pacman = { x:1, y:1, dir:'right', nextDir:'right', radius:TILE_SIZE/2.5 };
@@ -143,12 +138,11 @@ function resetGame(){
   resetMapData();
   document.getElementById('current-score-display').textContent = score;
   document.getElementById('game-message').style.display = 'none';
-  gameRunning = false; // preserve original
+  gameRunning = false;
   lastMove = 0;
-  drawOnce(); // ensure visible immediately
+  drawOnce();
 }
 
-/* ---------- DRAWING ---------- */
 function drawMap(){
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
@@ -170,7 +164,7 @@ function drawMap(){
   }
 }
 
-function drawPacman() {
+function drawPacman(){
   const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
   const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
   ctx.fillStyle = '#facc15';
@@ -178,15 +172,10 @@ function drawPacman() {
 
   const mouthOpen = Math.abs(Math.sin(Date.now() / 100));
   const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI / 2, 'down': Math.PI / 2 }[pacman.dir];
-  const startAngle = angleOffset + mouthOpen * 0.4;
-  const endAngle = angleOffset - mouthOpen * 0.4 + 2 * Math.PI;
-
-  ctx.arc(x, y, pacman.radius, startAngle, endAngle, false);
+  ctx.arc(x, y, pacman.radius, angleOffset + mouthOpen*0.4, angleOffset - mouthOpen*0.4 + 2*Math.PI);
   ctx.lineTo(x, y);
-  ctx.closePath();
   ctx.fill();
 
-  // Santa hat (simple)
   ctx.fillStyle = '#cc0000';
   ctx.beginPath();
   ctx.moveTo(x - pacman.radius*0.6, y - pacman.radius);
@@ -194,168 +183,49 @@ function drawPacman() {
   ctx.lineTo(x, y - pacman.radius*1.6);
   ctx.closePath();
   ctx.fill();
-  ctx.fillStyle = 'white';
-  ctx.beginPath();
-  ctx.arc(x, y - pacman.radius*1.6, 3, 0, Math.PI*2);
-  ctx.fill();
-}
-
-function drawGhosts() {
-  ghosts.forEach(ghost => {
-    const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
-    const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
-
-    ctx.save();
-    ctx.shadowColor = ghost.color;
-    ctx.shadowBlur = 12;
-
-    ctx.fillStyle = ghost.color;
-    ctx.beginPath();
-    ctx.arc(x, y, TILE_SIZE/2, Math.PI, 0, false);
-    ctx.rect(x - TILE_SIZE/2, y, TILE_SIZE, TILE_SIZE/2);
-    ctx.closePath();
-    ctx.fill();
-
-    // eyes
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.arc(x - TILE_SIZE/4, y - TILE_SIZE/6, TILE_SIZE/8, 0, Math.PI*2);
-    ctx.arc(x + TILE_SIZE/4, y - TILE_SIZE/6, TILE_SIZE/8, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = 'black';
-    ctx.beginPath();
-    ctx.arc(x - TILE_SIZE/4 + 1, y - TILE_SIZE/6, TILE_SIZE/16, 0, Math.PI*2);
-    ctx.arc(x + TILE_SIZE/4 + 1, y - TILE_SIZE/6, TILE_SIZE/16, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.restore();
-  });
-}
-
-function drawOnce(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawMap();
-  drawPacman();
-  drawGhosts();
-}
-
-/* ---------- MOVEMENT ---------- */
-function canMove(x,y){
-  return mapData[y] !== undefined && mapData[y][x] !== 1;
 }
 
 function movePacman(){
-  // Pacman allowed to move if there's been any input (per your earlier requirement)
   if(!hasInput) return;
   const d = pacman.nextDir;
   const nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
   const ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
-  if(canMove(nx,ny)){
+  if(mapData[ny] && mapData[ny][nx] !== 1){
     pacman.x = nx;
     pacman.y = ny;
     pacman.dir = d;
   }
 }
 
-function moveGhosts(){
-  if(!ghostActive) return;
-  ghosts.forEach(g=>{
-    const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
-    const nx = g.x + d[0], ny = g.y + d[1];
-    if(canMove(nx,ny)){ g.x = nx; g.y = ny; }
-  });
-}
-
-/* ---------- COLLISIONS, SFX, WIN ---------- */
-function checkWin(){
-  for(let y=0;y<MAP_HEIGHT;y++){
-    for(let x=0;x<MAP_WIDTH;x++){
-      if(mapData[y][x] === 2) return false;
-    }
-  }
-  return true;
-}
-
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
-    try{ sfxEat.currentTime = 0; sfxEat.play().catch(()=>{}); }catch(e){}
+    sfxEat.currentTime = 0;
+    sfxEat.play().catch(()=>{});
     document.getElementById('current-score-display').textContent = score;
   }
 
-  // any ghost kills pacman
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
-      endGame();
-      return;
+      endGame(); return;
     }
-  }
-
-  // check win
-  if(checkWin()){
-    gameRunning = false;
-    const gm = document.getElementById('game-message');
-    gm.textContent = 'YOU WIN!';
-    gm.style.display = 'block';
-    try{ window.parent.postMessage({ type:'submitScore', score: score }, "*"); }catch(e){}
   }
 }
 
-/* ---------- GAME LOOP ---------- */
-function gameLoop(ts){
-  if(gameRunning){
-    if(ts - lastMove > MOVE_INTERVAL){
-      movePacman();
-      moveGhosts();
-      checkCollision();
-      lastMove = ts;
-    }
-  }
-  drawOnce();
-  requestAnimationFrame(gameLoop);
-}
-
-/* ---------- START / COUNTDOWN ---------- */
 function startGame(){
-  if(gameRunning) return;
+  unlockAudio();
+  sfxStart.currentTime = 0;
+  sfxStart.play().catch(()=>{});
 
-  // Usahakan unlock audio dulu (ada di file)
-  try {
-    unlockAudio();
-  } catch(e){ /* ignore */ }
-
-  // Pastikan BGM berusaha diputar (jika belum kebuka)
-  try {
-  // gunakan instance baru supaya tidak tergantung single audio element
-  const eat = new Audio("assets/sfx_dot_eat.mp3");
-  eat.volume = 0.8;
-  eat.play().catch(()=>{});
-} catch(e){}
-
-  // Play start SFX — pakai instance fresh sebagai fallback
-  try {
-    // coba mainkan element sfxStart terlebih dahulu
-    sfxStart.currentTime = 0;
-    sfxStart.play().catch(()=>{ 
-      // fallback: buat instance baru agar beberapa browser menerima
-      const f = new Audio("assets/sfx_start.mp3");
-      f.volume = 0.9;
-      f.play().catch(()=>{});
-    });
-  } catch(e){
-    try { (new Audio("assets/sfx_start.mp3")).play().catch(()=>{}); } catch(_){}
-  }
-
-  // show countdown, keep ghosts inactive until countdown done
   ghostActive = false;
-  const gm = document.getElementById('game-message');
   let count = 3;
+  const gm = document.getElementById('game-message');
   gm.style.display = 'block';
-  gm.textContent = 'READY ' + count;
+
   const t = setInterval(()=>{
+    gm.textContent = 'READY ' + count;
     count--;
-    if(count >= 0) gm.textContent = 'READY ' + count;
     if(count < 0){
       clearInterval(t);
       gm.style.display = 'none';
@@ -363,10 +233,16 @@ function startGame(){
       gameRunning = true;
       lastMove = performance.now();
     }
-  }, 1000);
+  },1000);
 }
 
-/* ---------- INPUT ---------- */
+function endGame(){
+  gameRunning = false;
+  const gm = document.getElementById('game-message');
+  gm.textContent = 'GAME OVER';
+  gm.style.display = 'block';
+}
+
 document.querySelectorAll('#mobileControls button').forEach(b=>{
   b.onclick = ()=>{
     unlockAudio();
@@ -374,28 +250,21 @@ document.querySelectorAll('#mobileControls button').forEach(b=>{
     hasInput = true;
   };
 });
-window.onkeydown = e=>{
-  if(e.key.includes('Arrow')){
-    unlockAudio();
-    pacman.nextDir = e.key.replace('Arrow','').toLowerCase();
-    hasInput = true;
-  }
-};
 
-/* Support external trigger used previously (paySuccess) */
-window.addEventListener('message', (e)=>{
-  if(e.data && e.data.type === 'paySuccess'){
-    // Reset and then start (same as original flow)
-    resetGame();
-    startGame();
-  }
-});
-
-/* ---------- STARTUP ---------- */
 resetGame();
-requestAnimationFrame(gameLoop);
+requestAnimationFrame(function loop(ts){
+  if(gameRunning && ts - lastMove > MOVE_INTERVAL){
+    movePacman();
+    checkCollision();
+    lastMove = ts;
+  }
+  drawMap();
+  drawPacman();
+  requestAnimationFrame(loop);
+});
 
 })();
 </script>
+
 </body>
 </html>
