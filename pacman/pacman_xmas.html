@@ -40,7 +40,7 @@ color:#fff;
 
 <div id="ui">
   <div id="current-score-display">0</div>
-  <div id="game-message" style="display:none;background:rgba(0,0,0,0.6);padding:6px;border-radius:6px;margin-top:6px"></div>
+  <div id="game-message" style="display:none;background:rgba(0,0,0,.7);padding:6px;border-radius:6px;margin-top:6px"></div>
 </div>
 
 <canvas id="pacman-canvas"></canvas>
@@ -55,108 +55,88 @@ color:#fff;
   <button data-dir="down">↓</button>
 </div>
 
-<!-- AUDIO -->
-<audio id="bgm" src="assets/music_background.mp3" loop preload="auto"></audio>
-<audio id="sfxEat" src="assets/sfx_dot_eat.mp3" preload="auto"></audio>
-<audio id="sfxStart" src="assets/sfx_start.mp3" preload="auto"></audio>
+<!-- ✅ AUDIO (PATH SUDAH BENAR) -->
+<audio id="bgm" src="assets/music_background.mp3" loop></audio>
+<audio id="sfxEat" src="assets/sfx_dot_eat.mp3"></audio>
+<audio id="sfxStart" src="assets/sfx_start.mp3"></audio>
 
 <script>
 (function(){
 
-const canvas = document.getElementById('pacman-canvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("pacman-canvas");
+const ctx = canvas.getContext("2d");
 const TILE_SIZE = 20;
 
-/* MAP ASLI - TIDAK DIUBAH */
+/* ✅ MAP TIDAK DIUBAH */
 const GAME_MAP = [
- [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
- [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
- [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
- [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
- [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
- [1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1],
- [1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1],
- [1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
- [0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
- [1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
- [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
- [1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
- [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
- [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
- [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
- [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
- [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
- [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+[1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+[1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1],
+[1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1],
+[1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
+[0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
+[1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+[1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+[1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-const MAP_WIDTH = GAME_MAP[0].length;
-const MAP_HEIGHT = GAME_MAP.length;
-canvas.width = MAP_WIDTH * TILE_SIZE;
-canvas.height = MAP_HEIGHT * TILE_SIZE;
+canvas.width = GAME_MAP[0].length * TILE_SIZE;
+canvas.height = GAME_MAP.length * TILE_SIZE;
 
 /* ✅ AUDIO FIX TOTAL */
 const bgm = document.getElementById("bgm");
 const sfxEat = document.getElementById("sfxEat");
 const sfxStart = document.getElementById("sfxStart");
+let audioUnlocked = false;
 
-bgm.volume = 0.5;
-sfxEat.volume = 0.9;
-sfxStart.volume = 0.9;
-
-let audioReady = false;
 function unlockAudio(){
-  if(audioReady) return;
-  audioReady = true;
+  if(audioUnlocked) return;
+  audioUnlocked = true;
   bgm.play().catch(()=>{});
 }
-window.addEventListener("pointerdown", unlockAudio, {once:true});
-window.addEventListener("keydown", unlockAudio, {once:true});
+window.addEventListener("pointerdown", unlockAudio);
 
-/* ===== GAME LOGIC TIDAK DIUBAH ===== */
-
-let pacman, ghosts, score, mapData;
+/* ✅ STATE */
+let mapData, pacman, ghosts, score;
 let gameRunning = false;
 let ghostActive = false;
 let lastMove = 0;
-let hasInput = false;
 const MOVE_INTERVAL = 240;
 
-function resetMapData(){
-  mapData = GAME_MAP.map(r=>[...r]);
-  pacman = { x:1, y:1, dir:'right', nextDir:'right', radius:TILE_SIZE/2.5 };
-  ghosts = [
-    { x:9,y:9,color:'#cc0000' },
-    { x:10,y:9,color:'#16a34a' },
-    { x:8,y:9,color:'#2563eb' }
-  ];
-  score = 0;
-  hasInput = false;
-  ghostActive = false;
-}
-
+/* ✅ RESET */
 function resetGame(){
-  resetMapData();
-  document.getElementById('current-score-display').textContent = score;
-  document.getElementById('game-message').style.display = 'none';
-  gameRunning = false;
-  lastMove = 0;
-  drawOnce();
+  mapData = GAME_MAP.map(r=>[...r]);
+  pacman = {x:1,y:1,dir:"right",nextDir:"right",radius:7};
+  ghosts = [{x:9,y:9},{x:10,y:9},{x:8,y:9}];
+  score = 0;
+  document.getElementById("current-score-display").textContent = score;
+  document.getElementById("game-message").style.display="none";
+  gameRunning=false;
 }
 
+/* ✅ DRAW */
 function drawMap(){
-  for(let y=0;y<MAP_HEIGHT;y++){
-    for(let x=0;x<MAP_WIDTH;x++){
-      const t = mapData[y][x];
-      if(t===1){
-        ctx.fillStyle = '#cc0000';
-        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      } else {
-        ctx.fillStyle = '#1a2c42';
-        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        if(t===2){
-          ctx.fillStyle = '#facc15';
+  for(let y=0;y<mapData.length;y++){
+    for(let x=0;x<mapData[y].length;x++){
+      if(mapData[y][x]==1){
+        ctx.fillStyle="#cc0000";
+        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+      }else{
+        ctx.fillStyle="#1a2c42";
+        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+        if(mapData[y][x]==2){
+          ctx.fillStyle="#facc15";
           ctx.beginPath();
-          ctx.arc(x*TILE_SIZE + TILE_SIZE/2, y*TILE_SIZE + TILE_SIZE/2, 3, 0, Math.PI*2);
+          ctx.arc(x*TILE_SIZE+10,y*TILE_SIZE+10,3,0,Math.PI*2);
           ctx.fill();
         }
       }
@@ -165,105 +145,87 @@ function drawMap(){
 }
 
 function drawPacman(){
-  const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
-  const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
-  ctx.fillStyle = '#facc15';
+  ctx.fillStyle="#facc15";
   ctx.beginPath();
-
-  const mouthOpen = Math.abs(Math.sin(Date.now() / 100));
-  const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI / 2, 'down': Math.PI / 2 }[pacman.dir];
-  ctx.arc(x, y, pacman.radius, angleOffset + mouthOpen*0.4, angleOffset - mouthOpen*0.4 + 2*Math.PI);
-  ctx.lineTo(x, y);
+  ctx.arc(pacman.x*TILE_SIZE+10,pacman.y*TILE_SIZE+10,7,0,Math.PI*2);
   ctx.fill();
+}
 
-  ctx.fillStyle = '#cc0000';
-  ctx.beginPath();
-  ctx.moveTo(x - pacman.radius*0.6, y - pacman.radius);
-  ctx.lineTo(x + pacman.radius*0.6, y - pacman.radius);
-  ctx.lineTo(x, y - pacman.radius*1.6);
-  ctx.closePath();
-  ctx.fill();
+function drawGhosts(){
+  ctx.fillStyle="#16a34a";
+  ghosts.forEach(g=>{
+    ctx.beginPath();
+    ctx.arc(g.x*TILE_SIZE+10,g.y*TILE_SIZE+10,7,0,Math.PI*2);
+    ctx.fill();
+  });
+}
+
+/* ✅ MOVEMENT */
+function canMove(x,y){
+  return mapData[y] && mapData[y][x] !== 1;
 }
 
 function movePacman(){
-  if(!hasInput) return;
   const d = pacman.nextDir;
   const nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
   const ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
-  if(mapData[ny] && mapData[ny][nx] !== 1){
-    pacman.x = nx;
-    pacman.y = ny;
-    pacman.dir = d;
-  }
+  if(canMove(nx,ny)){ pacman.x=nx; pacman.y=ny; }
 }
 
+function moveGhosts(){
+  if(!ghostActive) return;
+  ghosts.forEach(g=>{
+    const d=[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+    if(canMove(g.x+d[0],g.y+d[1])){ g.x+=d[0]; g.y+=d[1]; }
+  });
+}
+
+/* ✅ COLLISION & AUDIO */
 function checkCollision(){
-  if(mapData[pacman.y][pacman.x] === 2){
-    mapData[pacman.y][pacman.x] = 0;
-    score += 10;
-    sfxEat.currentTime = 0;
-    sfxEat.play().catch(()=>{});
-    document.getElementById('current-score-display').textContent = score;
-  }
-
-  for(const g of ghosts){
-    if(g.x === pacman.x && g.y === pacman.y){
-      endGame(); return;
-    }
+  if(mapData[pacman.y][pacman.x]==2){
+    mapData[pacman.y][pacman.x]=0;
+    score+=10;
+    sfxEat.currentTime=0;
+    sfxEat.play();
+    document.getElementById("current-score-display").textContent=score;
   }
 }
 
-function startGame(){
-  unlockAudio();
-  sfxStart.currentTime = 0;
-  sfxStart.play().catch(()=>{});
-
-  ghostActive = false;
-  let count = 3;
-  const gm = document.getElementById('game-message');
-  gm.style.display = 'block';
-
-  const t = setInterval(()=>{
-    gm.textContent = 'READY ' + count;
-    count--;
-    if(count < 0){
-      clearInterval(t);
-      gm.style.display = 'none';
-      ghostActive = true;
-      gameRunning = true;
-      lastMove = performance.now();
-    }
-  },1000);
+/* ✅ GAME LOOP FIX TOTAL */
+function loop(ts){
+  if(gameRunning && ts-lastMove>MOVE_INTERVAL){
+    movePacman();
+    moveGhosts();
+    checkCollision();
+    lastMove=ts;
+  }
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawMap();
+  drawPacman();
+  drawGhosts();
+  requestAnimationFrame(loop);
 }
 
-function endGame(){
-  gameRunning = false;
-  const gm = document.getElementById('game-message');
-  gm.textContent = 'GAME OVER';
-  gm.style.display = 'block';
-}
-
-document.querySelectorAll('#mobileControls button').forEach(b=>{
-  b.onclick = ()=>{
+/* ✅ INPUT */
+document.querySelectorAll("#mobileControls button").forEach(b=>{
+  b.onclick=()=>{
     unlockAudio();
-    pacman.nextDir = b.dataset.dir;
-    hasInput = true;
+    pacman.nextDir=b.dataset.dir;
+    if(!gameRunning) startGame();
   };
 });
 
+/* ✅ START */
+function startGame(){
+  if(gameRunning) return;
+  sfxStart.play();
+  bgm.play();
+  ghostActive=true;
+  gameRunning=true;
+}
+
 resetGame();
-requestAnimationFrame(function loop(ts){
-  if(gameRunning && ts - lastMove > MOVE_INTERVAL){
-    movePacman();
-    moveGhosts();     // ✅ INI YANG HILANG
-    checkCollision();
-    lastMove = ts;
-  }
-  drawMap();
-  drawPacman();
-  drawGhosts();       // ✅ INI YANG HILANG
-  requestAnimationFrame(loop);
-});
+requestAnimationFrame(loop);
 
 })();
 </script>
