@@ -10,14 +10,14 @@
 <style>
 /* --- STYLING UTAMA --- */
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS, sans-serif}
-/* UPGRADE: Gunakan min-height dan overflow-y:auto untuk konsistensi di DApp Browser */
+/* UPGRADE: Gunakan min-height untuk konsistensi di DApp Browser */
 body{
     min-height: 100vh;
     height: 100%;
     background:linear-gradient(to right,#fff,#ff0000);
     color:#fff;
-    overflow-y: auto; /* Izinkan scroll jika konten meluber */
-    overflow-x: hidden; /* Hindari scroll horizontal */
+    overflow-y: auto; 
+    overflow-x: hidden;
 }
 
 /* UPGRADE: Gunakan min-height untuk konsistensi tinggi */
@@ -38,18 +38,19 @@ button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90d
     align-items: center;
     background: rgba(0,0,0,0.2);
     border-radius: 8px;
-    /* UPGRADE: Hapus max-height: 80vh; agar wadah bisa mengisi ruang yang tersisa */
     max-height: 100%;
 }
+
 iframe{
     width:100%;
-    height:100%;
+    /* UPGRADE: Hapus height:100% untuk menggunakan height tetap di mobile */
+    height:100%; 
     border-radius:8px;
     border:0;
     display:none;
 }
 
-/* --- UPGRADE: CSS untuk Poster Overlay --- */
+/* --- CSS untuk Poster Overlay --- */
 #logoPlaceholder {
     width: 100%; 
     height: 100%; 
@@ -64,7 +65,7 @@ iframe{
 #logoPlaceholder .poster-image {
     width: 100%; 
     height: 100%;
-    object-fit: cover; /* <- Kunci: Memaksa gambar mengisi penuh wadah */
+    object-fit: cover; 
     object-position: center; 
 }
 
@@ -77,14 +78,14 @@ iframe{
     
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Menyebarkan konten (Teks atas & Tombol bawah) */
+    justify-content: space-between; 
     align-items: center;
     
     text-align: center;
     color: white;
     text-shadow: 0 0 5px black, 0 0 10px red; 
     padding: 20px; 
-    pointer-events: none; /* Izinkan klik menembus ke tombol (kecuali tombol CTA) */
+    pointer-events: none; 
 }
 
 #poster-overlay h2 {
@@ -96,8 +97,6 @@ iframe{
 #poster-overlay p {
     font-size: 1.1em;
     pointer-events: auto;
-    /* UPGRADE: Tambahkan margin agar tidak menempel tengah gambar */
-    margin-top: -100px; /* Geser sedikit ke atas (opsional, coba hilangkan jika aneh) */
 }
 
 .overlay-cta {
@@ -111,16 +110,40 @@ iframe{
 /* --- UPGRADE: MEDIA QUERY untuk Ponsel (DApp Browser) --- */
 @media (max-width: 768px) {
     #wrap {
-        flex-direction: column; /* Tumpuk Sidebar di atas Main */
+        flex-direction: column; 
         min-height: 100%;
     }
 
     #sidebar {
         width: 100%;
-        flex-direction: row; /* Sidebar menjadi baris tombol horizontal */
+        flex-direction: row; 
         flex-wrap: wrap; 
         justify-content: space-around;
         padding: 8px;
+        order: -1; 
+    }
+    
+    /* Sembunyikan Info Wallet di sidebar untuk menghemat ruang */
+    #walletAddr, #walletBal {
+        display: none;
+    }
+
+    #main {
+        padding-top: 5px; 
+        padding-bottom: 5px;
+        flex: 1; 
+    }
+
+    .content-area {
+        height: auto; 
+        max-height: 100%;
+        margin-bottom: 50px; 
+    }
+
+    /* KUNCI: Set tinggi iframe game agar tidak terpotong (gunakan nilai absolut) */
+    iframe#gameFrame {
+         height: 380px; 
+         display: none;
     }
     
     /* Sesuaikan ukuran font poster agar muat di layar kecil */
@@ -132,13 +155,6 @@ iframe{
         font-size: 1em;
     }
 }
-
-
-/* --- Info Wallet dan Salju --- */
-#walletAddr{word-break:break-all;font-size:12px;color:#000}
-#walletBal{font-size:12px;color:#000}
-.snow{position:absolute;top:-20px;width:8px;height:8px;border-radius:50%;background:#fff;opacity:.85;animation:snowFall linear infinite}
-@keyframes snowFall{from{transform:translateY(0)}to{transform:translateY(120vh)}}
 </style>
 </head>
 <body>
@@ -217,6 +233,7 @@ function showMainContent(contentId) {
     // Tampilkan yang diminta
     document.getElementById(contentId).style.display = 'flex'; 
     if (contentId === 'gameFrame' || contentId === 'leaderFrame') {
+        // UPGRADE: Di mobile, iframe membutuhkan display: block agar tinggi tetapnya bekerja
         document.getElementById(contentId).style.display = 'block';
     }
 }
@@ -224,6 +241,7 @@ function showMainContent(contentId) {
 // FUNGSI BARU: Update Jackpot Pool dan Top Score
 async function updateSummaryData() {
     try {
+        // Logika mengambil Top Score
         const [topPlayers, scores] = await gameContract.getTop10();
         if (scores.length > 0) {
             document.getElementById('topScoreValue').innerText = scores[0].toString();
@@ -237,6 +255,7 @@ async function updateSummaryData() {
     
     try {
         if (provider) {
+             // Logika mengambil Pool Value
              const poolWei = await provider.getBalance(CONTRACT_ADDRESS);
              const poolEth = ethers.utils.formatEther(poolWei);
              document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; 
@@ -260,7 +279,7 @@ btnConnect.addEventListener('click', async () => {
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
     const balWei = await provider.getBalance(userAddress);
-    walletBalEl.innerText = `${ethers.utils.formatEther(balWei).substring(0, 8)} SOMI`; // Potong bal setelah 8 karakter
+    walletBalEl.innerText = `${ethers.utils.formatEther(balWei).substring(0, 8)} SOMI`; 
 
     try {
       startFeeWei = await gameContract.startFeeWei();
