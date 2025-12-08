@@ -3,9 +3,6 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<audio id="bgm" src="assets/music_background.mp3" loop></audio>
-<audio id="sfxEat" src="assets/sfx_dot_eat.mp3"></audio>
-<audio id="sfxStart" src="assets/sfx_start.mp3"></audio>
 <title>Pacman Natal</title>
 <style>
 html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS}
@@ -58,8 +55,8 @@ canvas{background:#071024;border-radius:6px}
 
 <!-- AUDIO FILES (pastikan ada di folder assets/) -->
 <audio id="bgm" src="assets/music_background.mp3" loop></audio>
-<audio id="eatSfx" src="assets/sfx_dot_eat.mp3"></audio>
-<audio id="startSfx" src="assets/sfx_start.mp3"></audio>
+<audio id="sfxEat" src="assets/sfx_dot_eat.mp3"></audio>
+<audio id="sfxStart" src="assets/sfx_start.mp3"></audio>
 
 <script>
 (function(){
@@ -96,19 +93,26 @@ const MAP_HEIGHT = GAME_MAP.length;
 canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
-/* ---------- AUDIO ---------- */
+/* ---------- AUDIO (KONSISTEN) ---------- */
 const bgm = document.getElementById("bgm");
 const sfxEat = document.getElementById("sfxEat");
 const sfxStart = document.getElementById("sfxStart");
 
 let audioUnlocked = false;
 bgm.volume = 0.5;
-eatSfx.volume = 0.8;
-startSfx.volume = 0.9;
+sfxEat.volume = 0.8;
+sfxStart.volume = 0.9;
 
 /* Most browsers block autoplay. Play bgm on first user gesture. */
+function unlockAudio(){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  bgm.play().catch(()=>{});
+}
+
+/* also attach a pointerdown as fallback to ensure play attempt on first gesture */
 function enableBgmOnGesture(){
-  function once(){ bgm.play().catch(()=>{}); window.removeEventListener('pointerdown', once); }
+  function once(){ unlockAudio(); window.removeEventListener('pointerdown', once); }
   window.addEventListener('pointerdown', once);
 }
 enableBgmOnGesture();
@@ -139,9 +143,9 @@ function resetGame(){
   resetMapData();
   document.getElementById('current-score-display').textContent = score;
   document.getElementById('game-message').style.display = 'none';
-  gameRunning = false; // preserve original: game doesn't auto-start
+  gameRunning = false; // preserve original
   lastMove = 0;
-  drawOnce(); // ensure the map + characters are visible immediately
+  drawOnce(); // ensure visible immediately
 }
 
 /* ---------- DRAWING ---------- */
@@ -149,7 +153,6 @@ function drawMap(){
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
       const t = mapData[y][x];
-      // walls and floor
       if(t===1){
         ctx.fillStyle = '#cc0000';
         ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -167,7 +170,6 @@ function drawMap(){
   }
 }
 
-/* Pacman original mouth animation + small Santa hat */
 function drawPacman() {
   const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
   const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
@@ -198,18 +200,15 @@ function drawPacman() {
   ctx.fill();
 }
 
-/* Ghost original shape + holiday glow */
 function drawGhosts() {
   ghosts.forEach(ghost => {
     const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
     const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
 
-    // glow
     ctx.save();
     ctx.shadowColor = ghost.color;
     ctx.shadowBlur = 12;
 
-    // body
     ctx.fillStyle = ghost.color;
     ctx.beginPath();
     ctx.arc(x, y, TILE_SIZE/2, Math.PI, 0, false);
@@ -245,8 +244,8 @@ function canMove(x,y){
   return mapData[y] !== undefined && mapData[y][x] !== 1;
 }
 
-/* Pacman moves when player inputs (allowed before start as you requested previously) */
 function movePacman(){
+  // Pacman allowed to move if there's been any input (per your earlier requirement)
   if(!hasInput) return;
   const d = pacman.nextDir;
   const nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
@@ -254,11 +253,10 @@ function movePacman(){
   if(canMove(nx,ny)){
     pacman.x = nx;
     pacman.y = ny;
-    pacman.dir = d; // update facing for mouth direction
+    pacman.dir = d;
   }
 }
 
-/* Ghosts won't move until ghostActive === true */
 function moveGhosts(){
   if(!ghostActive) return;
   ghosts.forEach(g=>{
@@ -268,21 +266,40 @@ function moveGhosts(){
   });
 }
 
-/* ---------- COLLISIONS & SFX ---------- */
+/* ---------- COLLISIONS, SFX, WIN ---------- */
+function checkWin(){
+  for(let y=0;y<MAP_HEIGHT;y++){
+    for(let x=0;x<MAP_WIDTH;x++){
+      if(mapData[y][x] === 2) return false;
+    }
+  }
+  return true;
+}
+
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
-    // play eat sfx
-    try{ eatSfx.currentTime = 0; eatSfx.play().catch(()=>{}); }catch(e){}
+    try{ sfxEat.currentTime = 0; sfxEat.play().catch(()=>{}); }catch(e){}
     document.getElementById('current-score-display').textContent = score;
   }
-  // ghost collision -> end game (preserve original)
-  ghosts.forEach(g=>{
+
+  // any ghost kills pacman
+  for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
-      endGame(); // keep original behavior
+      endGame();
+      return;
     }
-  });
+  }
+
+  // check win
+  if(checkWin()){
+    gameRunning = false;
+    const gm = document.getElementById('game-message');
+    gm.textContent = 'YOU WIN!';
+    gm.style.display = 'block';
+    try{ window.parent.postMessage({ type:'submitScore', score: score }, "*"); }catch(e){}
+  }
 }
 
 /* ---------- GAME LOOP ---------- */
@@ -300,30 +317,15 @@ function gameLoop(ts){
 }
 
 /* ---------- START / COUNTDOWN ---------- */
-/* We keep startGame function (exists before). We implement countdown here:
-   - startGame() triggers a short countdown (startSfx plays once) BEFORE ghosts move
-   - Pacman may already move (we keep that behavior)
-*/
 function startGame(){
-  // If game already running, ignore
   if(gameRunning) return;
 
-function unlockAudio(){
-  if(audioUnlocked) return;
-  audioUnlocked = true;
-  bgm.volume = 0.5;
-  bgm.play().catch(()=>{}); 
-  }
+  unlockAudio(); // ensure audio available if start triggered programmatically
 
-  // Play start sound immediately (attempt)
-  sfxStart.currentTime = 0;
-  sfxStart.play();
-  setTimeout(()=>{
-  gameRunning = true;
-  requestAnimationFrame(gameLoop);
-  }, 2000);
-  return;
-  // Countdown visible, ghosts inactive until countdown ends
+  // attempt to play start SFX
+  try{ sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); }catch(e){}
+
+  // show countdown, keep ghosts inactive until countdown done
   ghostActive = false;
   const gm = document.getElementById('game-message');
   let count = 3;
@@ -336,7 +338,7 @@ function unlockAudio(){
       clearInterval(t);
       gm.style.display = 'none';
       ghostActive = true;
-      gameRunning = true;      // actual gameplay starts (preserve original semantics)
+      gameRunning = true;
       lastMove = performance.now();
     }
   }, 1000);
@@ -348,28 +350,20 @@ function endGame(){
   const gm = document.getElementById('game-message');
   gm.textContent = 'GAME OVER';
   gm.style.display = 'block';
-  // keep original postMessage if embedding needs it
   try{ window.parent.postMessage({ type: "submitScore", score: score }, "*"); }catch(e){}
-}
- function checkWin(){
-  for(let y=0;y<MAP_HEIGHT;y++){
-    for(let x=0;x<MAP_WIDTH;x++){
-      if(mapData[y][x] === 2) return false;
-    }
-  }
-  return true;
 }
 
 /* ---------- INPUT ---------- */
 document.querySelectorAll('#mobileControls button').forEach(b=>{
   b.onclick = ()=>{
-  unlockAudio();
-  pacman.nextDir = b.dataset.dir;
-  hasInput = true;
-};
+    unlockAudio();
+    pacman.nextDir = b.dataset.dir;
+    hasInput = true;
+  };
 });
 window.onkeydown = e=>{
   if(e.key.includes('Arrow')){
+    unlockAudio();
     pacman.nextDir = e.key.replace('Arrow','').toLowerCase();
     hasInput = true;
   }
@@ -378,13 +372,6 @@ window.onkeydown = e=>{
 /* Support external trigger used previously (paySuccess) */
 window.addEventListener('message', (e)=>{
   if(e.data && e.data.type === 'paySuccess'){
-  if(checkWin()){
-  gameRunning = false;
-  const gm = document.getElementById("game-message");
-  gm.textContent = "YOU WIN!";
-  gm.style.display = "block";
-  window.parent.postMessage({ type:"submitScore", score: score },"*");
-  }
     // Reset and then start (same as original flow)
     resetGame();
     startGame();
@@ -392,8 +379,8 @@ window.addEventListener('message', (e)=>{
 });
 
 /* ---------- STARTUP ---------- */
-resetGame();                // draw initial screen
-requestAnimationFrame(gameLoop); // start animation loop (drawOnly until gameRunning true)
+resetGame();
+requestAnimationFrame(gameLoop);
 
 })();
 </script>
