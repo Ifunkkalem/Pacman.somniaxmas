@@ -1,100 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Pacman Natal — Sinterklas vs Grinch</title>
+<meta charset="UTF-8">
+<title>Pacman Natal Final</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-html,body{
-  height:100%;
-  margin:0;
-  background:#000;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-family:Trebuchet MS;
-  flex-direction:column;
-}
-#ui{
-  position:fixed;
-  top:10px;
-  left:10px;
-  color:#fff;
-  z-index:9;
-  display:flex;
-  gap:12px;
-  align-items:center;
-}
-#lives { color: #ffdddd; }
-#score { color:#fff9b0; }
-#game-message{
-  position:fixed;
-  inset:0;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  background:rgba(0,0,0,0.75);
-  color:gold;
-  font-size:34px;
-  z-index:99;
-  text-align:center;
-  padding:20px;
-  box-sizing:border-box;
-}
-#gameWrapper{ width:100%; max-width:960px; display:flex; justify-content:center; }
-canvas{ background:#071024; border-radius:6px; width:100%; height:auto; display:block; }
-
-/* D-PAD */
+body{margin:0;background:#000;color:white;text-align:center;font-family:Arial}
+#ui{position:fixed;top:10px;left:10px;z-index:10}
+canvas{background:#000;display:block;margin:auto}
 #mobileControls{
-  position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
-  display:flex; flex-direction: column; align-items:center; z-index:9; width:200px;
+  position:fixed;bottom:15px;left:50%;
+  transform:translateX(-50%);
+  display:flex;gap:12px;z-index:20
 }
-#mobileControls button{
-  width:60px; height:60px; margin:4px; font-size:24px; border-radius:8px;
-  border:none; background: linear-gradient(90deg,#cc0000,#16a34a); color:#fff;
-  box-shadow:0 4px #8b0000;
+.ctl-btn{
+  width:60px;height:60px;border-radius:50%;
+  border:none;background:#22c55e;color:#000;font-size:22px
 }
-#mobileControls button:active{ transform:translateY(3px); box-shadow:0 0 #8b0000; }
-.dpad-row{ display:flex; justify-content:space-between; width:100%; }
-.center-filler{ width:60px; height:60px; }
-
-/* Desktop: make d-pad smaller and to side */
-@media (min-width:900px){
-  #mobileControls{ right:16px; left:auto; transform:none; bottom:60px; width:140px; }
-  #mobileControls button{ width:40px; height:40px; font-size:16px; }
+#game-message{
+  position:fixed;inset:0;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.85);
+  font-size:80px;color:gold;z-index:99
 }
 </style>
 </head>
 <body>
 
-<div id="ui">
-  <div id="score">Score: <span id="current-score-display">0</span></div>
-  <div id="lives">Lives: <span id="lives-count">3</span></div>
-</div>
-
+<div id="ui">Score: <span id="current-score-display">0</span></div>
 <div id="game-message"></div>
-
-<div id="gameWrapper">
-  <canvas id="pacman-canvas"></canvas>
-</div>
+<canvas id="pacman-canvas"></canvas>
 
 <div id="mobileControls">
-  <button data-dir="up">↑</button>
-  <div class="dpad-row">
-    <button data-dir="left">←</button>
-    <div class="center-filler"></div>
-    <button data-dir="right">→</button>
-  </div>
-  <button data-dir="down">↓</button>
+  <button class="ctl-btn" data-dir="up">↑</button>
+  <button class="ctl-btn" data-dir="left">←</button>
+  <button class="ctl-btn" data-dir="down">↓</button>
+  <button class="ctl-btn" data-dir="right">→</button>
 </div>
 
 <script>
 (function(){
-/* ----------------
-   CORE CONFIG
-   ---------------- */
+
 const canvas = document.getElementById('pacman-canvas');
 const ctx = canvas.getContext('2d');
+
 const TILE_SIZE = 20;
 
 const GAME_MAP = [
@@ -120,81 +69,54 @@ const GAME_MAP = [
 
 const MAP_WIDTH = GAME_MAP[0].length;
 const MAP_HEIGHT = GAME_MAP.length;
-
-/* ---------- state ---------- */
-let mapData = [];
-let pacman = { x:1, y:1, dir:'right', nextDir:'right', radius: TILE_SIZE/2.5 };
-let ghosts = [];
-let score = 0;
-let lives = 3;
-let gameRunning = false;
-let lastTime = 0;
-const MOVE_INTERVAL = 220;
-
-/* ---------- canvas sizing (visual) ---------- */
 canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
-function resizeCanvasToFit(){
-  const availW = Math.min(window.innerWidth, 960);
-  const availH = window.innerHeight - 120;
-  const aspect = (MAP_WIDTH*TILE_SIZE) / (MAP_HEIGHT*TILE_SIZE);
+let pacman, ghosts, score, mapData;
+let gameRunning=false, animationFrameId=null;
 
-  let targetW = availW;
-  let targetH = targetW / aspect;
-  if(targetH > availH){
-    targetH = availH;
-    targetW = targetH * aspect;
-  }
-  canvas.style.width = Math.floor(targetW) + 'px';
-  canvas.style.height = Math.floor(targetH) + 'px';
-  drawOnce();
-}
-window.addEventListener('resize', ()=> setTimeout(resizeCanvasToFit,80));
-window.addEventListener('orientationchange', ()=> setTimeout(resizeCanvasToFit,150));
-
-/* ---------- init / reset ---------- */
 function resetMapData(){
   mapData = GAME_MAP.map(r=>[...r]);
-  pacman = { x:1, y:1, dir:'right', nextDir:'right', radius: TILE_SIZE/2.5 };
+  pacman = { x:1, y:1, dir:'right', nextDir:'right' };
   ghosts = [
-    { x:9, y:9, color:'#6b0303' }, // musuh merah gelap
-    { x:10, y:9, color:'#064e3b' }, // musuh hijau gelap
-    { x:8, y:9, color:'#042a65' } // musuh biru gelap
+    { x:9,y:9,color:'#cc0000' },
+    { x:10,y:9,color:'#16a34a' },
+    { x:8,y:9,color:'#2563eb' }
   ];
-  score = 0;
-  lives = 3;
-  updateUI();
 }
 
-/* ---------- UI ---------- */
-function updateUI(){
-  document.getElementById('current-score-display').textContent = score;
-  document.getElementById('lives-count').textContent = lives;
+function resetGame(){
+  resetMapData();
+  score=0;
+  document.getElementById("current-score-display").textContent = score;
+
+  const gm = document.getElementById("game-message");
+  gm.style.display = "none";
+  gm.textContent = "";
+
+  gameRunning=false;
+  if(animationFrameId){
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId=null;
+  }
+
+  drawOnce();
 }
 
-/* ---------- draw helpers ---------- */
-function drawOnce(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawMap();
-  drawPacman();
-  drawGhosts();
-}
-
-/* draw map */
 function drawMap(){
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
-      const t = mapData[y][x];
-      const px = x*TILE_SIZE, py = y*TILE_SIZE;
+      const t=mapData[y][x];
       if(t===1){
-        ctx.fillStyle = '#cc0000'; ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
-      } else {
-        ctx.fillStyle = '#0f2740'; ctx.fillRect(px,py,TILE_SIZE,TILE_SIZE);
+        ctx.fillStyle='#cc0000';
+        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+      }else{
+        ctx.fillStyle='#1a2c42';
+        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
         if(t===2){
-          ctx.fillStyle = '#facc15';
+          ctx.fillStyle='#facc15';
           ctx.beginPath();
-          ctx.arc(px + TILE_SIZE/2, py + TILE_SIZE/2, TILE_SIZE/8, 0, Math.PI*2);
+          ctx.arc(x*TILE_SIZE+10,y*TILE_SIZE+10,3,0,Math.PI*2);
           ctx.fill();
         }
       }
@@ -202,277 +124,135 @@ function drawMap(){
   }
 }
 
-/* draw Pacman as Sinterklas (Santa) */
+/* 🎅 SINTERKLAS */
 function drawPacman(){
-  const cx = pacman.x * TILE_SIZE + TILE_SIZE/2;
-  const cy = pacman.y * TILE_SIZE + TILE_SIZE/2;
+  const x = pacman.x*TILE_SIZE+10;
+  const y = pacman.y*TILE_SIZE+10;
 
-  // face (red cap base)
-  ctx.save();
-  // jambang putih (beard) behind mouth
-  ctx.fillStyle = '#f8fafc';
+  ctx.fillStyle="red";
   ctx.beginPath();
-  ctx.arc(cx, cy + TILE_SIZE*0.08, pacman.radius*0.95, 0, Math.PI*2);
+  ctx.arc(x,y-4,7,Math.PI,0);
   ctx.fill();
 
-  // face circle (skin) - slightly darker under beard: use red hat frame and face color
-  ctx.fillStyle = '#ffd9c7';
+  ctx.fillStyle="white";
   ctx.beginPath();
-  ctx.arc(cx, cy - 2, pacman.radius*0.75, 0, Math.PI*2);
+  ctx.arc(x,y+4,7,0,Math.PI*2);
   ctx.fill();
-
-  // hat (red triangle + white rim)
-  ctx.fillStyle = '#b91c1c';
-  ctx.beginPath();
-  ctx.moveTo(cx - pacman.radius*1.1, cy - pacman.radius*1.05);
-  ctx.lineTo(cx + pacman.radius*1.2, cy - pacman.radius*1.05);
-  ctx.lineTo(cx, cy - pacman.radius*1.6);
-  ctx.closePath();
-  ctx.fill();
-
-  // hat rim
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy - pacman.radius*1.05, pacman.radius*1.15, pacman.radius*0.35, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // beard overlay (to shape mouth)
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(cx, cy + pacman.radius*0.35, pacman.radius*0.9, 0, Math.PI, true);
-  ctx.fill();
-
-  // eyes
-  ctx.fillStyle = '#000';
-  ctx.beginPath();
-  ctx.arc(cx - pacman.radius*0.35, cy - pacman.radius*0.15, pacman.radius*0.15, 0, Math.PI*2);
-  ctx.arc(cx + pacman.radius*0.05, cy - pacman.radius*0.15, pacman.radius*0.15, 0, Math.PI*2);
-  ctx.fill();
-
-  // mouth (use pacman animated arc)
-  const mouthOpen = Math.abs(Math.sin(Date.now()/100));
-  const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI/2, 'down': Math.PI/2 }[pacman.dir];
-  const startAngle = angleOffset + mouthOpen * 0.35;
-  const endAngle = angleOffset - mouthOpen * 0.35 + 2 * Math.PI;
-
-  ctx.fillStyle = '#8b0000';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.arc(cx, cy, pacman.radius*0.55, startAngle, endAngle, false);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.restore();
 }
 
-/* draw ghosts as "musuh" (spiky) */
+/* 👹 MUSUH */
 function drawGhosts(){
   ghosts.forEach(g=>{
-    const cx = g.x * TILE_SIZE + TILE_SIZE/2;
-    const cy = g.y * TILE_SIZE + TILE_SIZE/2;
-    const r = TILE_SIZE/2;
+    const x = g.x*TILE_SIZE+10;
+    const y = g.y*TILE_SIZE+10;
 
-    // body
-    ctx.save();
-    ctx.fillStyle = g.color;
+    ctx.fillStyle=g.color;
     ctx.beginPath();
-    ctx.arc(cx, cy, r, Math.PI, 0, false);
-    ctx.rect(cx - r, cy, r*2, r/1.4);
+    ctx.arc(x,y,9,0,Math.PI*2);
     ctx.fill();
 
-    // spikes bottom
-    ctx.fillStyle = '#000';
-    const spikes = 5;
+    ctx.fillStyle="white";
     ctx.beginPath();
-    for(let i=0;i<=spikes;i++){
-      const px = cx - r + (i*(2*r)/spikes);
-      const py = cy + r/1.4;
-      if(i===0) ctx.moveTo(px,py);
-      else ctx.lineTo(px, py - ( (i%2===0)?6:12 ));
-    }
-    ctx.lineTo(cx + r, cy + r/1.4);
-    ctx.closePath();
+    ctx.arc(x-3,y-2,2,0,Math.PI*2);
+    ctx.arc(x+3,y-2,2,0,Math.PI*2);
     ctx.fill();
-
-    // eyes
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(cx - r*0.35, cy - r*0.35, r*0.22, 0, Math.PI*2);
-    ctx.arc(cx + r*0.05, cy - r*0.35, r*0.22, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.arc(cx - r*0.35 + 2, cy - r*0.35, r*0.1, 0, Math.PI*2);
-    ctx.arc(cx + r*0.05 + 2, cy - r*0.35, r*0.1, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.restore();
   });
 }
 
-/* ---------- movement & collisions ---------- */
-function canMove(x,y){
-  return mapData[y] && mapData[y][x] !== 1;
+function drawOnce(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawMap();
+  drawPacman();
+  drawGhosts();
 }
 
-function respawnPacman(){
-  pacman.x = 1;
-  pacman.y = 1;
-  pacman.dir = 'right';
-  pacman.nextDir = 'right';
+function canMove(x,y){
+  return mapData[y] && mapData[y][x]!==1;
 }
 
 function movePacman(){
-  const d = pacman.nextDir;
-  const nx = pacman.x + (d==='right'?1:d==='left'?-1:0);
-  const ny = pacman.y + (d==='down'?1:d==='up'?-1:0);
+  const d=pacman.nextDir;
+  const nx=pacman.x+(d==="right"?1:d==="left"?-1:0);
+  const ny=pacman.y+(d==="down"?1:d==="up"?-1:0);
   if(canMove(nx,ny)){
-    pacman.dir = d;
-  }
-  const mx = pacman.dir==='right'?1:pacman.dir==='left'?-1:0;
-  const my = pacman.dir==='down'?1:pacman.dir==='up'?-1:0;
-  if(canMove(pacman.x+mx, pacman.y+my)){
-    pacman.x += mx; pacman.y += my;
-  }
-
-  // eat dot
-  if(mapData[pacman.y][pacman.x] === 2){
-    mapData[pacman.y][pacman.x] = 0;
-    score += 10;
-    updateUI();
+    pacman.x=nx; pacman.y=ny;
   }
 }
 
 function moveGhosts(){
   ghosts.forEach(g=>{
-    // bias chasing: prefer move that reduces distance but allow randomness
-    const moves = [{dx:1,dy:0},{dx:-1,dy:0},{dx:0,dy:1},{dx:0,dy:-1}];
-    let possible = moves.filter(m=> canMove(g.x+m.dx, g.y+m.dy));
-    if(possible.length===0) return;
-    // score each move by distance to pacman
-    possible.sort((a,b)=>{
-      const da = Math.hypot((g.x+a.dx)-pacman.x, (g.y+a.dy)-pacman.y);
-      const db = Math.hypot((g.x+b.dx)-pacman.x, (g.y+b.dy)-pacman.y);
-      return da - db;
-    });
-    const pick = (Math.random()<0.7? possible[0] : possible[Math.floor(Math.random()*possible.length)]);
-    g.x += pick.dx; g.y += pick.dy;
+    const d=[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+    const nx=g.x+d[0], ny=g.y+d[1];
+    if(canMove(nx,ny)){ g.x=nx; g.y=ny; }
   });
 }
 
-/* collision detection and lives handling */
-function checkCollisionAndLives(){
-  // collision check
-  for(const g of ghosts){
-    if(g.x === pacman.x && g.y === pacman.y){
-      // lose a life
-      lives = Math.max(0, lives - 1);
-      updateUI();
-      if(lives === 0){
-        // game over lose
-        endGame(false);
-      } else {
-        // respawn pacman and give short invulnerability (skip for simplicity)
-        respawnPacman();
-      }
-      return;
+function checkCollision(){
+  if(mapData[pacman.y][pacman.x]===2){
+    mapData[pacman.y][pacman.x]=0;
+    score+=10;
+    document.getElementById("current-score-display").textContent=score;
+  }
+  ghosts.forEach(g=>{
+    if(g.x===pacman.x && g.y===pacman.y){
+      endGame();
     }
-  }
-  // check win: no dots
-  const dots = mapData.flat().filter(c=>c===2).length;
-  if(dots === 0){
-    endGame(true);
-  }
+  });
 }
 
-/* ---------- game loop ---------- */
-let lastMoveTime = 0;
-function gameLoop(ts){
-  if(gameRunning && ts - lastMoveTime > MOVE_INTERVAL){
-    movePacman();
-    moveGhosts();
-    checkCollisionAndLives();
-    lastMoveTime = ts;
-  }
-
+function gameLoop(){
+  if(!gameRunning) return;
+  movePacman();
+  moveGhosts();
+  checkCollision();
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawMap();
   drawPacman();
   drawGhosts();
-
-  requestAnimationFrame(gameLoop);
+  animationFrameId=requestAnimationFrame(gameLoop);
 }
 
-/* ---------- endGame ---------- */
-function endGame(isWin){
-  gameRunning = false;
-  const gm = document.getElementById('game-message');
-  if(isWin){
-    gm.textContent = `SELAMAT! Kamu membersihkan semua hadiah!\nSkor: ${score}`;
-  } else {
-    gm.textContent = `GAME OVER! Sinterklas kalah...\nSkor: ${score}`;
+function startGame(){
+  gameRunning=true;
+  gameLoop();
+}
+
+function endGame(){
+  gameRunning=false;
+  if(animationFrameId){
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId=null;
   }
-  gm.style.display = 'flex';
 
-  // send score to parent for on-chain submission (parent must handle wallet)
-  window.parent.postMessage({ type: 'submitScore', score: score }, '*');
+  const gm = document.getElementById("game-message");
+  gm.style.display="flex";
+  gm.textContent="GAME OVER";
 
-  // after 3s hide and request parent to show leaderboard
-  setTimeout(()=>{
-    gm.style.display = 'none';
-    window.parent.postMessage({ type: 'showLeaderboard' }, '*');
-  }, 3000);
+  window.parent.postMessage({
+    type:"submitScore",
+    score: score
+  },"*");
 }
 
-/* ---------- controls ---------- */
-window.addEventListener('keydown', (e)=>{
-  if(e.key==='ArrowUp') pacman.nextDir='up';
-  if(e.key==='ArrowDown') pacman.nextDir='down';
-  if(e.key==='ArrowLeft') pacman.nextDir='left';
-  if(e.key==='ArrowRight') pacman.nextDir='right';
+document.querySelectorAll(".ctl-btn").forEach(b=>{
+  b.onclick=()=>pacman.nextDir=b.dataset.dir;
 });
 
-/* Mobile D-pad: touchstart + mousedown, preventDefault to remove delay */
-document.querySelectorAll('#mobileControls button').forEach(btn=>{
-  btn.addEventListener('touchstart', (ev)=>{
-    ev.preventDefault();
-    pacman.nextDir = btn.dataset.dir;
-  }, { passive:false });
-  btn.addEventListener('mousedown', ()=> pacman.nextDir = btn.dataset.dir);
-});
+window.onkeydown=e=>{
+  if(e.key==="ArrowUp") pacman.nextDir="up";
+  if(e.key==="ArrowDown") pacman.nextDir="down";
+  if(e.key==="ArrowLeft") pacman.nextDir="left";
+  if(e.key==="ArrowRight") pacman.nextDir="right";
+};
 
-/* ---------- messaging with parent ---------- */
-window.addEventListener('message', (ev)=>{
-  const d = ev.data || {};
-  if(d.type === 'paySuccess'){
-    // start game
-    if(!gameRunning){
-      gameRunning = true;
-      lastMoveTime = performance.now();
-      // hide any message if present
-      document.getElementById('game-message').style.display = 'none';
-    }
-  } else if(d.type === 'resetGame'){
-    resetMapData();
-    updateUI();
-    drawOnce();
-  } else if(d.type === 'startFee'){
-    const gm = document.getElementById('game-message');
-    gm.textContent = `Fee to start: ${d.feeEth} SOMI. Click Play on parent.`;
-    gm.style.display = 'flex';
-    setTimeout(()=>gm.style.display='none',3000);
+window.addEventListener("message",(e)=>{
+  if(e.data.type==="paySuccess"){
+    resetGame();
+    startGame();
   }
 });
 
-/* request start fee from parent */
-window.parent.postMessage({ type: 'requestStartFee' }, '*');
-
-/* ---------- initialize ---------- */
-resetMapData();
-updateUI();
-resizeCanvasToFit();
-requestAnimationFrame(gameLoop);
+resetGame();
 
 })();
 </script>
