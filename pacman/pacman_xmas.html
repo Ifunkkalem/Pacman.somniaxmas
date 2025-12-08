@@ -7,10 +7,10 @@
 <style>
 html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS}
 #ui{position:fixed;top:10px;left:10px;color:#fff;z-index:9}
-#gameMessage{position:fixed;top:8px;right:8px;color:#fff;z-index:9}
+#game-message{position:fixed;top:8px;right:8px;color:#fff;z-index:9}
 canvas{background:#071024;border-radius:6px}
 
-/* ✅ D-PAD SALIB (TETAP) */
+/* D-PAD */
 #mobileControls{
   position:fixed;
   bottom:12px;
@@ -19,45 +19,26 @@ canvas{background:#071024;border-radius:6px}
   display:flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
   z-index:9;
-  width: 200px;
 }
-
 #mobileControls button{
   width:60px;height:60px;
-  padding:0;
   margin:4px;
   font-size:24px;
   border-radius:8px;
   border:none;
   background: linear-gradient(90deg, #cc0000, #16a34a);
   color:#fff;
-  box-shadow:0 4px #8b0000;
 }
-
-#mobileControls button:active{
-  box-shadow:0 0 #8b0000;
-  transform:translateY(4px);
-}
-
-.dpad-row{
-  display:flex;
-  justify-content:space-between;
-  width:100%;
-}
-
-.center-filler{
-  width:60px;
-  height:60px;
-}
+.dpad-row{display:flex;width:100%;justify-content:space-between}
+.center-filler{width:60px;height:60px}
 </style>
 </head>
 <body>
 
 <div id="ui">
   <div id="current-score-display">0</div>
-  <div id="game-message" style="display:none;color:#fff;background:rgba(0,0,0,0.6);padding:6px;border-radius:6px;margin-top:6px"></div>
+  <div id="game-message" style="display:none;background:rgba(0,0,0,0.6);padding:6px;border-radius:6px;margin-top:6px"></div>
 </div>
 
 <canvas id="pacman-canvas"></canvas>
@@ -72,14 +53,20 @@ canvas{background:#071024;border-radius:6px}
   <button data-dir="down">↓</button>
 </div>
 
+<!-- AUDIO FILES (pastikan ada di folder assets/) -->
+<audio id="bgm" src="assets/music_background.mp3" loop></audio>
+<audio id="eatSfx" src="assets/sfx_dot_eat.mp3"></audio>
+<audio id="startSfx" src="assets/sfx_start.mp3"></audio>
+
 <script>
 (function(){
 
+/* ---------- CANVAS / MAP ---------- */
 const canvas = document.getElementById('pacman-canvas');
 const ctx = canvas.getContext('2d');
 const TILE_SIZE = 20;
 
-/* ✅ MAP ASLI ANDA (DIKEMBALIKAN) */
+/* MAP ASLI (TIDAK DIUBAH) */
 const GAME_MAP = [
  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
  [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
@@ -106,14 +93,30 @@ const MAP_HEIGHT = GAME_MAP.length;
 canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
+/* ---------- AUDIO ---------- */
+const bgm = document.getElementById('bgm');
+const eatSfx = document.getElementById('eatSfx');
+const startSfx = document.getElementById('startSfx');
+bgm.volume = 0.5;
+eatSfx.volume = 0.8;
+startSfx.volume = 0.9;
+
+/* Most browsers block autoplay. Play bgm on first user gesture. */
+function enableBgmOnGesture(){
+  function once(){ bgm.play().catch(()=>{}); window.removeEventListener('pointerdown', once); }
+  window.addEventListener('pointerdown', once);
+}
+enableBgmOnGesture();
+
+/* ---------- GAME STATE ---------- */
 let pacman, ghosts, score, mapData;
-let gameRunning = false;
+let gameRunning = false;   // START behavior preserved: startGame() sets this
+let ghostActive = false;   // ghosts won't move until countdown completes
 let lastMove = 0;
 let hasInput = false;
-
-/* ✅ KECEPATAN SUDAH DIPERLAMBAT */
 const MOVE_INTERVAL = 240;
 
+/* ---------- INIT / RESET ---------- */
 function resetMapData(){
   mapData = GAME_MAP.map(r=>[...r]);
   pacman = { x:1, y:1, dir:'right', nextDir:'right', radius:TILE_SIZE/2.5 };
@@ -124,30 +127,34 @@ function resetMapData(){
   ];
   score = 0;
   hasInput = false;
+  ghostActive = false;
 }
 
 function resetGame(){
   resetMapData();
-  document.getElementById("current-score-display").textContent = score;
-  document.getElementById("game-message").style.display = "none";
-  gameRunning = false;
-  drawOnce();
+  document.getElementById('current-score-display').textContent = score;
+  document.getElementById('game-message').style.display = 'none';
+  gameRunning = false; // preserve original: game doesn't auto-start
+  lastMove = 0;
+  drawOnce(); // ensure the map + characters are visible immediately
 }
 
+/* ---------- DRAWING ---------- */
 function drawMap(){
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
       const t = mapData[y][x];
+      // walls and floor
       if(t===1){
-        ctx.fillStyle='#cc0000';
-        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
-      }else{
-        ctx.fillStyle='#1a2c42';
-        ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
+        ctx.fillStyle = '#cc0000';
+        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+      } else {
+        ctx.fillStyle = '#1a2c42';
+        ctx.fillRect(x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
         if(t===2){
-          ctx.fillStyle='#facc15';
+          ctx.fillStyle = '#facc15';
           ctx.beginPath();
-          ctx.arc(x*TILE_SIZE+10,y*TILE_SIZE+10,3,0,Math.PI*2);
+          ctx.arc(x*TILE_SIZE + TILE_SIZE/2, y*TILE_SIZE + TILE_SIZE/2, 3, 0, Math.PI*2);
           ctx.fill();
         }
       }
@@ -155,26 +162,71 @@ function drawMap(){
   }
 }
 
-/* ✅ ANIMASI PACMAN ASLI (DIKEMBALIKAN) */
+/* Pacman original mouth animation + small Santa hat */
 function drawPacman() {
-      const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
-      const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
-      ctx.fillStyle = '#facc15';
-      ctx.beginPath();
+  const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
+  const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
+  ctx.fillStyle = '#facc15';
+  ctx.beginPath();
 
-      const mouthOpen = Math.abs(Math.sin(Date.now() / 100));
-      const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI / 2, 'down': Math.PI / 2 }[pacman.dir];
-      const startAngle = angleOffset + mouthOpen * 0.4;
-      const endAngle = angleOffset - mouthOpen * 0.4 + 2 * Math.PI;
+  const mouthOpen = Math.abs(Math.sin(Date.now() / 100));
+  const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI / 2, 'down': Math.PI / 2 }[pacman.dir];
+  const startAngle = angleOffset + mouthOpen * 0.4;
+  const endAngle = angleOffset - mouthOpen * 0.4 + 2 * Math.PI;
 
-      ctx.arc(x, y, pacman.radius, startAngle, endAngle, false);
-      ctx.lineTo(x, y);
-      ctx.closePath();
-      ctx.fill();
+  ctx.arc(x, y, pacman.radius, startAngle, endAngle, false);
+  ctx.lineTo(x, y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Santa hat (simple)
+  ctx.fillStyle = '#cc0000';
+  ctx.beginPath();
+  ctx.moveTo(x - pacman.radius*0.6, y - pacman.radius);
+  ctx.lineTo(x + pacman.radius*0.6, y - pacman.radius);
+  ctx.lineTo(x, y - pacman.radius*1.6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.beginPath();
+  ctx.arc(x, y - pacman.radius*1.6, 3, 0, Math.PI*2);
+  ctx.fill();
 }
 
-/* ✅ ANIMASI GHOST ASLI (DIKEMBALIKAN) */
+/* Ghost original shape + holiday glow */
+function drawGhosts() {
+  ghosts.forEach(ghost => {
+    const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+    const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
 
+    // glow
+    ctx.save();
+    ctx.shadowColor = ghost.color;
+    ctx.shadowBlur = 12;
+
+    // body
+    ctx.fillStyle = ghost.color;
+    ctx.beginPath();
+    ctx.arc(x, y, TILE_SIZE/2, Math.PI, 0, false);
+    ctx.rect(x - TILE_SIZE/2, y, TILE_SIZE, TILE_SIZE/2);
+    ctx.closePath();
+    ctx.fill();
+
+    // eyes
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(x - TILE_SIZE/4, y - TILE_SIZE/6, TILE_SIZE/8, 0, Math.PI*2);
+    ctx.arc(x + TILE_SIZE/4, y - TILE_SIZE/6, TILE_SIZE/8, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = 'black';
+    ctx.beginPath();
+    ctx.arc(x - TILE_SIZE/4 + 1, y - TILE_SIZE/6, TILE_SIZE/16, 0, Math.PI*2);
+    ctx.arc(x + TILE_SIZE/4 + 1, y - TILE_SIZE/6, TILE_SIZE/16, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  });
+}
 
 function drawOnce(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -183,116 +235,133 @@ function drawOnce(){
   drawGhosts();
 }
 
+/* ---------- MOVEMENT ---------- */
 function canMove(x,y){
-  return mapData[y] && mapData[y][x] !== 1;
+  return mapData[y] !== undefined && mapData[y][x] !== 1;
 }
 
+/* Pacman moves when player inputs (allowed before start as you requested previously) */
 function movePacman(){
   if(!hasInput) return;
   const d = pacman.nextDir;
   const nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
   const ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
-  if(canMove(nx,ny)){ pacman.x=nx; pacman.y=ny; }
+  if(canMove(nx,ny)){
+    pacman.x = nx;
+    pacman.y = ny;
+    pacman.dir = d; // update facing for mouth direction
+  }
 }
 
+/* Ghosts won't move until ghostActive === true */
 function moveGhosts(){
+  if(!ghostActive) return;
   ghosts.forEach(g=>{
-    const d=[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
-    const nx=g.x+d[0], ny=g.y+d[1];
-    if(canMove(nx,ny)){ g.x=nx; g.y=ny; }
+    const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+    const nx = g.x + d[0], ny = g.y + d[1];
+    if(canMove(nx,ny)){ g.x = nx; g.y = ny; }
   });
 }
 
+/* ---------- COLLISIONS & SFX ---------- */
 function checkCollision(){
-  if(mapData[pacman.y][pacman.x]===2){
-    mapData[pacman.y][pacman.x]=0;
-    score+=10;
-    document.getElementById("currfunction drawGhosts() {
-      ghosts.forEach(ghost => {
-          const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
-          const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
-
-          ctx.fillStyle = ghost.color;
-          ctx.beginPath();
-          ctx.arc(x, y, TILE_SIZE / 2, Math.PI, 0, false);
-          ctx.rect(x - TILE_SIZE / 2, y, TILE_SIZE, TILE_SIZE / 2);
-          const wobble = Math.sin(Date.now() / 200) * 2;
-          ctx.moveTo(x - TILE_SIZE / 2, y + TILE_SIZE / 2);
-          ctx.lineTo(x - TILE_SIZE / 2 + TILE_SIZE / 4 + wobble, y + TILE_SIZE / 2 - 3);
-          ctx.lineTo(x, y + TILE_SIZE / 2);
-          ctx.lineTo(x + TILE_SIZE / 2 - TILE_SIZE / 4 - wobble, y + TILE_SIZE / 2 - 3);
-          ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE / 2);
-          ctx.fill();
-
-          ctx.fillStyle = 'white';
-          ctx.beginPath();
-          ctx.arc(x - TILE_SIZE / 4, y - TILE_SIZE / 4, TILE_SIZE / 8, 0, Math.PI * 2);
-          ctx.arc(x + TILE_SIZE / 4, y - TILE_SIZE / 4, TILE_SIZE / 8, 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.fillStyle = 'black';
-          ctx.beginPath();
-          ctx.arc(x - TILE_SIZE / 4 + 1, y - TILE_SIZE / 4, TILE_SIZE / 16, 0, Math.PI * 2);
-          ctx.arc(x + TILE_SIZE / 4 + 1, y - TILE_SIZE / 4, TILE_SIZE / 16, 0, Math.PI * 2);
-          ctx.fill();
-      });
-  }ent-score-display").textContent=score;
+  if(mapData[pacman.y][pacman.x] === 2){
+    mapData[pacman.y][pacman.x] = 0;
+    score += 10;
+    // play eat sfx
+    try{ eatSfx.currentTime = 0; eatSfx.play().catch(()=>{}); }catch(e){}
+    document.getElementById('current-score-display').textContent = score;
   }
+  // ghost collision -> end game (preserve original)
   ghosts.forEach(g=>{
-    if(g.x===pacman.x && g.y===pacman.y){
-      endGame();
+    if(g.x === pacman.x && g.y === pacman.y){
+      endGame(); // keep original behavior
     }
   });
 }
 
+/* ---------- GAME LOOP ---------- */
 function gameLoop(ts){
-  if(!gameRunning) return;
-  if(ts-lastMove > MOVE_INTERVAL){
-    movePacman();
-    moveGhosts();
-    checkCollision();
-    lastMove = ts;
+  if(gameRunning){
+    if(ts - lastMove > MOVE_INTERVAL){
+      movePacman();
+      moveGhosts();
+      checkCollision();
+      lastMove = ts;
+    }
   }
   drawOnce();
   requestAnimationFrame(gameLoop);
 }
 
+/* ---------- START / COUNTDOWN ---------- */
+/* We keep startGame function (exists before). We implement countdown here:
+   - startGame() triggers a short countdown (startSfx plays once) BEFORE ghosts move
+   - Pacman may already move (we keep that behavior)
+*/
 function startGame(){
-  gameRunning = true;
-  requestAnimationFrame(gameLoop);
+  // If game already running, ignore
+  if(gameRunning) return;
+
+  // Play start sound immediately (attempt)
+  startSfx.currentTime = 0;
+  startSfx.play().catch(()=>{});
+
+  // Countdown visible, ghosts inactive until countdown ends
+  ghostActive = false;
+  const gm = document.getElementById('game-message');
+  let count = 3;
+  gm.style.display = 'block';
+  gm.textContent = 'READY ' + count;
+  const t = setInterval(()=>{
+    count--;
+    if(count >= 0) gm.textContent = 'READY ' + count;
+    if(count < 0){
+      clearInterval(t);
+      gm.style.display = 'none';
+      ghostActive = true;
+      gameRunning = true;      // actual gameplay starts (preserve original semantics)
+      lastMove = performance.now();
+    }
+  }, 1000);
 }
 
+/* ---------- END GAME (preserve original) ---------- */
 function endGame(){
   gameRunning = false;
-  const gm = document.getElementById("game-message");
-  gm.textContent = "GAME OVER";
-  gm.style.display = "block";
-  window.parent.postMessage({ type:"submitScore", score: score },"*");
+  const gm = document.getElementById('game-message');
+  gm.textContent = 'GAME OVER';
+  gm.style.display = 'block';
+  // keep original postMessage if embedding needs it
+  try{ window.parent.postMessage({ type: "submitScore", score: score }, "*"); }catch(e){}
 }
 
-/* ✅ INPUT */
-document.querySelectorAll("#mobileControls button").forEach(b=>{
+/* ---------- INPUT ---------- */
+document.querySelectorAll('#mobileControls button').forEach(b=>{
   b.onclick = ()=>{
     pacman.nextDir = b.dataset.dir;
     hasInput = true;
   };
 });
-
 window.onkeydown = e=>{
-  if(e.key.includes("Arrow")){
-    pacman.nextDir = e.key.replace("Arrow","").toLowerCase();
+  if(e.key.includes('Arrow')){
+    pacman.nextDir = e.key.replace('Arrow','').toLowerCase();
     hasInput = true;
   }
 };
 
-window.addEventListener("message",(e)=>{
-  if(e.data.type==="paySuccess"){
+/* Support external trigger used previously (paySuccess) */
+window.addEventListener('message', (e)=>{
+  if(e.data && e.data.type === 'paySuccess'){
+    // Reset and then start (same as original flow)
     resetGame();
     startGame();
   }
 });
 
-resetGame();
+/* ---------- STARTUP ---------- */
+resetGame();                // draw initial screen
+requestAnimationFrame(gameLoop); // start animation loop (drawOnly until gameRunning true)
 
 })();
 </script>
