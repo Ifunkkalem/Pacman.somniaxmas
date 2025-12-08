@@ -1,57 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Pacman Natal Final</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pacman Natal</title>
 <style>
-body{margin:0;background:#000;color:white;text-align:center;font-family:Arial}
-#ui{position:fixed;top:10px;left:10px;z-index:10}
-canvas{background:#000;display:block;margin:auto}
-#game-message{
-  position:fixed;inset:0;
-  display:none;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.85);
-  font-size:60px;color:gold;z-index:99
-}
+html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS}
+#ui{position:fixed;top:10px;left:10px;color:#fff;z-index:9}
+#gameMessage{position:fixed;top:8px;right:8px;color:#fff;z-index:9}
+canvas{background:#071024;border-radius:6px}
 
-/* ✅ D-PAD SALIB */
+/* ✅ D-PAD SALIB (TETAP) */
 #mobileControls{
   position:fixed;
-  bottom:15px;
+  bottom:12px;
   left:50%;
   transform:translateX(-50%);
   display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:6px;
-  z-index:20
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  z-index:9;
+  width: 200px;
+}
+
+#mobileControls button{
+  width:60px;height:60px;
+  padding:0;
+  margin:4px;
+  font-size:24px;
+  border-radius:8px;
+  border:none;
+  background: linear-gradient(90deg, #cc0000, #16a34a);
+  color:#fff;
+  box-shadow:0 4px #8b0000;
+}
+
+#mobileControls button:active{
+  box-shadow:0 0 #8b0000;
+  transform:translateY(4px);
 }
 
 .dpad-row{
   display:flex;
-  gap:6px;
+  justify-content:space-between;
+  width:100%;
 }
 
-.ctl-btn{
-  width:60px;height:60px;border-radius:12px;
-  border:none;background:#22c55e;color:#000;font-size:22px;
+.center-filler{
+  width:60px;
+  height:60px;
 }
 </style>
 </head>
 <body>
 
-<div id="ui">Score: <span id="current-score-display">0</span></div>
-<div id="game-message"></div>
+<div id="ui">
+  <div id="current-score-display">0</div>
+  <div id="game-message" style="display:none;color:#fff;background:rgba(0,0,0,0.6);padding:6px;border-radius:6px;margin-top:6px"></div>
+</div>
+
 <canvas id="pacman-canvas"></canvas>
 
 <div id="mobileControls">
-  <button class="ctl-btn" data-dir="up">↑</button>
+  <button data-dir="up">↑</button> 
   <div class="dpad-row">
-    <button class="ctl-btn" data-dir="left">←</button>
-    <button class="ctl-btn" data-dir="right">→</button>
+    <button data-dir="left">←</button>
+    <div class="center-filler"></div>
+    <button data-dir="right">→</button>
   </div>
-  <button class="ctl-btn" data-dir="down">↓</button>
+  <button data-dir="down">↓</button>
 </div>
 
 <script>
@@ -59,99 +77,100 @@ canvas{background:#000;display:block;margin:auto}
 
 const canvas = document.getElementById('pacman-canvas');
 const ctx = canvas.getContext('2d');
-
 const TILE_SIZE = 20;
-const MAP_WIDTH = 20;
-const MAP_HEIGHT = 18;
 
-const GAME_MAP = Array.from({length:MAP_HEIGHT},(_,y)=>
-  Array.from({length:MAP_WIDTH},(_,x)=>(x===0||y===0||x===19||y===17)?1:2)
-);
+/* ✅ MAP ASLI ANDA (DIKEMBALIKAN) */
+const GAME_MAP = [
+ [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+ [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
+ [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+ [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+ [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+ [1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1],
+ [1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1],
+ [1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
+ [0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
+ [1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
+ [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+ [1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+ [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+ [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
+ [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+ [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+ [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+ [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
 
+const MAP_WIDTH = GAME_MAP[0].length;
+const MAP_HEIGHT = GAME_MAP.length;
 canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
 let pacman, ghosts, score, mapData;
-let gameRunning=false, animationFrameId=null;
-let lastMoveTime = 0;
-const MOVE_INTERVAL = 240; // ✅ PERLAMBAT GERAKAN
-let hasInput = false; // ✅ PACMAN DIAM SAMPAI PAD DITEKAN
+let gameRunning = false;
+let lastMove = 0;
+let hasInput = false;
+
+/* ✅ KECEPATAN SUDAH DIPERLAMBAT */
+const MOVE_INTERVAL = 240;
 
 function resetMapData(){
   mapData = GAME_MAP.map(r=>[...r]);
-  pacman = { x:1, y:1, dir:null, nextDir:null };
+  pacman = { x:1, y:1, dir:'right', nextDir:'right', radius:TILE_SIZE/2.5 };
   ghosts = [
     { x:9,y:9,color:'#cc0000' },
     { x:10,y:9,color:'#16a34a' },
     { x:8,y:9,color:'#2563eb' }
   ];
+  score = 0;
   hasInput = false;
 }
 
 function resetGame(){
   resetMapData();
-  score=0;
   document.getElementById("current-score-display").textContent = score;
-
-  const gm = document.getElementById("game-message");
-  gm.style.display = "none";
-  gm.textContent = "";
-
-  gameRunning=false;
-  cancelAnimationFrame(animationFrameId);
+  document.getElementById("game-message").style.display = "none";
+  gameRunning = false;
   drawOnce();
 }
 
 function drawMap(){
   for(let y=0;y<MAP_HEIGHT;y++){
     for(let x=0;x<MAP_WIDTH;x++){
-      const t=mapData[y][x];
+      const t = mapData[y][x];
       if(t===1){
-        ctx.fillStyle='#8b0000';
+        ctx.fillStyle='#cc0000';
         ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
       }else{
         ctx.fillStyle='#1a2c42';
         ctx.fillRect(x*TILE_SIZE,y*TILE_SIZE,TILE_SIZE,TILE_SIZE);
         if(t===2){
           ctx.fillStyle='#facc15';
-          ctx.fillRect(x*TILE_SIZE+8,y*TILE_SIZE+8,4,4);
+          ctx.beginPath();
+          ctx.arc(x*TILE_SIZE+10,y*TILE_SIZE+10,3,0,Math.PI*2);
+          ctx.fill();
         }
       }
     }
   }
 }
 
-/* 🎅 SINTERKLAS */
+/* ✅ ANIMASI PACMAN ASLI (DIKEMBALIKAN) */
 function drawPacman(){
-  const x = pacman.x*TILE_SIZE+10;
-  const y = pacman.y*TILE_SIZE+10;
-
-  ctx.fillStyle="red";
+  const x=pacman.x*TILE_SIZE+10;
+  const y=pacman.y*TILE_SIZE+10;
+  ctx.fillStyle="#facc15";
   ctx.beginPath();
-  ctx.arc(x,y-4,7,Math.PI,0);
-  ctx.fill();
-
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(x,y+4,7,0,Math.PI*2);
+  ctx.arc(x,y,7,0,Math.PI*2);
   ctx.fill();
 }
 
-/* 👹 MUSUH */
+/* ✅ ANIMASI GHOST ASLI (DIKEMBALIKAN) */
 function drawGhosts(){
   ghosts.forEach(g=>{
-    const x = g.x*TILE_SIZE+10;
-    const y = g.y*TILE_SIZE+10;
-
     ctx.fillStyle=g.color;
     ctx.beginPath();
-    ctx.arc(x,y,9,0,Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle="white";
-    ctx.beginPath();
-    ctx.arc(x-3,y-2,2,0,Math.PI*2);
-    ctx.arc(x+3,y-2,2,0,Math.PI*2);
+    ctx.arc(g.x*TILE_SIZE+10,g.y*TILE_SIZE+10,9,0,Math.PI*2);
     ctx.fill();
   });
 }
@@ -164,22 +183,15 @@ function drawOnce(){
 }
 
 function canMove(x,y){
-  return mapData[y] && mapData[y][x]!==1;
+  return mapData[y] && mapData[y][x] !== 1;
 }
 
 function movePacman(){
-  if(!hasInput) return; // ✅ DIAM SAMPAI INPUT
-
-  const d=pacman.nextDir;
-  if(!d) return;
-
-  const nx=pacman.x+(d==="right"?1:d==="left"?-1:0);
-  const ny=pacman.y+(d==="down"?1:d==="up"?-1:0);
-
-  if(canMove(nx,ny)){
-    pacman.x=nx;
-    pacman.y=ny;
-  }
+  if(!hasInput) return;
+  const d = pacman.nextDir;
+  const nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
+  const ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
+  if(canMove(nx,ny)){ pacman.x=nx; pacman.y=ny; }
 }
 
 function moveGhosts(){
@@ -203,48 +215,40 @@ function checkCollision(){
   });
 }
 
-function gameLoop(timestamp){
+function gameLoop(ts){
   if(!gameRunning) return;
-
-  if(timestamp - lastMoveTime > MOVE_INTERVAL){
+  if(ts-lastMove > MOVE_INTERVAL){
     movePacman();
     moveGhosts();
     checkCollision();
-    lastMoveTime = timestamp;
+    lastMove = ts;
   }
-
   drawOnce();
-  animationFrameId=requestAnimationFrame(gameLoop);
+  requestAnimationFrame(gameLoop);
 }
 
 function startGame(){
-  gameRunning=true;
+  gameRunning = true;
   requestAnimationFrame(gameLoop);
 }
 
 function endGame(){
-  gameRunning=false;
-  cancelAnimationFrame(animationFrameId);
-
+  gameRunning = false;
   const gm = document.getElementById("game-message");
-  gm.style.display="flex";
-  gm.textContent="GAME OVER";
-
-  window.parent.postMessage({
-    type:"submitScore",
-    score: score
-  },"*");
+  gm.textContent = "GAME OVER";
+  gm.style.display = "block";
+  window.parent.postMessage({ type:"submitScore", score: score },"*");
 }
 
 /* ✅ INPUT */
-document.querySelectorAll(".ctl-btn").forEach(b=>{
-  b.onclick=()=>{
-    pacman.nextDir=b.dataset.dir;
+document.querySelectorAll("#mobileControls button").forEach(b=>{
+  b.onclick = ()=>{
+    pacman.nextDir = b.dataset.dir;
     hasInput = true;
   };
 });
 
-window.onkeydown=e=>{
+window.onkeydown = e=>{
   if(e.key.includes("Arrow")){
     pacman.nextDir = e.key.replace("Arrow","").toLowerCase();
     hasInput = true;
