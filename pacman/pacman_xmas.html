@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<audio id="bgm" src="assets/music_background.mp3" loop></audio>
+<audio id="sfxEat" src="assets/sfx_dot_eat.mp3"></audio>
+<audio id="sfxStart" src="assets/sfx_start.mp3"></audio>
 <title>Pacman Natal</title>
 <style>
 html,body{height:100%;margin:0;background:#000;display:flex;align-items:center;justify-content:center;font-family:Trebuchet MS}
@@ -94,9 +97,11 @@ canvas.width = MAP_WIDTH * TILE_SIZE;
 canvas.height = MAP_HEIGHT * TILE_SIZE;
 
 /* ---------- AUDIO ---------- */
-const bgm = document.getElementById('bgm');
-const eatSfx = document.getElementById('eatSfx');
-const startSfx = document.getElementById('startSfx');
+const bgm = document.getElementById("bgm");
+const sfxEat = document.getElementById("sfxEat");
+const sfxStart = document.getElementById("sfxStart");
+
+let audioUnlocked = false;
 bgm.volume = 0.5;
 eatSfx.volume = 0.8;
 startSfx.volume = 0.9;
@@ -303,6 +308,13 @@ function startGame(){
   // If game already running, ignore
   if(gameRunning) return;
 
+function unlockAudio(){
+  if(audioUnlocked) return;
+  audioUnlocked = true;
+  bgm.volume = 0.5;
+  bgm.play().catch(()=>{}); 
+  }
+
   // Play start sound immediately (attempt)
   startSfx.currentTime = 0;
   startSfx.play().catch(()=>{});
@@ -339,9 +351,10 @@ function endGame(){
 /* ---------- INPUT ---------- */
 document.querySelectorAll('#mobileControls button').forEach(b=>{
   b.onclick = ()=>{
-    pacman.nextDir = b.dataset.dir;
-    hasInput = true;
-  };
+  unlockAudio();
+  pacman.nextDir = b.dataset.dir;
+  hasInput = true;
+};
 });
 window.onkeydown = e=>{
   if(e.key.includes('Arrow')){
