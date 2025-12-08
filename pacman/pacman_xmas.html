@@ -156,23 +156,25 @@ function drawMap(){
 }
 
 /* ✅ ANIMASI PACMAN ASLI (DIKEMBALIKAN) */
-function drawPacman(){
-  const x=pacman.x*TILE_SIZE+10;
-  const y=pacman.y*TILE_SIZE+10;
-  ctx.fillStyle="#facc15";
-  ctx.beginPath();
-  ctx.arc(x,y,7,0,Math.PI*2);
-  ctx.fill();
+function drawPacman() {
+  ctx.drawImage(
+    santaImg,
+    pacman.x - pacman.radius,
+    pacman.y - pacman.radius,
+    pacman.radius * 2,
+    pacman.radius * 2
+  );
 }
 
 /* ✅ ANIMASI GHOST ASLI (DIKEMBALIKAN) */
-function drawGhosts(){
-  ghosts.forEach(g=>{
-    ctx.fillStyle=g.color;
-    ctx.beginPath();
-    ctx.arc(g.x*TILE_SIZE+10,g.y*TILE_SIZE+10,9,0,Math.PI*2);
-    ctx.fill();
-  });
+function drawGhost(ghost) {
+  ctx.drawImage(
+    enemyImg,
+    ghost.x - ghost.radius,
+    ghost.y - ghost.radius,
+    ghost.radius * 2,
+    ghost.radius * 2
+  );
 }
 
 function drawOnce(){
