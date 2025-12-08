@@ -13,9 +13,9 @@ const CONTRACT_ABI = [
 ];
 
 // Path audio (RELATIF DARI index.html)
-const SFX_START_SRC = 'pacman/assets/sfx_start.mp3';
-const SFX_DOT_EAT_SRC = 'pacman/assets/sfx_dot_eat.mp3';
-const BGM_SRC = 'pacman/assets/music_background.mp3';
+const SFX_START_SRC = 'assets/sfx_start.mp3';
+const SFX_DOT_EAT_SRC = 'assets/sfx_dot_eat.mp3';
+const BGM_SRC = 'assets/music_background.mp3';
 
 // =======================================================
 // 2. VARIABEL GLOBAL & KONTROL AUDIO
