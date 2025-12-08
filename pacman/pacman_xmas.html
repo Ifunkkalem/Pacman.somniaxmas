@@ -157,25 +157,24 @@ function drawMap(){
 
 /* ✅ ANIMASI PACMAN ASLI (DIKEMBALIKAN) */
 function drawPacman() {
-  ctx.drawImage(
-    santaImg,
-    pacman.x - pacman.radius,
-    pacman.y - pacman.radius,
-    pacman.radius * 2,
-    pacman.radius * 2
-  );
+      const x = pacman.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = pacman.y * TILE_SIZE + TILE_SIZE / 2;
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+
+      const mouthOpen = Math.abs(Math.sin(Date.now() / 100));
+      const angleOffset = { 'right': 0, 'left': Math.PI, 'up': -Math.PI / 2, 'down': Math.PI / 2 }[pacman.dir];
+      const startAngle = angleOffset + mouthOpen * 0.4;
+      const endAngle = angleOffset - mouthOpen * 0.4 + 2 * Math.PI;
+
+      ctx.arc(x, y, pacman.radius, startAngle, endAngle, false);
+      ctx.lineTo(x, y);
+      ctx.closePath();
+      ctx.fill();
 }
 
 /* ✅ ANIMASI GHOST ASLI (DIKEMBALIKAN) */
-function drawGhost(ghost) {
-  ctx.drawImage(
-    enemyImg,
-    ghost.x - ghost.radius,
-    ghost.y - ghost.radius,
-    ghost.radius * 2,
-    ghost.radius * 2
-  );
-}
+
 
 function drawOnce(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -208,7 +207,36 @@ function checkCollision(){
   if(mapData[pacman.y][pacman.x]===2){
     mapData[pacman.y][pacman.x]=0;
     score+=10;
-    document.getElementById("current-score-display").textContent=score;
+    document.getElementById("currfunction drawGhosts() {
+      ghosts.forEach(ghost => {
+          const x = ghost.x * TILE_SIZE + TILE_SIZE / 2;
+          const y = ghost.y * TILE_SIZE + TILE_SIZE / 2;
+
+          ctx.fillStyle = ghost.color;
+          ctx.beginPath();
+          ctx.arc(x, y, TILE_SIZE / 2, Math.PI, 0, false);
+          ctx.rect(x - TILE_SIZE / 2, y, TILE_SIZE, TILE_SIZE / 2);
+          const wobble = Math.sin(Date.now() / 200) * 2;
+          ctx.moveTo(x - TILE_SIZE / 2, y + TILE_SIZE / 2);
+          ctx.lineTo(x - TILE_SIZE / 2 + TILE_SIZE / 4 + wobble, y + TILE_SIZE / 2 - 3);
+          ctx.lineTo(x, y + TILE_SIZE / 2);
+          ctx.lineTo(x + TILE_SIZE / 2 - TILE_SIZE / 4 - wobble, y + TILE_SIZE / 2 - 3);
+          ctx.lineTo(x + TILE_SIZE / 2, y + TILE_SIZE / 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(x - TILE_SIZE / 4, y - TILE_SIZE / 4, TILE_SIZE / 8, 0, Math.PI * 2);
+          ctx.arc(x + TILE_SIZE / 4, y - TILE_SIZE / 4, TILE_SIZE / 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          ctx.arc(x - TILE_SIZE / 4 + 1, y - TILE_SIZE / 4, TILE_SIZE / 16, 0, Math.PI * 2);
+          ctx.arc(x + TILE_SIZE / 4 + 1, y - TILE_SIZE / 4, TILE_SIZE / 16, 0, Math.PI * 2);
+          ctx.fill();
+      });
+  }ent-score-display").textContent=score;
   }
   ghosts.forEach(g=>{
     if(g.x===pacman.x && g.y===pacman.y){
