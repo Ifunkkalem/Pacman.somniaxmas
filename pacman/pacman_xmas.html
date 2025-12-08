@@ -316,9 +316,13 @@ function unlockAudio(){
   }
 
   // Play start sound immediately (attempt)
-  startSfx.currentTime = 0;
-  startSfx.play().catch(()=>{});
-
+  sfxStart.currentTime = 0;
+  sfxStart.play();
+  setTimeout(()=>{
+  gameRunning = true;
+  requestAnimationFrame(gameLoop);
+  }, 2000);
+  return;
   // Countdown visible, ghosts inactive until countdown ends
   ghostActive = false;
   const gm = document.getElementById('game-message');
