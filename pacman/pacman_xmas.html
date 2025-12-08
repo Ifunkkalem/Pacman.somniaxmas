@@ -56,9 +56,9 @@ color:#fff;
 </div>
 
 <!-- AUDIO -->
-<audio id="bgm" src="../assets/music_background.mp3" loop preload="auto"></audio>
-<audio id="sfxEat" src="../assets/sfx_dot_eat.mp3" preload="auto"></audio>
-<audio id="sfxStart" src="../assets/sfx_start.mp3" preload="auto"></audio>
+<audio id="bgm" src="assets/music_background.mp3" loop preload="auto"></audio>
+<audio id="sfxEat" src="assets/sfx_dot_eat.mp3" preload="auto"></audio>
+<audio id="sfxStart" src="assets/sfx_start.mp3" preload="auto"></audio>
 
 <script>
 (function(){
@@ -255,11 +255,13 @@ resetGame();
 requestAnimationFrame(function loop(ts){
   if(gameRunning && ts - lastMove > MOVE_INTERVAL){
     movePacman();
+    moveGhosts();     // ✅ INI YANG HILANG
     checkCollision();
     lastMove = ts;
   }
   drawMap();
   drawPacman();
+  drawGhosts();       // ✅ INI YANG HILANG
   requestAnimationFrame(loop);
 });
 
