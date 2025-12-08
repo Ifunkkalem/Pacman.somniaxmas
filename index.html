@@ -10,72 +10,20 @@
 <style>
 /* --- STYLING UTAMA --- */
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS, sans-serif}
-body{height:100vh;background:linear-gradient(to right,#fff,#ff0000);color:#fff;overflow:hidden}
-#wrap{display:flex;height:100%;width:100%}
-#sidebar{width:160px;background:#fff;color:#000;padding:12px;display:flex;flex-dir/* --- Perbaikan untuk Logo Placeholder --- */
-#logoPlaceholder {
-    width: 100%; 
-    height: 100%; 
-    display: flex; /* Pertahankan flex untuk centering, tetapi tambahkan positioning */
-    justify-content: center; 
-    align-items: center;
-    position: relative; /* <--- KUNCI 1: Menjadi referensi untuk absolute */
-    border-radius: 8px; /* Tambahkan ini agar sudut gambar dan wadah sama */
-    overflow: hidden; /* Penting jika ada elemen yang keluar batas */
-}
-
-/* --- Gaya untuk Gambar Poster (Background) --- */
-#logoPlaceholder .poster-image {
-    width: 100%; 
+/* UPGRADE: Gunakan min-height dan overflow-y:auto untuk konsistensi di DApp Browser */
+body{
+    min-height: 100vh;
     height: 100%;
-    /* Gunakan cover untuk mengisi seluruh ruang, meskipun sedikit terpotong */
-    object-fit: cover; 
+    background:linear-gradient(to right,#fff,#ff0000);
+    color:#fff;
+    overflow-y: auto; /* Izinkan scroll jika konten meluber */
+    overflow-x: hidden; /* Hindari scroll horizontal */
 }
 
-/* --- Gaya untuk Teks Overlay (di atas gambar) --- */
-#poster-overlay {
-    position: absolute; /* <--- KUNCI 2: Melayang di atas gambar */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Menyebarkan konten ke atas dan bawah */
-    align-items: center;
-    
-    text-align: center;
-    color: white;
-    text-shadow: 0 0 5px black, 0 0 10px red; /* Efek neon/shadow agar terlihat */
-    padding: 20px; /* Jarak dari tepi */
-    pointer-events: none; /* Izinkan klik menembus ke tombol di bawahnya (kecuali tombol CTA) */
-}
+/* UPGRADE: Gunakan min-height untuk konsistensi tinggi */
+#wrap{display:flex;min-height:100vh;width:100%}
 
-/* --- Gaya untuk Konten di dalam Overlay --- */
-#poster-overlay h2 {
-    font-size: 2.2em;
-    color: #facc15; /* Emas */
-    /* pointer-events: auto; (Opsional, jika Anda ingin teks bisa diseleksi) */
-}
-
-#poster-overlay p {
-    font-size: 1.1em;
-    /* Teks P akan otomatis diposisikan di tengah berkat justify-content: space-around */
-}
-
-.overlay-cta {
-    /* Gaya untuk tombol CTA */
-    padding: 12px 30px;
-    font-size: 1.2em;
-    font-weight: bold;
-    border-radius: 8px;
-    /* WAJIB: agar tombol bisa diklik */
-    pointer-events: auto; 
-    
-    /* Tombol akan otomatis berada di bawah berkat justify-content: space-around */
-}
-ection:column;gap:10px}
+#sidebar{width:160px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px}
 #main{flex:1;padding:10px;position:relative;display:flex;flex-direction:column;align-items:center;background:linear-gradient(to bottom,#ff0000,#800000)}
 button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff;cursor:pointer;font-weight:bold}
 #title{color:#00ffae;font-size:26px;text-shadow:0 0 0px #ff0;margin-bottom:12px}
@@ -90,7 +38,8 @@ button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90d
     align-items: center;
     background: rgba(0,0,0,0.2);
     border-radius: 8px;
-    max-height: 80vh;
+    /* UPGRADE: Hapus max-height: 80vh; agar wadah bisa mengisi ruang yang tersisa */
+    max-height: 100%;
 }
 iframe{
     width:100%;
@@ -100,12 +49,93 @@ iframe{
     display:none;
 }
 
+/* --- UPGRADE: CSS untuk Poster Overlay --- */
+#logoPlaceholder {
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    position: relative; 
+    border-radius: 8px; 
+    overflow: hidden; 
+}
 
+#logoPlaceholder .poster-image {
+    width: 100%; 
+    height: 100%;
+    object-fit: cover; /* <- Kunci: Memaksa gambar mengisi penuh wadah */
+    object-position: center; 
+}
+
+#poster-overlay {
+    position: absolute; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Menyebarkan konten (Teks atas & Tombol bawah) */
+    align-items: center;
+    
+    text-align: center;
+    color: white;
+    text-shadow: 0 0 5px black, 0 0 10px red; 
+    padding: 20px; 
+    pointer-events: none; /* Izinkan klik menembus ke tombol (kecuali tombol CTA) */
+}
+
+#poster-overlay h2 {
+    font-size: 2.2em;
+    color: #facc15; 
+    pointer-events: auto;
+}
+
+#poster-overlay p {
+    font-size: 1.1em;
+    pointer-events: auto;
+    /* UPGRADE: Tambahkan margin agar tidak menempel tengah gambar */
+    margin-top: -100px; /* Geser sedikit ke atas (opsional, coba hilangkan jika aneh) */
+}
+
+.overlay-cta {
+    padding: 12px 30px;
+    font-size: 1.2em;
+    font-weight: bold;
+    border-radius: 8px;
+    pointer-events: auto;
+}
+
+/* --- UPGRADE: MEDIA QUERY untuk Ponsel (DApp Browser) --- */
+@media (max-width: 768px) {
+    #wrap {
+        flex-direction: column; /* Tumpuk Sidebar di atas Main */
+        min-height: 100%;
+    }
+
+    #sidebar {
+        width: 100%;
+        flex-direction: row; /* Sidebar menjadi baris tombol horizontal */
+        flex-wrap: wrap; 
+        justify-content: space-around;
+        padding: 8px;
+    }
+    
+    /* Sesuaikan ukuran font poster agar muat di layar kecil */
+    #poster-overlay h2 {
+        font-size: 1.6em;
+    }
+
+    #poster-overlay p {
+        font-size: 1em;
+    }
+}
 
 
 /* --- Info Wallet dan Salju --- */
-
-walletAddr{word-break:break-all;font-size:12px;color:#000}
+#walletAddr{word-break:break-all;font-size:12px;color:#000}
 #walletBal{font-size:12px;color:#000}
 .snow{position:absolute;top:-20px;width:8px;height:8px;border-radius:50%;background:#fff;opacity:.85;animation:snowFall linear infinite}
 @keyframes snowFall{from{transform:translateY(0)}to{transform:translateY(120vh)}}
@@ -130,17 +160,14 @@ walletAddr{word-break:break-all;font-size:12px;color:#000}
 
     <div class="content-area">
         <div id="logoPlaceholder">
-    <img src="/assets/logo1.png?v=2" alt="Somnia Christmas Logo" class="poster-image"> 
-    
-    <div id="poster-overlay">
-        <h2>SOMNIA MAIN & CHRISTMAS MENANGKAN $SOMI!</h2>
-        <p>Hanya dengan {Fee} SOMI per permainan, raih Jackpot Natal terbesar di Metaverse!</p>
-        <button class="overlay-cta" onclick="document.getElementById('btnPlay').click()">Mulai Sekarang!</button>
-    </div>
-</div>
-
-
-
+            <img src="/assets/logo1.png?v=3" alt="Somnia Christmas Logo" class="poster-image"> 
+            
+            <div id="poster-overlay">
+                <h2>SOMNIA CHRISTMAS CARNIVAL!</h2>
+                <p>Hanya dengan {Fee} SOMI per permainan, raih Jackpot Natal terbesar di Metaverse!</p>
+                <button class="overlay-cta" onclick="document.getElementById('btnPlay').click()">Mulai Sekarang!</button>
+            </div>
+        </div>
         <iframe id="gameFrame" src="./pacman/pacman_xmas.html?v=1" title="Pacman Game"></iframe>
         <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
     </div>
