@@ -5,7 +5,7 @@
 <title>Pacman XMAS - Santa vs Reindeer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  /* Layout: buat canvas + pad dalam flow kolom supaya pad tidak meng-overlay di mobile */
+  /* Layout: canvas + pad dalam flow kolom supaya pad tidak meng-overlay di mobile */
   html,body{
     margin:0;
     background:#000;
@@ -20,7 +20,7 @@
   }
 
   #gameWrapper{
-    width: calc(20 * 20px + 40px); /* canvas width + margin fallback */
+    width: calc(20 * 20px + 40px); /* fallback */
     max-width: 92vw;
     display:flex;
     flex-direction:column;
@@ -46,9 +46,9 @@
     z-index:12;
   }
 
-  /* Mobile D-PAD: default placed under canvas (not fixed) */
+  /* Mobile D-PAD: placed under canvas (not fixed) */
   #mobileControls{
-    position:relative; /* IMPORTANT: not fixed so it won't overlay canvas */
+    position:relative;
     margin-top:6px;
     display:flex;
     flex-direction:column;
@@ -74,7 +74,7 @@
     #mobileControls{display:none}
   }
 
-  /* ensure small screens the canvas fits and leaves room for pad */
+  /* ensure small screens canvas fits and leaves room for pad */
   @media(max-width:480px){
     #gameWrapper{ width: 90vw; }
   }
@@ -86,7 +86,7 @@
     <div id="ui">Score: <span id="current-score-display">0</span></div>
     <div id="game-message"></div>
 
-    <canvas id="pacman-canvas"></canvas>
+    <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
 
     <!-- Mobile D-PAD placed in document flow (below canvas) -->
     <div id="mobileControls" aria-hidden="false">
@@ -106,7 +106,7 @@ const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas.getContext("2d");
 const TILE = 20;
 
-/* ========== MAP ========== */
+/* ================== MAP ================== */
 const GAME_MAP = [
 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
@@ -135,7 +135,7 @@ const MAP_H = GAME_MAP.length;
 canvas.width = MAP_W * TILE;
 canvas.height = MAP_H * TILE;
 
-/* Utility roundRect for compatibility */
+/* utility rounded rect */
 function roundRect(ctx, x, y, w, h, r) {
   if (r === undefined) r = 6;
   ctx.beginPath();
@@ -174,7 +174,7 @@ function resetGame(){
   allowLocalPlay = false; // reset lock
 }
 
-/* ========== DRAWING (unchanged visually) ========== */
+/* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== */
 function drawMap(){
   for(let y=0;y<MAP_H;y++){
     for(let x=0;x<MAP_W;x++){
@@ -298,12 +298,13 @@ function moveGhosts(){
   });
 }
 
-/* ========== COLLISIONS ========== */
+/* ========== COLLISIONS & MESSAGES ========== */
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
+    // notify parent so parent can play dot SFX
     parent.postMessage({ type: "dotEaten" }, "*");
   }
 
@@ -338,6 +339,26 @@ function gameOver(){
   parent.postMessage({ type: "submitScore", score }, "*");
 }
 
+/* ========== COUNTDOWN helper ========== */
+function startCountdownAndPlay(){
+  // show countdown -> after that ghostActive=true and gameRunning=true
+  const gm = document.getElementById("game-message");
+  let count = 3;
+  gm.style.display = "block";
+  gm.textContent = "READY " + count;
+  const t = setInterval(()=>{
+    count--;
+    if(count >= 0) gm.textContent = "READY " + count;
+    if(count < 0){
+      clearInterval(t);
+      gm.style.display = "none";
+      ghostActive = true;
+      gameRunning = true;
+      lastMove = performance.now();
+    }
+  }, 1000);
+}
+
 /* ========== LOOP ========== */
 function loop(ts){
   if(gameRunning && ts - lastMove > MOVE_INTERVAL){
@@ -359,13 +380,11 @@ function loop(ts){
 window.addEventListener("message", (e) => {
   const d = e.data || {};
   if(d.type === "paySuccess"){
-    // allow local play and start game
+    // allow local play and start countdown
     allowLocalPlay = true;
     resetGame();    // fresh level
-    ghostActive = true;
-    gameRunning = true;
-    lastMove = performance.now();
-    // parent likely starts BGM and sfx; we just play logic
+    // parent usually plays BGM and start SFX; we only manage logic & countdown
+    startCountdownAndPlay();
   }
   if(d.type === "forceReset"){
     resetGame();
@@ -386,17 +405,13 @@ function sendMobileInput(direction){
   try{ parent.postMessage({ type: "mobileInput", direction }, "*"); }catch(e){}
 }
 
-/* INPUT HANDLERS
-   -> Note: we DO NOT auto-start the game from local input unless `allowLocalPlay` is true.
-   -> This prevents playing without wallet/payment.
-*/
+/* INPUT HANDLERS - gated by allowLocalPlay */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
   const dir = btn.getAttribute("data-dir");
   const start = (ev) => {
     ev.preventDefault();
     btn.style.transform = "translateY(2px)";
     if(!allowLocalPlay){
-      // show gentle message
       const gm = document.getElementById("game-message");
       gm.textContent = "Please connect / pay to start the game.";
       gm.style.display = "block";
