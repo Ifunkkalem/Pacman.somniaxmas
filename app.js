@@ -1,9 +1,7 @@
-// app.js
+// app.js (FINAL FIXED)
 // Requires ethers v5 UMD loaded in index.html
 
-// =======================================================
-// 1. KONFIGURASI KONTRAK
-// =======================================================
+// ---------------- CONFIG ----------------
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
 const CONTRACT_ABI = [
   "function startFeeWei() view returns (uint256)",
@@ -11,410 +9,349 @@ const CONTRACT_ABI = [
   "function submitScore(uint256 _score)"
 ];
 
-// =======================================================
-// 2. PATH AUDIO
-// =======================================================
-const SFX_START_SRC = 'assets/sfx_start.mp3';
-const SFX_DOT_EAT_SRC = 'assets/sfx_dot_eat.mp3';
-const BGM_SRC = 'assets/music_background.mp3';
+// audio paths (relative to index.html)
+const SFX_START_SRC = "assets/sfx_start.mp3";
+const SFX_DOT_EAT_SRC = "assets/sfx_dot_eat.mp3";
+const BGM_SRC = "assets/music_background.mp3";
 
-// =======================================================
-// 3. VARIABEL GLOBAL
-// =======================================================
-let provider, signer, userAddress;
-let gameContract, readContract, startFeeWei;
-let gameStartSound, dotEatSound, backgroundMusic;
-let isGameActive = false;
-let isAudioUnlocked = false;
+// ---------------- STATE ----------------
+let provider = null;
+let signer = null;
+let userAddress = null;
+let readContract = null;
+let gameContract = null;
+let startFeeWei = null;
 
-// UI element refs (IDs used in your index.html)
-const btnConnect = document.getElementById('btnConnect');
-const btnPlay = document.getElementById('btnPlay');
-const btnLeaderboard = document.getElementById('btnLeaderboard');
-const walletAddrEl = document.getElementById('walletAddr');
-const walletBalEl = document.getElementById('walletBal');
-const gameFrame = document.getElementById('gameFrame');
-const leaderFrame = document.getElementById('leaderFrame');
-const logoPlaceholder = document.getElementById('logoPlaceholder');
+let backgroundMusic = null;
+let sfxStart = null;
+let sfxDot = null;
+let audioUnlocked = false;
 
-// Safety: if some elements don't exist, don't throw
-function $id(id){ try { return document.getElementById(id); } catch(e){return null;} }
+let isGameActive = false; // only true after successful on-chain start
 
-// =======================================================
-// 4. AUDIO INIT & UNLOCK (ANTI BLOKIR BROWSER)
-// =======================================================
-function initAudioElements(){
-  if(gameStartSound && dotEatSound && backgroundMusic) return;
-  try{
-    gameStartSound = new Audio(SFX_START_SRC);
-    dotEatSound = new Audio(SFX_DOT_EAT_SRC);
+// ---------------- HELPERS ----------------
+const $ = (id) => document.getElementById(id);
+const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
+
+// graceful init audio objects (no autoplay)
+function initAudio() {
+  if (backgroundMusic && sfxStart && sfxDot) return;
+  try {
     backgroundMusic = new Audio(BGM_SRC);
-
-    dotEatSound.volume = 0.7;
-    gameStartSound.volume = 0.95;
     backgroundMusic.loop = true;
     backgroundMusic.volume = 0.35;
-  }catch(e){
-    console.warn("Audio init failed:", e);
-  }
+  } catch (e){ backgroundMusic = null; }
+
+  try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
+  try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
 }
 
-function unlockAudio(){
-  if(isAudioUnlocked) return;
-  initAudioElements();
-  // Try a short play to unlock audio context. We pause immediately if succeed.
-  if(backgroundMusic){
-    backgroundMusic.play().then(()=>{
-      backgroundMusic.pause();
-      backgroundMusic.currentTime = 0;
-      isAudioUnlocked = true;
-      console.log("✅ Audio unlocked");
-    }).catch((err)=>{
-      // Some browsers block if no user gesture; we'll still set flag on actual user interactions
-      console.warn("Audio play blocked (will retry on explicit actions):", err);
-    });
-  } else {
-    isAudioUnlocked = true;
-  }
+// unlock audio on first user gesture (best-effort)
+function unlockAudioOnGesture() {
+  if (audioUnlocked) return;
+  initAudio();
+  const tryPlay = () => {
+    if (backgroundMusic) {
+      backgroundMusic.play().then(()=> {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+        audioUnlocked = true;
+        window.removeEventListener('pointerdown', tryPlay);
+      }).catch(()=> { /* ignored */ });
+    } else {
+      audioUnlocked = true;
+      window.removeEventListener('pointerdown', tryPlay);
+    }
+  };
+  window.addEventListener('pointerdown', tryPlay, { once: true });
 }
 
-// attach a gentle unlock on first user gesture anywhere
-window.addEventListener('pointerdown', unlockAudio, { once: true });
+// safe play small SFX (handles concurrent plays)
+function playDotSound() {
+  try {
+    if (!audioUnlocked) initAudio();
+    if (sfxDot) {
+      // reusing element can get cut; create temp clone for rapid repeats
+      const inst = sfxDot.cloneNode();
+      inst.volume = sfxDot.volume;
+      inst.play().catch(()=>{});
+    } else {
+      const t = new Audio(SFX_DOT_EAT_SRC);
+      t.volume = 0.8;
+      t.play().catch(()=>{});
+    }
+  } catch (e) { console.warn("dot sound failed", e); }
+}
 
-// =======================================================
-// 5. CONNECT WALLET (and send walletInfo to UI via postMessage)
-// =======================================================
+function playStartSfxAndBgm() {
+  try {
+    if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); }
+    if (backgroundMusic) { backgroundMusic.currentTime = 0; backgroundMusic.play().catch(()=>{}); }
+  } catch (e) { console.warn("start sfx/bgm failed", e); }
+}
+
+// ---------------- WALLET & CONTRACT ----------------
 async function connectWallet() {
-    unlockAudio();
+  initAudio();
+  unlockAudioOnGesture();
 
-    if (!window.ethereum) {
-        alert("Wallet tidak ditemukan.");
-        return;
-    }
-
-    provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
-
-    // ✅ TARUH KODE INI TEPAT DI SINI
-    document.getElementById("walletAddr").innerText =
-      "Wallet: " + userAddress.substring(0,6)+"..."+userAddress.slice(-4);
-
-    const balWei = await provider.getBalance(userAddress);
-
-    document.getElementById("walletBal").innerText =
-      "SOMI: " + ethers.utils.formatEther(balWei);
-
-    // ===============================
-
-    readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-    try {
-        startFeeWei = await readContract.startFeeWei();
-        document.getElementById("feeDisplay").innerText =
-          ethers.utils.formatEther(startFeeWei);
-    } catch {
-        startFeeWei = ethers.utils.parseEther("0.01");
-        document.getElementById("feeDisplay").innerText = "0.01 (Fallback)";
-    }
-
-    document.getElementById("btnPlay").style.display = "block";
-    document.getElementById("btnConnect").style.display = "none";
-}
-
-  try{
+  if (!window.ethereum) {
+    alert("No wallet provider found (MetaMask / WalletConnect).");
+    return false;
+  }
+  try {
     provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    // Request accounts
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
 
-    // create contracts
+    // create contract instances
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-    // fetch balance
-    const balWei = await provider.getBalance(userAddress);
-    const balEth = ethers.utils.formatEther(balWei);
+    // update UI (if elements exist)
+    safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
+    try {
+      const balWei = await provider.getBalance(userAddress);
+      safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(balWei)).toFixed(6));
+    } catch(e){ console.warn("balance fetch failed", e); }
 
-    // try read start fee
+    // read start fee (best-effort)
     try {
       startFeeWei = await readContract.startFeeWei();
-    } catch(e){
-      console.warn("read startFee failed, using fallback 0.01", e);
+      safeText("feeDisplay", ethers.utils.formatEther(startFeeWei));
+    } catch (e) {
       startFeeWei = ethers.utils.parseEther("0.01");
+      safeText("feeDisplay", "0.01 (fallback)");
+      console.warn("failed read startFeeWei:", e);
     }
 
-    // Update index UI elements directly if present
-    if(walletAddrEl) walletAddrEl.textContent = `Wallet: ${userAddress.substring(0,6)}...${userAddress.slice(-4)}`;
-    if(walletAddrEl) walletAddrEl.title = userAddress;
-    if(walletBalEl) walletBalEl.textContent = `${Number(balEth).toFixed(6)} SOMI`;
+    // enable play button UI if exists
+    const playBtn = $("btnPlay") || $("playBtn");
+    if (playBtn) playBtn.style.display = "block";
 
-    // Also send wallet info message (index may listen)
-    try{
-      window.postMessage({
-        type: 'walletInfo',
-        address: userAddress,
-        balance: Number(balEth).toFixed(6)
-      }, '*');
-    }catch(e){console.warn("walletInfo postMessage failed", e);}
+    // notify index (if index wants this)
+    try { window.postMessage({ type: "walletInfo", address: userAddress }, "*"); } catch(e){}
 
-    console.log("Connected:", userAddress);
+    console.log("Connected", userAddress);
     return true;
-  }catch(err){
-    console.error("connectWallet error:", err);
-    alert("Connect wallet failed: " + (err && err.message ? err.message : String(err)));
+  } catch (err) {
+    console.error("connectWallet error", err);
+    alert("Connect failed: " + (err && err.message ? err.message : String(err)));
     return false;
   }
 }
 
-// =======================================================
-// 6. PAY TO PLAY (START GAME on-chain)
-// =======================================================
-async function payToPlayAndStart(){
-  unlockAudio();
-  initAudioElements();
+// pay to play (on-chain) then start game
+async function payToPlay() {
+  initAudio();
+  unlockAudioOnGesture();
 
-  if(!signer || !gameContract || !userAddress){
+  if (!signer || !gameContract || !userAddress) {
     alert("Please connect wallet first.");
-    return false;
-  }
-
-  if(!startFeeWei){
-    // try fetch again (read-only)
-    try{
-      startFeeWei = await readContract.startFeeWei();
-    }catch(e){
-      startFeeWei = ethers.utils.parseEther("0.01");
-    }
-  }
-
-  const balWei = await provider.getBalance(userAddress);
-  if(balWei.lt(startFeeWei)){
-    alert("Insufficient native balance to pay start fee.");
-    return false;
-  }
-
-  try{
-    // UI hint: disable play button until tx mined (optional)
-    if(btnPlay) btnPlay.disabled = true;
-
-    const tx = await gameContract.startGame({ value: startFeeWei });
-    console.log("startGame tx sent:", tx.hash);
-    // Show a small notification to user (index overlay may show too)
-    try{ window.postMessage({ type: 'startTxSent', txHash: tx.hash }, '*'); }catch(e){}
-    await tx.wait();
-    console.log("startGame tx mined");
-
-    // Play audio now that game is unlocked
-    try{
-      if(backgroundMusic){ backgroundMusic.currentTime = 0; backgroundMusic.play().catch(()=>{}); }
-      if(gameStartSound){ gameStartSound.currentTime = 0; gameStartSound.play().catch(()=>{}); }
-    }catch(e){console.warn("audio play error", e);}
-
-    isGameActive = true;
-
-    // notify index & iframe
-    try{ window.postMessage({ type: 'paySuccess' }, '*'); }catch(e){}
-    try{
-      if(gameFrame && gameFrame.contentWindow){
-        gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
-      }
-    }catch(e){console.warn("post paySuccess to iframe failed", e);}
-
-    // show game iframe in the UI (index listens to paySuccess too but ensure here)
-    if(gameFrame) gameFrame.style.display = 'block';
-    if(leaderFrame) leaderFrame.style.display = 'none';
-    if(logoPlaceholder) logoPlaceholder.style.display = 'none';
-
-    // refresh top/pool info (index may display)
-    try{ window.postMessage({ type:'refreshSummary' }, '*'); }catch(e){}
-
-    return true;
-  }catch(err){
-    console.error("payToPlay error:", err);
-    alert("Payment failed: " + (err && err.message ? err.message : String(err)));
-    if(btnPlay) btnPlay.disabled = false;
-    return false;
-  }
-}
-
-// =======================================================
-// 7. SUBMIT SCORE
-// =======================================================
-async function submitScoreTx(latestScore){
-  if(!gameContract || !signer || !userAddress){
-    alert("Connect wallet before submitting score.");
     return;
   }
-  try{
-    // pause music
-    if(backgroundMusic){ backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
-    const tx = await gameContract.submitScore(latestScore);
+
+  // ensure startFeeWei
+  if (!startFeeWei) {
+    try { startFeeWei = await readContract.startFeeWei(); } catch(e){ startFeeWei = ethers.utils.parseEther("0.01"); }
+  }
+
+  try {
+    // check balance
+    const bal = await provider.getBalance(userAddress);
+    if (bal.lt(startFeeWei)) {
+      alert("Insufficient balance to pay start fee.");
+      return;
+    }
+
+    // send tx
+    const tx = await gameContract.startGame({ value: startFeeWei });
+    console.log("startGame tx:", tx.hash);
+    // optional notify index
+    try { window.postMessage({ type: "startTxSent", txHash: tx.hash }, "*"); } catch(e){}
+
+    await tx.wait();
+
+    // mark game active and play audio
+    isGameActive = true;
+    playStartSfxAndBgm();
+
+    // notify iframe and index
+    try { 
+      window.postMessage({ type: "paySuccess" }, "*");
+      const gf = $("gameFrame");
+      if (gf && gf.contentWindow) gf.contentWindow.postMessage({ type: "paySuccess" }, "*");
+    } catch(e){ console.warn("postMessage paySuccess failed", e); }
+
+    // show game iframe if index expects
+    const gf = $("gameFrame");
+    if (gf) { gf.style.display = "block"; }
+    const logo = $("logoPlaceholder");
+    if (logo) logo.style.display = "none";
+
+    // refresh UI summary on index
+    try { window.postMessage({ type: "refreshSummary" }, "*"); } catch(e){}
+
+    return true;
+  } catch (err) {
+    console.error("payToPlay failed", err);
+    alert("Payment failed: " + (err && err.message ? err.message : String(err)));
+    return false;
+  }
+}
+
+// submit score on-chain
+async function submitScoreTx(score) {
+  if (!gameContract || !signer || !userAddress) {
+    alert("Please connect wallet before submitting score.");
+    return;
+  }
+  if (!score || isNaN(Number(score)) || Number(score) <= 0) {
+    alert("Invalid score.");
+    return;
+  }
+
+  try {
+    // pause bgm
+    if (backgroundMusic) { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
+    const tx = await gameContract.submitScore(Number(score));
     console.log("submitScore tx:", tx.hash);
     await tx.wait();
-    alert("✅ Score submitted on-chain!");
-    // optionally load leaderboard
-    loadLeaderboardFrame();
-  }catch(err){
-    console.error("submitScore error:", err);
-    alert("Failed to submit score: " + (err && err.message ? err.message : String(err)));
+    alert("Score submitted on-chain ✅");
+    // ask index to show leaderboard
+    try { window.postMessage({ type: "scoreSubmitted" }, "*"); } catch(e){}
+  } catch (err) {
+    console.error("submitScore error", err);
+    alert("Submit score failed: " + (err && err.message ? err.message : String(err)));
   }
 }
 
-// =======================================================
-// 8. LOAD LEADERBOARD
-// =======================================================
-function loadLeaderboardFrame(){
-  if(gameFrame) gameFrame.style.display = 'none';
-  if(leaderFrame){
-    leaderFrame.src = "leaderboard.html?ts=" + Date.now();
-    leaderFrame.style.display = 'block';
-  }
-}
-
-// =======================================================
-// 9. MENERIMA EVENT DARI IFRAME / INDEX (postMessage)
-// =======================================================
-window.addEventListener('message', async (ev) => {
+// ---------------- MESSAGE HANDLER ----------------
+window.addEventListener("message", async (ev) => {
   const data = ev.data || {};
-  if(!data || typeof data !== 'object') return;
+  if (!data || typeof data !== "object") return;
 
-  // If the index requested to start game (btnPlay or overlay)
-  if(data.type === 'requestStartGame'){
-    // If not connected, ask to connect first
-    if(!signer || !userAddress){
-      const ok = await connectWalletAndNotify();
-      if(!ok) return;
-    }
-    // proceed to pay & start
-    await payToPlayAndStart();
-    return;
-  }
-
-  if(data.type === 'requestConnectWallet'){
-    await connectWalletAndNotify();
-    return;
-  }
-
-  // If iframe asks for the start fee (so it can display)
-  if(data.type === 'requestStartFee'){
-    try{
-      if(!readContract){
-        // create read-only provider if needed
-        const rprov = provider || new ethers.providers.JsonRpcProvider();
-        readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rprov);
+  // iframe requests the start fee
+  if (data.type === "requestStartFee") {
+    try {
+      if (!readContract) {
+        const rp = provider || new ethers.providers.JsonRpcProvider();
+        readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp);
       }
       let fee = startFeeWei;
-      if(!fee){
+      if (!fee) {
         fee = await readContract.startFeeWei();
         startFeeWei = fee;
       }
       const feeEth = ethers.utils.formatEther(fee);
       // reply to iframe
-      try{
-        if(gameFrame && gameFrame.contentWindow){
-          gameFrame.contentWindow.postMessage({ type: 'startFee', feeWei: fee.toString(), feeEth }, '*');
-        }
-      }catch(e){ console.warn("failed to reply startFee", e); }
-    }catch(e){
-      console.warn("requestStartFee error", e);
-    }
+      try {
+        const gf = $("gameFrame");
+        if (gf && gf.contentWindow) gf.contentWindow.postMessage({ type: "startFee", feeWei: fee.toString(), feeEth }, "*");
+      } catch(e){}
+    } catch(e) { console.warn("requestStartFee failed", e); }
     return;
   }
 
-  // If index forwarded a submitScore (rare) or game iframe sends submitScore
-  if(data.type === 'submitScore'){
-    const score = Number(data.score || 0);
-    if(isNaN(score) || score <= 0){
-      console.warn("Invalid score from iframe:", data.score);
-      return;
-    }
-    await submitScoreTx(score);
+  // game sends dotEaten -> play sfx
+  if (data.type === "dotEaten") {
+    if (isGameActive) playDotSound();
     return;
   }
 
-  // Dot eaten sound from iframe
-  if(data.type === 'dotEaten' && isGameActive){
-    try{
-      if(!dotEatSound) initAudioElements();
-      if(dotEatSound){
-        dotEatSound.currentTime = 0;
-        dotEatSound.play().catch(()=> {
-          // fallback create fresh
-          const fresh = new Audio(SFX_DOT_EAT_SRC);
-          fresh.volume = 0.7;
-          fresh.play().catch(()=>{});
-        });
-      }
-    }catch(e){ console.warn("dotEaten play failed", e); }
+  // game asks to submit score
+  if (data.type === "submitScore") {
+    await submitScoreTx(data.score);
+    return;
+  }
+
+  // index asks to request wallet connect (from overlay)
+  if (data.type === "requestConnectWallet") {
+    await connectWallet();
+    return;
+  }
+
+  // index asks to start (it wants to ensure on-chain flow)
+  if (data.type === "requestStartGame") {
+    if (!signer) {
+      const ok = await connectWallet();
+      if (!ok) return;
+    }
+    await payToPlay();
     return;
   }
 });
 
-// =======================================================
-// 10. WIRE UP BUTTONS ON INDEX
-// =======================================================
+// ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
+  // init audio hook
+  initAudio();
+  unlockAudioOnGesture();
 
-  // ✅ SINKRON DENGAN INDEX.HTML
-  const connectBtn = document.getElementById("btnConnect");
-  const playBtn = document.getElementById("btnPlay");
-  const leaderboardBtn = document.getElementById("btnLeaderboard");
+  // wire buttons if exist
+  const btnConnect = $("btnConnect") || $("connectWalletBtn");
+  const btnPlay = $("btnPlay") || $("playBtn");
+  const btnLeaderboard = $("btnLeaderboard") || $("leaderboardBtn");
 
-  connectBtn.addEventListener("click", connectWallet);
-  playBtn.addEventListener("click", payToPlay);
-  leaderboardBtn.addEventListener("click", loadLeaderboardFrame);
+  if (btnConnect) btnConnect.addEventListener("click", async () => {
+    await connectWallet();
+  });
 
- });
-
-  if(btnPlay) btnPlay.addEventListener('click', async (e) => {
-    e.preventDefault();
-    // Instead of local start, we treat as request to start (ensures on-chain)
-    // This mirrors what index does (it posts requestStartGame)
-    if(!signer || !userAddress){
-      const ok = await connectWalletAndNotify();
-      if(!ok) return;
+  if (btnPlay) btnPlay.addEventListener("click", async () => {
+    // ensure wallet
+    if (!signer) {
+      const ok = await connectWallet();
+      if (!ok) return;
     }
-    await payToPlayAndStart();
+    await payToPlay();
   });
 
-  if(btnLeaderboard) btnLeaderboard.addEventListener('click', (e) => {
-    e.preventDefault();
-    loadLeaderboardFrame();
-  });
-
-  // If index has overlay Start that posts requestStartGame, it's already handled by message listener.
-
-  // Optional: provide keyboard shortcuts for dev
-  window.addEventListener('keydown', (e) => {
-    if(e.key === 'p'){ // quick play dev
-      if(!signer) connectWalletAndNotify();
-      else payToPlayAndStart();
+  if (btnLeaderboard) btnLeaderboard.addEventListener("click", () => {
+    const lf = $("leaderFrame") || $("leaderboardFrame");
+    if (lf) {
+      lf.src = "leaderboard.html?ts=" + Date.now();
+      lf.style.display = "block";
     }
+    const gf = $("gameFrame");
+    if (gf) gf.style.display = "none";
   });
 
-  // On load: try to initialize audio elements
-  initAudioElements();
+  // mobile pad container (if you implemented dpad in index)
+  const dpad = $("dpad-container-cross");
+  if (dpad) {
+    dpad.querySelectorAll("button").forEach(btn => {
+      const dir = btn.getAttribute("data-direction");
+      if (!dir) return;
+      const send = () => {
+        const gf = $("gameFrame");
+        if (gf && gf.contentWindow && isGameActive) {
+          gf.contentWindow.postMessage({ type: "mobileInput", direction: dir }, "*");
+        }
+      };
+      btn.addEventListener("touchstart", (e) => { e.preventDefault(); send(); }, { passive:false });
+      btn.addEventListener("mousedown", send);
+    });
+  }
+
+  // try notify index if already connected (hot reload case)
+  (async ()=> {
+    if (window.ethereum && !provider) {
+      // we don't auto-connect, but if permissions already granted this returns quickly
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const accounts = await provider.listAccounts();
+        if (accounts && accounts.length > 0) {
+          // populate info (but do not force user to re-approve)
+          signer = provider.getSigner();
+          userAddress = await signer.getAddress();
+          safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
+          try {
+            const bal = await provider.getBalance(userAddress);
+            safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(bal)).toFixed(6));
+          } catch(e){}
+        }
+      } catch(e){ /* ignore */ }
+    }
+  })();
 });
-
-// =======================================================
-// 11. UTILITY: send walletInfo to index if already connected (useful after hot-reload)
-// =======================================================
-async function notifyWalletInfoIfConnected(){
-  if(!userAddress || !provider) return;
-  try{
-    const balWei = await provider.getBalance(userAddress);
-    const balEth = ethers.utils.formatEther(balWei);
-    window.postMessage({
-      type: 'walletInfo',
-      address: userAddress,
-      balance: Number(balEth).toFixed(6)
-    }, '*');
-  }catch(e){ console.warn("notifyWalletInfoIfConnected failed", e); }
-}
-
-// call once in case we reloaded
-notifyWalletInfoIfConnected();
