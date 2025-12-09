@@ -90,6 +90,7 @@ iframe{
   display:flex;
   align-items:center;
   justify-content:center;
+  background:linear-gradient(180deg, rgba(0,0,0,0.25), rgba(255,255,255,0.02));
 }
 
 #logoPlaceholder img{
@@ -108,6 +109,7 @@ iframe{
   text-align:center;
   padding:20px;
   text-shadow:0 0 5px black;
+  pointer-events:none; /* default disable so only CTA reacts */
 }
 
 #poster-overlay h2{font-size:1.6em;color:#facc15}
@@ -118,6 +120,8 @@ iframe{
   font-size:1.1em;
   font-weight:bold;
   border-radius:8px;
+  pointer-events:auto; /* re-enable for the button */
+  cursor:pointer;
 }
 
 /* ==== MOBILE LOCK ==== */
@@ -130,7 +134,8 @@ iframe{
     flex-wrap:wrap;
   }
 
-  #walletAddr,#walletBal{display:none}
+  /* show wallet info on mobile when available (we will populate via postMessage) */
+  #walletAddr,#walletBal{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
 </style>
 </head>
@@ -140,8 +145,8 @@ iframe{
 
   <div id="sidebar">
     <button id="btnConnect">Connect Wallet</button>
-    <div id="walletAddr">Wallet: -</div>
-    <div id="walletBal">SOMI: -</div>
+    <div id="walletAddr" title="Wallet address">Wallet: -</div>
+    <div id="walletBal" title="Native balance">SOMI: -</div>
     <button id="btnPlay">Play Game</button>
     <button id="btnLeaderboard">Leaderboard</button>
   </div>
@@ -157,17 +162,21 @@ iframe{
 
     <div class="content-area">
 
-      <div id="logoPlaceholder">
-        <img src="assets/logo1.png" alt="Somnia Logo">
+      <div id="logoPlaceholder" role="img" aria-label="Somnia poster">
+        <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
         <div id="poster-overlay">
-          <h2>SOMNIA CHRISTMAS!</h2>
-          <p>Main & menangkan Jackpot Natal 🎁</p>
-          <button class="overlay-cta" onclick="btnPlay.click()">Mulai</button>
+          <div style="margin-top:8px;">
+            <h2>SOMNIA CHRISTMAS!</h2>
+            <p>Main & menangkan Jackpot Natal 🎁</p>
+          </div>
+          <div style="margin-bottom:8px;">
+            <button id="overlayStart" class="overlay-cta">Mulai</button>
+          </div>
         </div>
       </div>
 
-      <iframe id="gameFrame" src="./pacman/pacman_xmas.html"></iframe>
-      <iframe id="leaderFrame" src="leaderboard.html"></iframe>
+      <iframe id="gameFrame" src="./pacman/pacman_xmas.html" title="Pacman Game"></iframe>
+      <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
 
     </div>
 
@@ -176,32 +185,128 @@ iframe{
 </div>
 
 <script>
-const btnConnect=document.getElementById('btnConnect');
-const btnPlay=document.getElementById('btnPlay');
-const btnLeaderboard=document.getElementById('btnLeaderboard');
-const walletAddrEl=document.getElementById('walletAddr');
-const walletBalEl=document.getElementById('walletBal');
-const gameFrame=document.getElementById('gameFrame');
-const leaderFrame=document.getElementById('leaderFrame');
-const logoPlaceholder=document.getElementById('logoPlaceholder');
+const btnConnect = document.getElementById('btnConnect');
+const btnPlay = document.getElementById('btnPlay');
+const btnLeaderboard = document.getElementById('btnLeaderboard');
+const walletAddrEl = document.getElementById('walletAddr');
+const walletBalEl = document.getElementById('walletBal');
+const gameFrame = document.getElementById('gameFrame');
+const leaderFrame = document.getElementById('leaderFrame');
+const logoPlaceholder = document.getElementById('logoPlaceholder');
+const overlayStart = document.getElementById('overlayStart');
+const posterImg = document.getElementById('posterImg');
 
+// SAFER showMain: only show if element exists
 function showMain(id){
-  logoPlaceholder.style.display='none';
-  gameFrame.style.display='none';
-  leaderFrame.style.display='none';
-  document.getElementById(id).style.display='block';
+  try{
+    logoPlaceholder.style.display='none';
+    gameFrame.style.display='none';
+    leaderFrame.style.display='none';
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'block';
+  }catch(e){
+    console.warn('showMain error', e);
+  }
 }
 
-btnPlay.onclick=()=>{
-  gameFrame.contentWindow.postMessage({type:"paySuccess"},"*");
-  showMain('gameFrame');
-};
+// Previously Play directly posted paySuccess -> this allowed game to start without payment.
+// Now Play asks parent (app.js) to start the game; parent must reply with {type:'paySuccess'}.
+function requestStartGame(){
+  // send a request to parent/app.js to start (pay & unlock)
+  // parent should perform wallet tx and reply with {type:'paySuccess'} when confirmed.
+  try{
+    window.parent.postMessage({ type: 'requestStartGame' }, '*');
+    // show a subtle waiting feedback while parent handles tx (parent could also send status messages)
+    const gm = document.createElement('div');
+    gm.id = '__waiting_req';
+    gm.style.position='absolute';
+    gm.style.left='50%';
+    gm.style.top='8px';
+    gm.style.transform='translateX(-50%)';
+    gm.style.background='rgba(0,0,0,0.6)';
+    gm.style.color='white';
+    gm.style.padding='6px 10px';
+    gm.style.borderRadius='8px';
+    gm.style.zIndex='999';
+    gm.textContent = 'Requesting start... check wallet.';
+    document.body.appendChild(gm);
+    setTimeout(()=> {
+      const w = document.getElementById('__waiting_req');
+      if(w) w.remove();
+    }, 8000);
+  }catch(e){
+    console.warn('requestStartGame postMessage failed', e);
+  }
+}
 
-btnLeaderboard.onclick=()=>{
+// Hook up UI controls to requestStartGame instead of starting locally
+btnPlay.addEventListener('click', (ev)=>{
+  ev.preventDefault();
+  requestStartGame();
+});
+
+overlayStart.addEventListener('click', (ev)=>{
+  ev.preventDefault();
+  requestStartGame();
+});
+
+// Leaderboard shows iframe
+btnLeaderboard.addEventListener('click', ()=>{
   showMain('leaderFrame');
-};
+});
 
+// Connect wallet button should be implemented in app.js; we only forward an event request
+btnConnect.addEventListener('click', ()=>{
+  try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
+  catch(e){ console.warn('postMessage connect failed', e); }
+});
+
+// Listen for messages from parent (app.js)
+// - paySuccess: show game iframe (parent should already have started audio/bg/etc)
+// - walletInfo: update wallet address & balance
+// - forceShowLogo / forceHideLogo (optional)
+// - startFee (optional info)
+window.addEventListener('message', (ev)=>{
+  const d = ev.data || {};
+  if(!d || typeof d !== 'object') return;
+
+  if(d.type === 'paySuccess'){
+    // parent confirmed payment / start — show game
+    showMain('gameFrame');
+    // remove any waiting UI if still present
+    const w = document.getElementById('__waiting_req'); if(w) w.remove();
+  }
+
+  if(d.type === 'walletInfo'){
+    // Expect { type:'walletInfo', address: '0x...', balance: '0.123' }
+    if(d.address){
+      walletAddrEl.textContent = 'Wallet: ' + (d.address.length>12 ? d.address.substring(0,6)+'...'+d.address.slice(-4) : d.address);
+      walletAddrEl.title = d.address;
+    }
+    if(typeof d.balance !== 'undefined'){
+      walletBalEl.textContent = d.balance + ' SOMI';
+      walletBalEl.title = d.balance + ' SOMI';
+    }
+  }
+
+  if(d.type === 'startFee'){
+    // optional: parent can send fee info
+    console.info('Start fee:', d.feeEth || d.feeWei);
+  }
+
+  if(d.type === 'forceShowLogo'){
+    showMain('logoPlaceholder');
+  }
+});
+
+// ensure poster image fallback (so it won't appear blank)
+posterImg.addEventListener('error', ()=>{
+  posterImg.src = 'assets/logo.png';
+});
+
+// initial state: show poster
 showMain('logoPlaceholder');
+
 </script>
 
 </body>
