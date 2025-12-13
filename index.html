@@ -8,134 +8,189 @@
 <script src="libs/ethers.min.js"></script>
 
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS,sans-serif}
+/* ---------------------------------------------------- */
+/* --- PERBAIKAN CSS UNTUK VIEWPORT MOBILE & DAPPS --- */
+/* ---------------------------------------------------- */
 
-body{
-  min-height:100vh;
-  background:linear-gradient(to right,#fff,#ff0000);
-  color:#fff;
-  overflow-x:hidden;
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+  font-family:Trebuchet MS,sans-serif;
+}
+
+/* Memastikan BODY menggunakan 100% tinggi viewport yang tersedia (penting untuk mobile DApps) */
+body {
+  height: 100vh;
+  min-height: 100%; /* Fallback */
+  background: linear-gradient(to right,#fff,#ff0000);
+  color: #fff;
+  overflow-x: hidden;
+  overflow-y: auto; /* Izinkan scroll jika konten sangat besar, tapi layout utama harus dihindari */
 }
 
 /* ==== LAYOUT UTAMA ==== */
-#wrap{display:flex;min-height:100vh;width:100%}
-
-#sidebar{
-  width:160px;
-  background:#fff;
-  color:#000;
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
+#wrap {
+  display: flex;
+  min-height: 100%; /* Mengambil tinggi body */
+  width: 100%;
 }
 
-#main{
-  flex:1;
-  padding:10px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  background:linear-gradient(to bottom,#ff0000,#800000);
-  position:relative;
+#sidebar {
+  width: 160px;
+  background: #fff;
+  color: #000;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Tambahkan posisi tetap (jika diperlukan) atau biarkan mengikuti aliran */
 }
 
-button{
-  padding:10px;
-  border-radius:8px;
-  border:none;
-  background:linear-gradient(90deg,red,green);
-  color:#fff;
-  cursor:pointer;
-  font-weight:bold;
+#main {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(to bottom, #ff0000, #800000);
+  position: relative;
+  /* FIX: Mengambil sisa ruang yang tersedia di flex container */
+  min-height: 0;
 }
 
-#title{
-  color:#00ffae;
-  font-size:26px;
-  margin-bottom:10px;
+button {
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(90deg, red, green);
+  color: #fff;
+  cursor: pointer;
+  font-weight: bold;
 }
 
-.footer{
-  margin-top:10px;
-  color:#0ff;
-  text-shadow:0 0 4px #0ff;
-  font-size:12px;
+#title {
+  color: #00ffae;
+  font-size: 26px;
+  margin-bottom: 10px;
+}
+
+.footer {
+  margin-top: 10px;
+  color: #0ff;
+  text-shadow: 0 0 4px #0ff;
+  font-size: 12px;
 }
 
 /* ==== AREA UTAMA (LOGO / GAME / LEADERBOARD) ==== */
-.content-area{
-  width:100%;
-  max-width:480px;
-  aspect-ratio:1/1;
-  background:rgba(0,0,0,0.25);
-  border-radius:12px;
-  overflow:hidden;
-  position:relative;
+/* FIX: Hapus aspect-ratio agar tinggi bisa fleksibel, tapi batasi MAX width */
+.content-area {
+  width: 100%;
+  max-width: 480px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  
+  /* FIX: Ambil ruang sebanyak mungkin di #main, tapi biarkan tingginya fleksibel */
+  flex: 1; 
+  /* Gunakan max-height untuk menghindari overlap dengan d-pad jika ada */
+  max-height: calc(100vh - 200px); /* Estimasi ruang yang tersisa untuk UI/footer/dpad */
 }
 
-iframe{
-  width:100%;
-  height:100%;
-  border:0;
-  display:none;
+iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: none;
 }
 
 /* ==== POSTER LOGO ==== */
-#logoPlaceholder{
-  width:100%;
-  height:100%;
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background:linear-gradient(180deg, rgba(0,0,0,0.25), rgba(255,255,255,0.02));
+#logoPlaceholder {
+  /* Hapus height:100% dan biarkan mengikuti .content-area */
+  width: 100%;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(255,255,255,0.02));
 }
 
-#logoPlaceholder img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
+#logoPlaceholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-#poster-overlay{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  align-items:center;
-  text-align:center;
-  padding:20px;
-  text-shadow:0 0 5px black;
-  pointer-events:none; /* default disable so only CTA reacts */
+#poster-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  text-shadow: 0 0 5px black;
+  pointer-events: none;
 }
 
-#poster-overlay h2{font-size:1.6em;color:#facc15}
-#poster-overlay p{font-size:1em}
+#poster-overlay h2 {font-size: 1.6em; color: #facc15}
+#poster-overlay p {font-size: 1em}
 
-.overlay-cta{
-  padding:12px 30px;
-  font-size:1.1em;
-  font-weight:bold;
-  border-radius:8px;
-  pointer-events:auto; /* re-enable for the button */
-  cursor:pointer;
+.overlay-cta {
+  padding: 12px 30px;
+  font-size: 1.1em;
+  font-weight: bold;
+  border-radius: 8px;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
-/* ==== MOBILE LOCK ==== */
+/* ==== MOBILE LOCK (Hingga 768px) ==== */
 @media (max-width:768px){
-  #wrap{flex-direction:column}
-  #sidebar{
-    width:100%;
-    flex-direction:row;
-    justify-content:space-around;
-    flex-wrap:wrap;
+  /* FIX: Pastikan wrap mengambil 100% tinggi viewport */
+  #wrap {
+      flex-direction: column;
+      min-height: 100vh;
+  }
+  
+  /* Sidebar diubah menjadi header horizontal, HINDARI penggunaan height:100% pada elemen di dalamnya */
+  #sidebar {
+    width: 100%;
+    flex-direction: row;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    /* FIX: Hapus padding vertical agar lebih ringkas di atas */
+    padding: 8px 12px;
   }
 
-  /* show wallet info on mobile when available (we will populate via postMessage) */
-  #walletAddr,#walletBal{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* Main area harus mengambil sisa ruang dan mengizinkan scroll internal jika diperlukan */
+  #main {
+    flex: 1; 
+    padding: 10px;
+    /* FIX: Tambahkan min-height:0 agar flex-grow berfungsi */
+    min-height: 0; 
+  }
+  
+  /* FIX: Batasi tinggi area konten agar tidak overflow ke footer/dpad (Jika D-Pad ada di index.html) */
+  .content-area {
+      /* Tinggi yang diambil oleh #title, #topScoreSummary, dan .footer sekitar 120px. */
+      /* Kita atur agar content-area mengambil sisa ruang vertikal di dalam #main */
+      flex: 1; /* Ambil sisa ruang */
+      max-height: calc(100vh - 120px); /* Fallback untuk DApps browser */
+      /* Kita tidak bisa memberikan nilai fix karena D-Pad tidak ada di HTML ini. */
+  }
+
+
+  #walletAddr,#walletBal {display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin: 0 4px;}
+  
+  /* FIX: Perbaiki ukuran tombol agar tidak terlalu besar */
+  #btnConnect, #btnPlay, #btnLeaderboard {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
 }
 </style>
 </head>
@@ -145,8 +200,10 @@ iframe{
 
   <div id="sidebar">
     <button id="btnConnect">Connect Wallet</button>
-    <div id="walletAddr" title="Wallet address">Wallet: -</div>
-    <div id="walletBal" title="Native balance">SOMI: -</div>
+    <div style="display:flex; flex-direction:column; justify-content:center;">
+        <div id="walletAddr" title="Wallet address">Wallet: -</div>
+        <div id="walletBal" title="Native balance">SOMI: -</div>
+    </div>
     <button id="btnPlay">Play Game</button>
     <button id="btnLeaderboard">Leaderboard</button>
   </div>
@@ -179,12 +236,13 @@ iframe{
       <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
 
     </div>
-
+    
     <div class="footer">created by: ifunkkalem | @Ifunkkalem91</div>
   </div>
 </div>
 
 <script>
+// ... (Kode JavaScript Anda di sini) ...
 const btnConnect = document.getElementById('btnConnect');
 const btnPlay = document.getElementById('btnPlay');
 const btnLeaderboard = document.getElementById('btnLeaderboard');
@@ -219,7 +277,7 @@ function requestStartGame(){
     // show a subtle waiting feedback while parent handles tx (parent could also send status messages)
     const gm = document.createElement('div');
     gm.id = '__waiting_req';
-    gm.style.position='absolute';
+    gm.style.position='fixed'; /* FIX: Gunakan fixed agar tidak terpengaruh scroll */
     gm.style.left='50%';
     gm.style.top='8px';
     gm.style.transform='translateX(-50%)';
@@ -312,3 +370,4 @@ showMain('logoPlaceholder');
   
 </body>
 </html>
+
