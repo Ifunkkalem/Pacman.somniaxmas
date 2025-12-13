@@ -1,4 +1,5 @@
-// app.js (FINAL & FIXED: Mengatasi SyntaxError & CALL_EXCEPTION)
+// app.js (FINAL & FIXED VERSION)
+// Requires ethers v5 UMD loaded in index.html
 
 // ---------------- CONFIG ----------------
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
@@ -18,17 +19,17 @@ const SOMNIA_NETWORK_CONFIG = {
     blockExplorerUrls: ['https://explorer.somnia.network']
 };
 
-// audio paths
+// audio paths (relative to index.html)
 const SFX_START_SRC = "assets/sfx_start.mp3";
 const SFX_DOT_EAT_SRC = "assets/sfx_dot_eat.mp3";
-const BGM_SRC = "assets/music_background.mp3"; 
+const BGM_SRC = "assets/music_background.mp3"; // File 1MB Anda
 
 // ---------------- STATE ----------------
 let provider = null;
 let signer = null;
 let userAddress = null;
 let readContract = null;
-let gameContract = null; 
+let gameContract = null;
 let startFeeWei = null;
 
 let backgroundMusic = null;
@@ -37,42 +38,67 @@ let sfxDot = null;
 let audioUnlocked = false;
 let isGameActive = false; 
 
-// 🔥 HANYA SATU DEKLARASI GLOBAL 'gameFrame'
-let gameFrame = null; 
-
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
 
-// [Fungsi initAudio, loadBackgroundMusic, unlockAudioOnGesture, playDotSound, 
-//  startBackgroundMusic, playStartSfx, showWaitingMessage, switchNetwork - (DIPERSINGKAT DI SINI UNTUK KETERBACAAN)]
-
 function initAudio() {
-    if (sfxStart && sfxDot) return;
-    try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
-    try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
+  if (sfxStart && sfxDot) return;
+  try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
+  try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
 }
 
 async function loadBackgroundMusic() {
     return new Promise((resolve) => {
         if (backgroundMusic && backgroundMusic.readyState >= 3) return resolve();
+        
         try {
             backgroundMusic = new Audio(BGM_SRC);
             backgroundMusic.loop = true;
             backgroundMusic.volume = 0.35;
-            backgroundMusic.addEventListener('canplaythrough', () => { resolve(); }, { once: true });
-            setTimeout(() => { if (!backgroundMusic || backgroundMusic.readyState < 3) resolve(); }, 10000); 
-        } catch (e) { backgroundMusic = null; resolve(); }
+            
+            // Tunggu hingga BGM siap diputar
+            backgroundMusic.addEventListener('canplaythrough', () => {
+                console.log("BGM file loaded and ready to play (1MB).");
+                resolve();
+            }, { once: true });
+            
+            // Fallback: Resolve setelah 10 detik, walau gagal.
+            setTimeout(() => {
+                if (!backgroundMusic || backgroundMusic.readyState < 3) {
+                    console.warn("BGM loading timeout (10s). Proceeding without BGM.");
+                    resolve();
+                }
+            }, 10000); 
+            
+        } catch (e) { 
+            backgroundMusic = null;
+            console.error("Failed to initialize Audio object for BGM:", e);
+            resolve();
+        }
     });
 }
 
 function unlockAudioOnGesture() {
-  if (audioUnlocked) return; initAudio();
+  if (audioUnlocked) return;
+  initAudio();
+  
   const tryPlay = () => {
     if (sfxStart) {
         sfxStart.volume = 0; 
-        sfxStart.play().then(() => { sfxStart.volume = 0.95; audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); }).catch(() => { audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); });
-    } else { audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); }
+        sfxStart.play().then(() => {
+            sfxStart.volume = 0.95; 
+            audioUnlocked = true;
+            window.removeEventListener('pointerdown', tryPlay);
+            console.log("Audio Context unlocked via SFX.");
+        }).catch(() => {
+             audioUnlocked = true;
+             window.removeEventListener('pointerdown', tryPlay);
+        });
+    } else {
+        audioUnlocked = true;
+        window.removeEventListener('pointerdown', tryPlay);
+    }
   };
   window.addEventListener('pointerdown', tryPlay, { once: true });
 }
@@ -80,7 +106,11 @@ function unlockAudioOnGesture() {
 function playDotSound() {
   try {
     if (!audioUnlocked) initAudio();
-    if (sfxDot) { const inst = sfxDot.cloneNode(); inst.volume = sfxDot.volume; inst.play().catch(()=>{}); }
+    if (sfxDot) {
+      const inst = sfxDot.cloneNode();
+      inst.volume = sfxDot.volume;
+      inst.play().catch(()=>{});
+    }
   } catch (e) { console.warn("dot sound failed", e); }
 }
 
@@ -100,100 +130,72 @@ function playStartSfx() {
   } catch (e) { console.warn("start sfx failed", e); }
 }
 
-function showWaitingMessage(text, duration = 4000) {
-    let gm = document.getElementById('__waiting_msg');
-    if (!gm) {
-        gm = document.createElement('div');
-        gm.id = '__waiting_msg';
-        gm.style.position = 'fixed';
-        gm.style.left = '50%';
-        gm.style.top = '70px'; 
-        gm.style.transform = 'translateX(-50%)';
-        gm.style.background = 'linear-gradient(90deg, #ff9800, #ff5722)';
-        gm.style.color = 'white';
-        gm.style.padding = '8px 15px';
-        gm.style.borderRadius = '8px';
-        gm.style.zIndex = '9999'; 
-        document.body.appendChild(gm);
-    }
-    gm.textContent = text;
-    gm.style.display = 'block';
 
-    if (duration > 0) {
-        setTimeout(() => {
-            if (gm && gm.textContent === text) gm.style.display = 'none';
-        }, duration);
-    }
-}
-
+// ---------------- WALLET & CONTRACT ----------------
 async function switchNetwork(provider) {
-    try {
-        const network = await provider.getNetwork();
-        if (network.chainId.toString() !== '5031') {
+    const { chainId } = await provider.getNetwork();
+    if (chainId.toString() !== '5031') {
+        try {
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: SOMNIA_CHAIN_ID }],
             });
+            // Give time for network switch to complete
             await new Promise(resolve => setTimeout(resolve, 500));
             return true;
-        }
-        return true;
-    } catch (switchError) {
-        if (switchError.code === 4902) { 
-            try {
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [SOMNIA_NETWORK_CONFIG],
-                });
-                await new Promise(resolve => setTimeout(resolve, 500));
-                return true;
-            } catch (addError) {
-                console.error("Failed to add Somnia network", addError);
-                alert("Failed to add Somnia network. Please add it manually.");
-                return false;
+        } catch (switchError) {
+            if (switchError.code === 4902) { // Network not added
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [SOMNIA_NETWORK_CONFIG],
+                    });
+                    // After adding, we assume switch is automatic or next check will handle it
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    return true;
+                } catch (addError) {
+                    console.error("Failed to add Somnia network", addError);
+                    alert("Failed to add Somnia network. Please add it manually.");
+                    return false;
+                }
+            } else {
+                 console.error("Failed to switch network", switchError);
+                 alert("Failed to switch to Somnia network. Please switch manually.");
+                 return false;
             }
-        } else if (switchError.code === 4001) {
-             console.log("User rejected network switch.");
-             return false;
-        } else {
-             console.error("Failed to switch network", switchError);
-             alert("Failed to switch to Somnia network. Please switch manually. Error code: " + switchError.code);
-             return false;
         }
     }
+    return true;
 }
-
-
-// ---------------- WALLET & CONTRACT ----------------
 
 async function connectWallet() {
   initAudio();
   unlockAudioOnGesture();
 
-  if (typeof window.ethereum === 'undefined') {
-    alert("Wallet provider not found. Please install MetaMask or use a DApp browser.");
+  if (!window.ethereum) {
+    alert("No wallet provider found (MetaMask / WalletConnect).");
     return false;
   }
-  
   try {
+    // 1. Request accounts and initialize provider
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
-    await provider.send("eth_requestAccounts", []); 
-    
+    await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
     
+    // 2. Switch/Add Network to Somnia
     const networkSwitched = await switchNetwork(provider);
-    if (!networkSwitched) {
-        signer = null; userAddress = null; provider = null;
-        return false;
-    }
+    if (!networkSwitched) return false;
     
+    // After potential switch, re-initialize provider and signer
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     signer = provider.getSigner();
     
+    // 3. Create contract instances
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
+    // 4. Update UI and fetch data
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
     
     try {
@@ -203,18 +205,18 @@ async function connectWallet() {
 
     try {
       startFeeWei = await readContract.startFeeWei();
+      // Safe guard for index.html display if needed, but not critical here
     } catch (e) {
-      // Menangani error CALL_EXCEPTION jika RPC gagal membaca startFeeWei
-      startFeeWei = ethers.utils.parseEther("0.01"); 
-      console.warn("failed read startFeeWei (using default 0.01):", e);
+      startFeeWei = ethers.utils.parseEther("0.01");
+      console.warn("failed read startFeeWei:", e);
     }
     
-    const balData = await provider.getBalance(userAddress);
+    // 5. Notify index (for UI update)
     try { 
         window.postMessage({ 
             type: "walletInfo", 
             address: userAddress, 
-            balance: Number(ethers.utils.formatEther(balData)).toFixed(6)
+            balance: Number(ethers.utils.formatEther(await provider.getBalance(userAddress))).toFixed(6)
         }, "*"); 
     } catch(e){}
 
@@ -222,10 +224,9 @@ async function connectWallet() {
     return true;
   } catch (err) {
     console.error("connectWallet error", err);
+    // 4001 is user rejected request
     if (err.code !== 4001) {
-        alert("Connection Failed: " + (err && err.message ? err.message : String(err)) + " (Code: " + err.code + ")");
-    } else {
-        console.log("Connection Rejected by User.");
+        alert("Connect failed: " + (err && err.message ? err.message : String(err)));
     }
     return false;
   }
@@ -241,61 +242,65 @@ async function payToPlay() {
     return false;
   }
 
+  // Ensure network is still Somnia
   const networkOk = await switchNetwork(provider);
   if (!networkOk) return false;
   
+  // ensure startFeeWei
   if (!startFeeWei) {
     try { startFeeWei = await readContract.startFeeWei(); } catch(e){ startFeeWei = ethers.utils.parseEther("0.01"); }
   }
   
+  // 🛑 Wajib: Tunggu BGM yang besar selesai dimuat SEBELUM Transaksi
   console.log("Starting BGM loading (expect 1MB) and waiting...");
   await loadBackgroundMusic(); 
 
   try {
+    // check balance
     const bal = await provider.getBalance(userAddress);
     if (bal.lt(startFeeWei)) {
       alert("Insufficient balance to pay start fee. Need " + ethers.utils.formatEther(startFeeWei) + " SOMI.");
       return false;
     }
-    
-    showWaitingMessage("📝 Requesting Game Start... Please CONFIRM the transaction in your wallet.", 0);
 
-    // 🔥 FIX TYPO: Mengganti startFeeFee menjadi startFeeWei
+    // send tx
     const tx = await gameContract.startGame({ value: startFeeWei });
     console.log("startGame tx:", tx.hash);
-    
-    showWaitingMessage("Transaction sent. Waiting for confirmation...", 0);
+    try { window.postMessage({ type: "startTxSent", txHash: tx.hash }, "*"); } catch(e){}
+
+    alert("Transaction sent. Waiting for confirmation...");
     await tx.wait();
 
+    // Game is now active
     isGameActive = true;
     
-    const gm = document.getElementById('__waiting_msg'); 
-    if (gm) gm.remove();
-
     playStartSfx(); 
     startBackgroundMusic();
     
-    const currentFrame = gameFrame || $("gameFrame"); 
-
+    // FIX PENTING: NOTIFIKASI IFRAME UNTUK MEMULAI GAME & MENGAKTIFKAN D-PAD
+    const gameFrame = $("gameFrame");
     try { 
+      // Kirim ke index (wrapper)
       window.postMessage({ type: "paySuccess" }, "*");
       
-      if (currentFrame && currentFrame.contentWindow) {
-         currentFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+      // Kirim ke iframe game secara eksplisit (ini yang mengaktifkan allowLocalPlay)
+      if (gameFrame && gameFrame.contentWindow) {
+         gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
          console.log("Sent 'paySuccess' to game iframe. D-Pad now active.");
       }
     } catch(e){ console.warn("postMessage paySuccess failed", e); }
 
+    // Update UI
     if ($("logoPlaceholder")) $("logoPlaceholder").style.display = "none";
-    if (currentFrame) currentFrame.style.display = "block";
+    if (gameFrame) gameFrame.style.display = "block";
 
+    // refresh UI summary on index
     try { window.postMessage({ type: "refreshSummary" }, "*"); } catch(e){}
 
     return true;
   } catch (err) {
-    const gm = document.getElementById('__waiting_msg'); 
-    if (gm) gm.remove();
     console.error("payToPlay failed", err);
+    // 4001 is user rejected request
     if (err.code !== 4001) {
         alert("Payment failed: " + (err && err.message ? err.message : String(err)));
     }
@@ -303,53 +308,35 @@ async function payToPlay() {
   }
 }
 
-// FUNGSI KRITIS: Submit Score
+// submit score on-chain
 async function submitScoreTx(score) {
-    if (!gameContract || !signer) {
-        showWaitingMessage("🚨 Error: Wallet not connected or contract failed to load.", 5000);
-        if (gameFrame && gameFrame.contentWindow) {
-            gameFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
-        }
-        return false;
+  if (!gameContract || !signer || !userAddress) {
+    alert("Please connect wallet before submitting score.");
+    return;
+  }
+  if (!score || isNaN(Number(score)) || Number(score) <= 0) {
+    alert("Invalid score.");
+    return;
+  }
+
+  try {
+    // pause bgm
+    if (backgroundMusic) { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
+    const tx = await gameContract.submitScore(Number(score));
+    console.log("submitScore tx:", tx.hash);
+    alert("Score submission sent. Waiting for confirmation...");
+    await tx.wait();
+    alert("Score submitted on-chain ✅");
+    // ask index to show leaderboard
+    try { window.postMessage({ type: "scoreSubmitted" }, "*"); } catch(e){}
+  } catch (err) {
+    console.error("submitScore error", err);
+    // 4001 is user rejected request
+    if (err.code !== 4001) {
+        alert("Submit score failed: " + (err && err.message ? err.message : String(err)));
     }
-    
-    const currentFrame = gameFrame || $("gameFrame");
-
-    try {
-        const scoreNum = Number(score);
-        if (isNaN(scoreNum)) throw new Error("Invalid score format.");
-
-        showWaitingMessage(`📝 Submitting Score ${scoreNum}... Please CONFIRM in your wallet.`, 0); 
-        
-        if (backgroundMusic) { backgroundMusic.pause(); }
-
-        const tx = await gameContract.submitScore(scoreNum); 
-
-        showWaitingMessage("Transaction sent. Waiting for confirmation...", 0);
-
-        const receipt = await tx.wait(); 
-
-        if (currentFrame && currentFrame.contentWindow) {
-            currentFrame.contentWindow.postMessage({ type: "scoreTxConfirmed" }, "*");
-        }
-        
-        showWaitingMessage(`✅ Score ${scoreNum} confirmed! TX: ${receipt.transactionHash.substring(0, 8)}...`, 4000);
-        
-        return true;
-    } catch (error) {
-        const gm = document.getElementById('__waiting_msg'); 
-        if (gm) gm.remove();
-        console.error("Score submission failed:", error);
-        
-        if (currentFrame && currentFrame.contentWindow) {
-            currentFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
-        }
-        
-        showWaitingMessage(`❌ Score submission failed: ${error.message || 'Check console.'}`, 6000);
-        return false;
-    }
+  }
 }
-
 
 // ---------------- MESSAGE HANDLER ----------------
 window.addEventListener("message", async (ev) => {
@@ -357,27 +344,20 @@ window.addEventListener("message", async (ev) => {
   if (!data || typeof data !== "object") return;
 
   if (data.type === "dotEaten") {
-    playDotSound();
+    if (isGameActive) playDotSound();
     return;
   }
 
   if (data.type === "submitScore") {
-    const score = data.score;
-    await submitScoreTx(score); 
+    await submitScoreTx(data.score);
     return;
   }
-  
-  if (data.type === "forceShowLogo") {
-    if (backgroundMusic) { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
-    window.postMessage({ type: 'forceShowLogo' }, '*');
-    return;
-  }
-  
+
   if (data.type === "requestConnectWallet") {
     await connectWallet();
     return;
   }
-  
+
   if (data.type === "requestStartGame") {
     if (!signer) {
       const ok = await connectWallet();
@@ -386,15 +366,10 @@ window.addEventListener("message", async (ev) => {
     await payToPlay();
     return;
   }
-
 });
-
 
 // ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
-  // 🔥 KRITIS: Hanya di sini gameFrame mendapatkan nilai.
-  gameFrame = document.getElementById("gameFrame");
-
   initAudio();
   unlockAudioOnGesture();
 
@@ -407,7 +382,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   if (btnPlay) btnPlay.addEventListener("click", async () => {
-    try { window.postMessage({ type: "requestStartGame" }, "*"); } catch(e){}
+    if (!signer) {
+      const ok = await connectWallet();
+      if (!ok) return;
+    }
+    await payToPlay();
   });
 
   if (btnLeaderboard) btnLeaderboard.addEventListener("click", async () => {
@@ -424,12 +403,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Check connection status on load (best effort)
   (async ()=> {
     if (window.ethereum) {
       try {
         const tempProvider = new ethers.providers.Web3Provider(window.ethereum, "any");
         const accounts = await tempProvider.listAccounts();
         if (accounts && accounts.length > 0) {
+          // If already connected, run a soft connect to populate UI
           await connectWallet(); 
         }
       } catch(e){ /* ignore failures on auto-check */ }
