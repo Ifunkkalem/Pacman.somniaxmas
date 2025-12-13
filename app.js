@@ -29,6 +29,8 @@ let audioUnlocked = false;
 
 let isGameActive = false; // only true after successful on-chain start
 
+// ... (Bagian CONFIG & STATE tidak berubah)
+
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
@@ -36,15 +38,94 @@ const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; }
 // graceful init audio objects (no autoplay)
 function initAudio() {
   if (backgroundMusic && sfxStart && sfxDot) return;
+  
+  // Inisialisasi SFX yang kecil terlebih dahulu (prioritas)
+  try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
+  try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
+
+  // Inisialisasi BGM (bisa jadi file besar)
   try {
     backgroundMusic = new Audio(BGM_SRC);
     backgroundMusic.loop = true;
-    backgroundMusic.volume = 0.35; // Volume default diatur
+    backgroundMusic.volume = 0.35; 
   } catch (e){ backgroundMusic = null; }
-
-  try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
-  try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
 }
+
+// unlock audio on first user gesture (best-effort)
+function unlockAudioOnGesture() {
+  if (audioUnlocked) return;
+  initAudio();
+  const tryPlay = () => {
+    if (backgroundMusic) {
+      // 1. Set volume ke 0 (senyap)
+      backgroundMusic.volume = 0; 
+      // 2. Coba putar. Jika gagal di sini, kemungkinan besar karena file terlalu besar.
+      backgroundMusic.play().then(()=> {
+        audioUnlocked = true;
+        window.removeEventListener('pointerdown', tryPlay);
+        console.log("Audio Context unlocked and BGM running silently.");
+      }).catch((e)=> { 
+        audioUnlocked = true;
+        window.removeEventListener('pointerdown', tryPlay);
+        console.warn("BGM play failed during unlock. Check file size/loading issue.", e); // Log warning ini!
+      });
+    } else {
+      audioUnlocked = true;
+      window.removeEventListener('pointerdown', tryPlay);
+    }
+  };
+  window.addEventListener('pointerdown', tryPlay, { once: true });
+}
+
+// safe play small SFX (handles concurrent plays)
+function playDotSound() {
+  // ... (kode ini tidak berubah) ...
+}
+
+// Fungsi untuk memulai BGM (setelah pay-to-play sukses)
+function startBackgroundMusic() {
+  try {
+    if (backgroundMusic) {
+      // 1. Reset waktu untuk mulai dari awal
+      backgroundMusic.currentTime = 0; 
+      // 2. Naikkan volume ke nilai normal
+      backgroundMusic.volume = 0.35; 
+      backgroundMusic.play().catch((e)=>{ console.error("Final BGM play failed:", e); }); 
+    }
+  } catch (e) { console.warn("bgm start failed", e); }
+}
+
+// Fungsi opsional untuk SFX start (dipisah dari BGM)
+function playStartSfx() {
+  try {
+    if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); }
+  } catch (e) { console.warn("start sfx failed", e); }
+}
+
+
+// ... (Fungsi connectWallet dan kode lainnya tidak berubah)
+
+// Perubahan Panggilan di payToPlay()
+async function payToPlay() {
+  initAudio();
+  unlockAudioOnGesture();
+
+  // ... (kode pengecekan) ...
+
+  try {
+    // ... (kode transaksi) ...
+
+    await tx.wait();
+
+    // mark game active and play audio
+    isGameActive = true;
+    
+    // PANGGIL FUNGSI YANG DIPISAHKAN
+    playStartSfx(); // Mainkan SFX startup (jika ada)
+    startBackgroundMusic(); // Mainkan BGM
+    
+    // ... (kode postMessage) ...
+
 
 // unlock audio on first user gesture (best-effort)
 // FIX: Membiarkan BGM berjalan senyap (volume 0) setelah unlock
