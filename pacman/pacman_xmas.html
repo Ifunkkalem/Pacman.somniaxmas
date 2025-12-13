@@ -411,22 +411,42 @@ function checkCollision(){
   }
 }
 
+// ... (Kode di atas tidak berubah) ...
+
 // Fungsi Baru untuk Kemenangan
 function gameWin(){
     gameRunning = false;
     gm.textContent = "YOU WIN! Score: " + score;
-    msgArea.style.display = "flex"; // Tampilkan area pesan/tombol
-    actionBtns.style.display = "block"; // Tampilkan tombol
+    
+    // 1. Tampilkan pesan Game Over/Win
+    msgArea.style.display = "flex"; 
+    actionBtns.style.display = "none"; // Pastikan tombol masih tersembunyi
+    
+    // 2. Kirim skor ke parent (ini memicu tx dan dialog "Score submission sent...")
     parent.postMessage({ type: "submitScore", score }, "*");
+
+    // 3. TAMBAHKAN DELAY (2.5 detik) sebelum menampilkan tombol
+    setTimeout(() => {
+        actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
+    }, 2500); // Tunggu 2.5 detik
 }
 
 // Fungsi Diperbarui untuk Game Over
 function gameOver(){
   gameRunning = false;
   gm.textContent = "GAME OVER! Score: " + score;
-  msgArea.style.display = "flex"; // Tampilkan area pesan/tombol
-  actionBtns.style.display = "block"; // Tampilkan tombol
+  
+  // 1. Tampilkan pesan Game Over/Win
+  msgArea.style.display = "flex"; 
+  actionBtns.style.display = "none"; // Pastikan tombol masih tersembunyi
+  
+  // 2. Kirim skor ke parent
   parent.postMessage({ type: "submitScore", score }, "*");
+
+  // 3. TAMBAHKAN DELAY (2.5 detik) sebelum menampilkan tombol
+  setTimeout(() => {
+      actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
+  }, 2500); // Tunggu 2.5 detik
 }
 
 /* ========== COUNTDOWN helper ========== */
