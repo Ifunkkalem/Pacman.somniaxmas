@@ -308,47 +308,61 @@ async function payToPlay() {
   }
 }
 
-// app.js (Fungsi submitScoreTx yang diperkuat)
+
+
+// app.js (Message Handler)
+window.addEventListener("message", async (ev) => {
+  const data = ev.data || {};
+  
+  // ... (dotEaten, requestConnectWallet, requestStartGame tetap sama)
+
+  // Dipicu saat Game Over/Win DARI TOMBOL SUBMIT SCORE di iframe
+  if (data.type === "submitScore") {
+    const score = data.score;
+    // Panggil fungsi submitScore yang sekarang tidak mengirim sinyal balik
+    await submitScoreTx(score); 
+    return;
+  }
+  
+  if (data.type === "forceShowLogo") {
+    // Dipicu tombol "Kembali ke Menu Utama" di iframe
+    // ... (Logika kembali ke menu tetap sama) ...
+    return;
+  }
+});
+
 
 async function submitScoreTx(score) {
     if (!gameContract || !signer) {
-        // [Handler error seperti biasa]
         showWaitingMessage("🚨 Error: Wallet not connected or contract failed to load.", 5000);
-        if (gameFrame && gameFrame.contentWindow) {
-            gameFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
-        }
+        // Biarkan tombol SubmitScore di iframe tetap aktif (tidak perlu sinyal gagal)
         return false;
     }
     
-    const currentFrame = gameFrame || $("gameFrame");
+    // ... (kode currentFrame = gameFrame || $("gameFrame") tetap sama) ...
 
     try {
         const scoreNum = Number(score);
-        if (isNaN(scoreNum)) throw new Error("Invalid score format.");
+        // ... (check scoreNum, pause BGM tetap sama) ...
 
-        // 🔥 KRITIS: HAPUS SEMUA PESAN DARI APP.JS, LALU TAMPILKAN INSTRUKSI
-        const gm = document.getElementById('__waiting_msg'); 
-        if (gm) gm.remove();
-        showWaitingMessage(`🔔 Submitting Score ${scoreNum}. CHECK YOUR WALLET NOW to Confirm!`, 0); 
-        
-        if (backgroundMusic) { backgroundMusic.pause(); }
-
-        // 1. Pemicu dialog konfirmasi wallet
+        showWaitingMessage(`📝 Submitting Score ${scoreNum}... Please CONFIRM in your wallet.`, 0); 
         const tx = await gameContract.submitScore(scoreNum); 
 
-        // 🔥 KRITIS: GANTI PESAN JADI TUNGGU KONFIRMASI JARINGAN
         showWaitingMessage("Transaction sent. Waiting for network confirmation...", 0);
 
-        // 2. Tunggu hingga transaksi dikonfirmasi di jaringan
         const receipt = await tx.wait(); 
 
-        // 3. Kirim sinyal konfirmasi balik ke iframe
+        // 🔥 PENTING: HAPUS BARIS INI KARENA TOMBOL SUDAH MUNCUL DI IFRAME
+        /*
         if (currentFrame && currentFrame.contentWindow) {
             currentFrame.contentWindow.postMessage({ type: "scoreTxConfirmed" }, "*");
         }
+        */
         
-        // 4. Tampilkan konfirmasi sukses
         showWaitingMessage(`✅ Score ${scoreNum} confirmed! TX: ${receipt.transactionHash.substring(0, 8)}...`, 4000);
+        
+        // Opsional: Kirim pesan ke parent index.html untuk refresh leaderboard
+        window.postMessage({ type: "refreshLeaderboard" }, "*");
         
         return true;
     } catch (error) {
@@ -356,46 +370,17 @@ async function submitScoreTx(score) {
         if (gm) gm.remove();
         console.error("Score submission failed:", error);
         
-        // 🔥 KRITIS: Kirim sinyal kegagalan ke iframe (ini akan memunculkan tombol)
+        // 🔥 PENTING: HAPUS BARIS INI KARENA TOMBOL SUDAH MUNCUL DI IFRAME
+        /*
         if (currentFrame && currentFrame.contentWindow) {
             currentFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
         }
+        */
         
         showWaitingMessage(`❌ Score submission failed: Transaction Rejected by user or failed.`, 6000);
         return false;
     }
 }
-
-// ---------------- MESSAGE HANDLER ----------------
-window.addEventListener("message", async (ev) => {
-  const data = ev.data || {};
-  if (!data || typeof data !== "object") return;
-
-  // ... (Handlers lainnya seperti dotEaten, submitScore) ...
-
-  if (data.type === "requestConnectWallet") {
-    await connectWallet();
-    return;
-  }
-
-  // Dipicu oleh tombol "Play Again" atau "Play Game" di menu utama
-  if (data.type === "requestStartGame") {
-    if (!signer) {
-      const ok = await connectWallet();
-      if (!ok) return;
-    }
-    await payToPlay();
-    return;
-  }
-  
-  // 🔥🔥🔥 BARU / KRITIS UNTUK TOMBOL KEMBALI 🔥🔥🔥
-  // Dipicu oleh tombol "Kembali ke Menu Utama" dari game
-  if (data.type === "forceShowLogo") {
-    // Meminta index.html untuk menampilkan logo/poster lagi
-    window.parent.postMessage({ type: 'forceShowLogo' }, '*');
-    return;
-  }
-});
 
 // ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
