@@ -372,20 +372,26 @@ window.addEventListener("message", async (ev) => {
       return;
   }
   
-  // [PERBAIKAN HEADER] Menerima Jackpot/Top Score dari Leaderboard.html
+  // app.js: Di dalam window.addEventListener("message", ...)
+
+  // [PERBAIKAN FINAL HEADER] Menerima Jackpot/Top Score dari Leaderboard.html
   if (data.type === "leaderboardData") {
     const jackpotDisplay = $("poolValue"); 
     const topScoreDisplay = $("topScoreValue"); 
     
+    // FIX 1: Hanya masukkan nilai (data.jackpot) tanpa label "Jackpot: "
     if (jackpotDisplay) {
-        jackpotDisplay.textContent = "Jackpot: " + parseFloat(data.jackpot).toFixed(6) + " SOMI";
+        jackpotDisplay.textContent = parseFloat(data.jackpot).toFixed(6) + " SOMI";
     }
+    
+    // FIX 2: Hanya masukkan nilai (data.topScore) tanpa label "Top: "
     if (topScoreDisplay) {
-        topScoreDisplay.textContent = "Top: " + data.topScore;
+        topScoreDisplay.textContent = data.topScore;
     }
     
     return;
   }
+
 
 });
 
