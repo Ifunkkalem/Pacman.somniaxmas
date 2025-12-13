@@ -72,13 +72,6 @@
   
   /* FIX: Sesuaikan pengisi tengah dengan ukuran tombol yang baru */
   .center-filler{width: 70px; height: 70px;}
-  
-  /* STYLE UNTUK TOMBOL NAVIGASI BARU */
-  #navigation-buttons button {
-      box-shadow: 0 4px rgba(0,0,0,0.4);
-      cursor: pointer;
-  }
-
 
   /* Desktop: hide mobile pad, allow centering large canvas */
   @media(min-width:900px){
@@ -100,15 +93,7 @@
     <div id="game-message"></div>
 
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
-    
-    <div id="navigation-buttons" style="display:none; margin-top:10px; flex-direction:column; gap:8px; align-items:center;">
-        <button id="btn-back-to-menu" style="width:220px; height:50px; background:#1e40af; color:white; border:none; border-radius:8px; font-size:18px;">
-            Kembali ke Menu Utama
-        </button>
-        <button id="btn-play-again" style="width:220px; height:50px; background:#d97706; color:white; border:none; border-radius:8px; font-size:18px;">
-            Main Lagi (Bayar Ulang)
-        </button>
-    </div>
+
     <div id="mobileControls" aria-hidden="false">
       <button data-dir="up" id="btn-up">↑</button>
       <div class="dpad-row">
@@ -189,11 +174,6 @@ function resetGame(){
   score = 0;
   document.getElementById("current-score-display").textContent = score;
   document.getElementById("game-message").style.display = "none";
-  
-  // Sembunyikan tombol navigasi saat reset
-  const navButtons = document.getElementById("navigation-buttons");
-  if (navButtons) navButtons.style.display = "none";
-  
   gameRunning = false;
   ghostActive = false;
   // JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
@@ -384,7 +364,7 @@ function checkCollision(){
   // Check Ghost Collision
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
-      gameOver(false); // Game Over (Lost)
+      gameOver();
       return;
     }
   }
@@ -398,34 +378,20 @@ function checkCollision(){
     if(!win) break;
   }
   if(win){
-    gameOver(true); // Game Over (Win)
+    gameRunning = false;
+    const gm = document.getElementById("game-message");
+    gm.textContent = "YOU WIN! Score: " + score;
+    gm.style.display = "block";
+    parent.postMessage({ type: "submitScore", score }, "*");
   }
 }
 
-function gameOver(isWin){
-  if (!gameRunning) return; 
+function gameOver(){
   gameRunning = false;
-  ghostActive = false;
-  
   const gm = document.getElementById("game-message");
-  gm.textContent = isWin ? "YOU WIN! Score: " + score : "GAME OVER! Score: " + score;
+  gm.textContent = "GAME OVER! Score: " + score;
   gm.style.display = "block";
-  
-  // 1. Kirim score ke Parent. app.js akan menjalankan submitScoreTx secara cepat/otomatis.
-  parent.postMessage({ type: "submitScore", score }, "*"); 
-  
-  // 2. Tampilkan tombol navigasi segera setelah kirim score.
-  displayPostGameButtons();
-}
-
-function displayPostGameButtons() {
-    // Sembunyikan D-pad
-    const mobileControls = document.getElementById("mobileControls");
-    if (mobileControls) mobileControls.style.display = "none";
-    
-    // Tampilkan tombol navigasi
-    const navButtons = document.getElementById("navigation-buttons");
-    if (navButtons) navButtons.style.display = "flex";
+  parent.postMessage({ type: "submitScore", score }, "*");
 }
 
 /* ========== COUNTDOWN helper ========== */
@@ -444,9 +410,6 @@ function startCountdownAndPlay(){
       ghostActive = true;
       gameRunning = true;
       lastMove = performance.now();
-      // Pastikan D-pad terlihat lagi saat game dimulai
-      const mobileControls = document.getElementById("mobileControls");
-      if (mobileControls) mobileControls.style.display = "flex";
     }
   }, 1000);
 }
@@ -468,12 +431,11 @@ function loop(ts){
 }
 
 /* ========== MESSAGES & CONTROLS ========== */
-
-// 🔥 INI ADALAH LOGIKA UTAMA UNTUK MENGAKTIFKAN NAVIGASI DENGAN app.js
+/* PENTING: Message Listener yang Paling Bersih */
 window.addEventListener("message", (e) => {
   const d = e.data || {};
   if(d.type === "paySuccess"){
-    // Diterima dari app.js setelah transaksi startGame sukses
+    // FIX PENTING: HANYA set allowLocalPlay ke true di sini.
     allowLocalPlay = true;
     resetGame();
     startCountdownAndPlay();
@@ -481,8 +443,6 @@ window.addEventListener("message", (e) => {
   if(d.type === "forceReset"){
     resetGame();
   }
-  // Tidak perlu menambahkan handler untuk 'submitScore', karena sudah di-handle di app.js
-  // Tidak perlu menambahkan handler untuk 'forceShowLogo' di sini, karena tombolnya yang mengirim pesan.
 });
 
 /* FIX: Fungsi untuk mengatur input internal D-Pad/Keyboard */
@@ -541,34 +501,6 @@ window.addEventListener("keydown", (e)=>{
   }
 });
 
-
-/* ========== INIT NAV BUTTONS (Set up event listener untuk tombol baru) ========== */
-document.addEventListener("DOMContentLoaded", () => {
-    const btnBack = document.getElementById("btn-back-to-menu");
-    const btnAgain = document.getElementById("btn-play-again");
-
-    if (btnBack) {
-        btnBack.addEventListener("click", () => {
-            // Sinyal ke app.js: Kembali ke Menu Utama (menampilkan logoPlaceholder)
-            parent.postMessage({ type: "forceShowLogo" }, "*");
-            resetGame(); // Reset state game lokal
-        });
-    }
-
-    if (btnAgain) {
-        btnAgain.addEventListener("click", () => {
-            // Sinyal ke app.js: Meminta proses Main Lagi (connect jika perlu, lalu payToPlay)
-            parent.postMessage({ type: "requestStartGame" }, "*");
-            // Game akan di-reset saat paySuccess diterima kembali
-        });
-    }
-    
-    // Pastikan tombol navigasi pasca game tersembunyi saat load
-    const navButtons = document.getElementById("navigation-buttons");
-    if (navButtons) navButtons.style.display = "none";
-});
-
-
 /* ========== STARTUP ========== */
 resetGame();
 requestAnimationFrame(loop);
@@ -577,4 +509,5 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
+
 
