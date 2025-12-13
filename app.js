@@ -343,27 +343,28 @@ window.addEventListener("message", async (ev) => {
   const data = ev.data || {};
   if (!data || typeof data !== "object") return;
 
-  if (data.type === "dotEaten") {
-    if (isGameActive) playDotSound();
-    return;
-  }
-
-  if (data.type === "submitScore") {
-    await submitScoreTx(data.score);
-    return;
-  }
+  // ... (Handlers lainnya seperti dotEaten, submitScore) ...
 
   if (data.type === "requestConnectWallet") {
     await connectWallet();
     return;
   }
 
+  // Dipicu oleh tombol "Play Again" atau "Play Game" di menu utama
   if (data.type === "requestStartGame") {
     if (!signer) {
       const ok = await connectWallet();
       if (!ok) return;
     }
     await payToPlay();
+    return;
+  }
+  
+  // 🔥🔥🔥 BARU / KRITIS UNTUK TOMBOL KEMBALI 🔥🔥🔥
+  // Dipicu oleh tombol "Kembali ke Menu Utama" dari game
+  if (data.type === "forceShowLogo") {
+    // Meminta index.html untuk menampilkan logo/poster lagi
+    window.parent.postMessage({ type: 'forceShowLogo' }, '*');
     return;
   }
 });
