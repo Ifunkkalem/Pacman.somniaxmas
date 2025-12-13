@@ -1,4 +1,4 @@
-// app.js (FINAL & STABIL - Versi KRITIS untuk Koneksi Wallet)
+// app.js (FINAL & STABIL - Versi Terbersih dari Duplikasi)
 
 // ---------------- CONFIG ----------------
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
@@ -34,13 +34,12 @@ let sfxStart = null;
 let sfxDot = null;
 let audioUnlocked = false;
 
-// HANYA SATU DEKLARASI GLOBAL 'gameFrame'
+// 🔥 DEKLARASI GLOBAL HANYA DI SINI
 let gameFrame = null; 
 
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
-
 function initAudio() {
     if (sfxStart && sfxDot) return;
     try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
@@ -147,32 +146,24 @@ async function connectWallet() {
   }
   
   try {
-    // 1. Dapatkan Provider dan minta akun
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     await provider.send("eth_requestAccounts", []); 
     
-    // 2. Dapatkan Signer
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
     
-    // 3. Switch/Add Network
     const networkSwitched = await switchNetwork(provider);
     if (!networkSwitched) {
         signer = null; userAddress = null; provider = null;
         return false;
     }
     
-    // 🔥 KRITIS: Inisialisasi ulang provider/signer SETELAH switch network sukses
-    // Ini penting karena network switch mengubah state window.ethereum
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     signer = provider.getSigner();
     
-    // 4. Inisialisasi Kontrak
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-    // app.js (Blok pengganti untuk menguji Bypass CALL_EXCEPTION)
-    // 5. Ambil data fee dan balance (toleransi error)
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
     
     try {
@@ -180,12 +171,13 @@ async function connectWallet() {
       safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(balWei)).toFixed(6));
     } catch(e){ console.warn("balance fetch failed", e); }
 
-    // 🔥 BYPASS: Tetapkan fee default, jangan panggil readContract.startFeeWei()
-    startFeeWei = ethers.utils.parseEther("0.01"); 
-    console.warn("Bypassing startFeeWei contract read, using default 0.01 SOMI.");
+    try {
+      startFeeWei = await readContract.startFeeWei();
+    } catch (e) {
+      startFeeWei = ethers.utils.parseEther("0.01"); 
+      console.warn("failed read startFeeWei (using default 0.01):", e);
+    }
     
-    
-    // 6. Kirim info ke Parent
     try { 
         const balData = await provider.getBalance(userAddress);
         window.postMessage({ 
@@ -208,8 +200,6 @@ async function connectWallet() {
   }
 }
 
-// ... (Fungsi payToPlay, submitScoreTx, dan Message Handler SAMA seperti versi sebelumnya) ...
-
 async function payToPlay() {
     initAudio();
     unlockAudioOnGesture();
@@ -222,7 +212,6 @@ async function payToPlay() {
     const networkOk = await switchNetwork(provider);
     if (!networkOk) return false;
     
-    // Reload provider/signer just in case switch network was successful
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     signer = provider.getSigner();
 
@@ -249,7 +238,6 @@ async function payToPlay() {
         const gm = document.getElementById('__waiting_msg'); 
         if (gm) gm.remove();
 
-        // Start Audio
         try { new Audio(SFX_START_SRC).play().catch(()=>{}); } catch(e){}
         try { if (backgroundMusic) { backgroundMusic.currentTime = 0; backgroundMusic.volume = 0.35; backgroundMusic.play().catch(()=>{}); }} catch(e){}
         
@@ -316,6 +304,7 @@ async function submitScoreTx(score) {
     }
 }
 
+// ---------------- MESSAGE HANDLER ----------------
 window.addEventListener("message", async (ev) => {
     const data = ev.data || {};
     if (!data || typeof data !== "object") return;
@@ -363,7 +352,9 @@ window.addEventListener("message", async (ev) => {
 });
 
 
+// ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
+    // 🔥 KRITIS: Hanya di sini gameFrame mendapatkan nilainya
     gameFrame = document.getElementById("gameFrame");
 
     initAudio();
@@ -407,4 +398,4 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     })();
 });
-      
+  
