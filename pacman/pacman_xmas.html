@@ -125,11 +125,12 @@
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
 
     <div id="game-message-area">
-        <div id="game-message"></div>
-        <div id="action-buttons" style="display:none;">
-            <button id="btn-back-to-menu">Kembali ke Menu Utama</button>
-            <button id="btn-play-again">Main Lagi (Bayar Ulang)</button>
-        </div>
+        <div id="actionBtns" style="display: none;">
+    <button id="submitScoreBtn" class="btn red">Submit Score</button>
+    <button id="backBtn" class="btn red">Back To Menu</button>
+    <button id="playAgainBtn" class="btn green">Play Again</button>
+    </div>
+
     </div>
     <div id="mobileControls" aria-hidden="false">
       <button data-dir="up" id="btn-up">↑</button>
@@ -411,23 +412,67 @@ function checkCollision(){
   }
 }
 
-// Fungsi Baru untuk Kemenangan
+// pacman_xmas.html (Ganti total fungsi ini)
+
+// Variabel untuk menyimpan score akhir
+let finalScore = 0; 
+
 function gameWin(){
     gameRunning = false;
-    gm.textContent = "YOU WIN! Score: " + score;
-    msgArea.style.display = "flex"; // Tampilkan area pesan/tombol
-    actionBtns.style.display = "block"; // Tampilkan tombol
-    parent.postMessage({ type: "submitScore", score }, "*");
+    finalScore = score;
+    gm.textContent = "YOU WIN! Score: " + finalScore;
+    
+    // 🔥 KRITIS: HANYA TAMPILKAN TOMBOL AKSI, TIDAK ADA DELAY/PESAN SUBMIT OTOMATIS
+    msgArea.style.display = "flex"; 
+    actionBtns.style.display = "block"; 
+    
+    // Karena tombol SubmitScore akan mengambil finalScore
+    document.getElementById('submitScoreBtn').textContent = `Submit Score ${finalScore} (On-Chain)`;
 }
 
-// Fungsi Diperbarui untuk Game Over
 function gameOver(){
   gameRunning = false;
-  gm.textContent = "GAME OVER! Score: " + score;
-  msgArea.style.display = "flex"; // Tampilkan area pesan/tombol
-  actionBtns.style.display = "block"; // Tampilkan tombol
-  parent.postMessage({ type: "submitScore", score }, "*");
+  finalScore = score;
+  gm.textContent = "GAME OVER! Score: " + finalScore;
+  
+  // 🔥 KRITIS: HANYA TAMPILKAN TOMBOL AKSI, TIDAK ADA DELAY/PESAN SUBMIT OTOMATIS
+  msgArea.style.display = "flex"; 
+  actionBtns.style.display = "block";
+  
+  document.getElementById('submitScoreBtn').textContent = `Submit Score ${finalScore} (On-Chain)`;
 }
+
+// Tambahkan Event Listeners untuk 3 Tombol di pacman_xmas.html
+document.addEventListener('DOMContentLoaded', () => {
+    // Pastikan tombol ada (ganti ID jika berbeda)
+    const submitBtn = document.getElementById('submitScoreBtn');
+    const backBtn = document.getElementById('backBtn');
+    const playBtn = document.getElementById('playAgainBtn');
+
+    if (submitBtn) {
+        submitBtn.addEventListener('click', () => {
+            // Kirim score HANYA saat tombol SubmitScore ditekan
+            parent.postMessage({ type: "submitScore", score: finalScore }, "*");
+            submitBtn.disabled = true; // Nonaktifkan tombol agar tidak double-click
+            submitBtn.textContent = 'Submitting... (Check Wallet)';
+        });
+    }
+
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            parent.postMessage({ type: "forceShowLogo" }, "*"); // Kirim sinyal kembali ke menu
+        });
+    }
+
+    if (playBtn) {
+        playBtn.addEventListener('click', () => {
+            parent.postMessage({ type: "requestStartGame" }, "*"); // Kirim sinyal bayar ulang
+        });
+    }
+});
+
+// Hapus seluruh window.addEventListener("message", ...) yang terkait dengan scoreTxConfirmed/scoreTxFailed di pacman_xmas.html karena tidak diperlukan lagi.
+
 
 /* ========== COUNTDOWN helper ========== */
 function startCountdownAndPlay(){
