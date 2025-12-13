@@ -171,6 +171,7 @@ async function connectWallet() {
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
+    // app.js (Blok pengganti untuk menguji Bypass CALL_EXCEPTION)
     // 5. Ambil data fee dan balance (toleransi error)
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
     
@@ -179,13 +180,10 @@ async function connectWallet() {
       safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(balWei)).toFixed(6));
     } catch(e){ console.warn("balance fetch failed", e); }
 
-    try {
-      startFeeWei = await readContract.startFeeWei();
-    } catch (e) {
-      // Fallback jika CALL_EXCEPTION terjadi
-      startFeeWei = ethers.utils.parseEther("0.01"); 
-      console.warn("failed read startFeeWei (using default 0.01):", e);
-    }
+    // 🔥 BYPASS: Tetapkan fee default, jangan panggil readContract.startFeeWei()
+    startFeeWei = ethers.utils.parseEther("0.01"); 
+    console.warn("Bypassing startFeeWei contract read, using default 0.01 SOMI.");
+    
     
     // 6. Kirim info ke Parent
     try { 
