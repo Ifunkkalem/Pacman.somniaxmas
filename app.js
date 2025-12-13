@@ -1,4 +1,4 @@
-// app.js (FINAL, STABIL, FIX SYNTAX, dan NAVIGASI LENGKAP)
+// app.js (FINAL & FIXED VERSION)
 // Requires ethers v5 UMD loaded in index.html
 
 // ---------------- CONFIG ----------------
@@ -38,13 +38,10 @@ let sfxDot = null;
 let audioUnlocked = false;
 let isGameActive = false; 
 
-// 🔥 FIX KRITIS: Deklarasi global agar tidak ada SyntaxError jika kode dimuat dua kali
-let gameFrame = null; 
-
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
-// ... (Fungsi initAudio, loadBackgroundMusic, dll. Dibiarkan sama)
+
 function initAudio() {
   if (sfxStart && sfxDot) return;
   try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
@@ -60,11 +57,13 @@ async function loadBackgroundMusic() {
             backgroundMusic.loop = true;
             backgroundMusic.volume = 0.35;
             
+            // Tunggu hingga BGM siap diputar
             backgroundMusic.addEventListener('canplaythrough', () => {
                 console.log("BGM file loaded and ready to play (1MB).");
                 resolve();
             }, { once: true });
             
+            // Fallback: Resolve setelah 10 detik, walau gagal.
             setTimeout(() => {
                 if (!backgroundMusic || backgroundMusic.readyState < 3) {
                     console.warn("BGM loading timeout (10s). Proceeding without BGM.");
@@ -130,6 +129,8 @@ function playStartSfx() {
     if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); }
   } catch (e) { console.warn("start sfx failed", e); }
 }
+
+
 // ---------------- WALLET & CONTRACT ----------------
 async function switchNetwork(provider) {
     const { chainId } = await provider.getNetwork();
@@ -204,6 +205,7 @@ async function connectWallet() {
 
     try {
       startFeeWei = await readContract.startFeeWei();
+      // Safe guard for index.html display if needed, but not critical here
     } catch (e) {
       startFeeWei = ethers.utils.parseEther("0.01");
       console.warn("failed read startFeeWei:", e);
@@ -275,14 +277,14 @@ async function payToPlay() {
     playStartSfx(); 
     startBackgroundMusic();
     
-    // 🔥 PENTING: Gunakan gameFrame global
     // FIX PENTING: NOTIFIKASI IFRAME UNTUK MEMULAI GAME & MENGAKTIFKAN D-PAD
+    const gameFrame = $("gameFrame");
     try { 
       // Kirim ke index (wrapper)
       window.postMessage({ type: "paySuccess" }, "*");
       
       // Kirim ke iframe game secara eksplisit (ini yang mengaktifkan allowLocalPlay)
-      if (gameFrame && gameFrame.contentWindow) { // Gunakan gameFrame global
+      if (gameFrame && gameFrame.contentWindow) {
          gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
          console.log("Sent 'paySuccess' to game iframe. D-Pad now active.");
       }
@@ -290,7 +292,7 @@ async function payToPlay() {
 
     // Update UI
     if ($("logoPlaceholder")) $("logoPlaceholder").style.display = "none";
-    if (gameFrame) gameFrame.style.display = "block"; // Gunakan gameFrame global
+    if (gameFrame) gameFrame.style.display = "block";
 
     // refresh UI summary on index
     try { window.postMessage({ type: "refreshSummary" }, "*"); } catch(e){}
@@ -350,23 +352,6 @@ window.addEventListener("message", async (ev) => {
     await submitScoreTx(data.score);
     return;
   }
-  
-  // 🔥 TAMBAHAN KRITIS: Handler untuk tombol "Kembali ke Menu Utama"
-  if (data.type === "forceShowLogo") {
-    if (backgroundMusic) { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
-    isGameActive = false;
-    
-    const logo = $("logoPlaceholder");
-    const leaderFrame = $("leaderFrame") || $("leaderboardFrame");
-
-    if (gameFrame) gameFrame.style.display = "none";
-    if (leaderFrame) leaderFrame.style.display = "none"; 
-    if (logo) logo.style.display = "block";
-
-    window.postMessage({ type: 'forceShowLogo' }, '*'); 
-    
-    return;
-  }
 
   if (data.type === "requestConnectWallet") {
     await connectWallet();
@@ -385,9 +370,6 @@ window.addEventListener("message", async (ev) => {
 
 // ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
-  // 🔥 FIX KRITIS: Inisialisasi gameFrame dari DOM
-  gameFrame = document.getElementById("gameFrame");
-
   initAudio();
   unlockAudioOnGesture();
 
@@ -435,4 +417,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 });
-  
+
+
+          
