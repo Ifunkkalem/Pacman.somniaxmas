@@ -481,24 +481,27 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 
-/* ========== MESSAGE HANDLER ========== */
+// pacman_xmas.html (Tambahkan ini di window.addEventListener("message", ...))
+
 window.addEventListener("message", (e) => {
   const d = e.data || {};
-  if(d.type === "paySuccess"){
-    allowLocalPlay = true;
-    resetGame();
-    startCountdownAndPlay();
+  
+  // ... (handlers lain) ...
+
+  // 🔥 BARU: Transaksi skor berhasil dikonfirmasi di blockchain
+  if(d.type === "scoreTxConfirmed"){
+    // Ganti pesan game over/win dengan konfirmasi akhir
+    gm.textContent = gm.textContent.replace("Submitting score...", "Score Submission Complete!");
+    actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
   }
-  if(d.type === "forceReset"){
-    resetGame();
+
+  // 🔥 BARU: Transaksi skor gagal (misal dibatalkan user)
+  if(d.type === "scoreTxFailed"){
+    // Ganti pesan game over/win dengan notifikasi gagal
+    gm.textContent = gm.textContent.replace("Submitting score...", "Submission Cancelled or Failed.");
+    actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
   }
 });
-
-function handleGameInput(direction){
-  if(direction && typeof direction === "string"){
-    pacman.next = direction.toLowerCase();
-  }
-}
 
 /* ========== TOMBOL BARU HANDLERS ========== */
 
