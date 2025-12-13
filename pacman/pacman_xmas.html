@@ -65,468 +65,410 @@
     </div>
 </div>
 
+/* ... (Kode di atas tidak berubah) ... */
+
 <script>
-    // Constants
-    const TILE_SIZE = 20;
-    const GRID_WIDTH = 16;
-    const GRID_HEIGHT = 24;
-    
-    // Game state
-    let map = [
-        // Map 16x24 (0=Wall, 1=Path, 2=Dot, 3=Power Pellet)
-        // ... (Harusnya ada data map di sini, saya asumsikan sudah ada) ...
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,2,2,2,2,2,2,0,0,2,2,2,2,2,2,0,
-        0,2,0,0,0,0,2,0,0,2,0,0,0,0,2,0,
-        0,3,0,0,0,0,2,2,2,2,0,0,0,0,3,0,
-        0,2,0,0,0,0,2,0,0,2,0,0,0,0,2,0,
-        0,2,2,2,2,2,2,0,0,2,2,2,2,2,2,0,
-        0,0,0,0,0,0,2,0,0,2,0,0,0,0,0,0,
-        0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,
-        0,2,0,0,0,0,2,0,0,2,0,0,0,0,2,0,
-        0,2,0,0,0,0,2,2,2,2,0,0,0,0,2,0,
-        0,2,2,2,2,2,2,0,0,2,2,2,2,2,2,0,
-        0,0,0,0,0,0,2,0,0,2,0,0,0,0,0,0,
-        0,0,0,0,0,0,2,2,2,2,0,0,0,0,0,0,
-        0,2,2,2,2,2,2,0,0,2,2,2,2,2,2,0,
-        0,2,0,0,0,0,2,0,0,2,0,0,0,0,2,0,
-        0,3,0,0,0,0,2,2,2,2,0,0,0,0,3,0,
-        0,2,0,0,0,0,2,0,0,2,0,0,0,0,2,0,
-        0,2,2,2,2,2,2,0,0,2,2,2,2,2,2,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-    ];
-    
-    // Player State
-    let pacmanX = 8 * TILE_SIZE; 
-    let pacmanY = 16 * TILE_SIZE; 
-    let direction = 'RIGHT'; 
-    let nextDirection = 'RIGHT'; 
-    let speed = 2; 
-    let score = 0;
-    let lives = 3;
-    let gameRunning = false;
-    let ghostFrightened = false;
-    
-    // Ghost State (Contoh 2 Hantu)
-    let ghosts = [
-        { x: 7 * TILE_SIZE, y: 10 * TILE_SIZE, color: 'cyan', direction: 'UP' },
-        { x: 8 * TILE_SIZE, y: 10 * TILE_SIZE, color: 'pink', direction: 'DOWN' }
-    ];
+(() => {
+const canvas = document.getElementById("pacman-canvas");
+const ctx = canvas.getContext("2d");
+const TILE = 20;
 
-    // References
-    const canvas = document.getElementById('pacmanCanvas');
-    const ctx = canvas.getContext('2d');
-    const msgArea = document.getElementById('msgArea');
-    const gm = document.getElementById('gameMessage');
-    let actionBtns = document.getElementById('actionBtns'); 
-    
-    // [Fungsi-fungsi Helper Gambar, Gerak, Tabrakan, dll.]
-    
-    function getTile(x, y) {
-        const col = Math.floor(x / TILE_SIZE);
-        const row = Math.floor(y / TILE_SIZE);
-        if (col < 0 || col >= GRID_WIDTH || row < 0 || row >= GRID_HEIGHT) return 0;
-        return map[row * GRID_WIDTH + col];
-    }
+/* ================== MAP ================== */
+const GAME_MAP = [
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+[1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+[1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1],
+[1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1],
+[1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
+[0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
+[1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+[1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+[1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
 
-    function setTile(x, y, value) {
-        const col = Math.floor(x / TILE_SIZE);
-        const row = Math.floor(y / TILE_SIZE);
-        if (col >= 0 && col < GRID_WIDTH && row >= 0 && row < GRID_HEIGHT) {
-            map[row * GRID_WIDTH + col] = value;
+const MAP_W = GAME_MAP[0].length;
+const MAP_H = GAME_MAP.length;
+
+/* set canvas size based on map */
+canvas.width = MAP_W * TILE;
+canvas.height = MAP_H * TILE;
+
+/* utility rounded rect */
+function roundRect(ctx, x, y, w, h, r) {
+  if (r === undefined) r = 6;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ========== STATE ========== */
+let mapData, pacman, ghosts, score = 0;
+let lastMove = 0;
+let gameRunning = false;
+let ghostActive = false;
+const MOVE_INTERVAL = 240;
+
+/* SECURITY: require parent paySuccess before allowing local start */
+let allowLocalPlay = false; // Kunci utama: hanya set true di postMessage
+
+/* ========== INIT ========== */
+function resetGame(){
+  mapData = GAME_MAP.map(r=>[...r]);
+  pacman = {x:1,y:1,dir:"right",next:"right"};
+  ghosts = [
+    {x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000"},
+    {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F"},
+    {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"}
+  ];
+  score = 0;
+  document.getElementById("current-score-display").textContent = score;
+  document.getElementById("game-message").style.display = "none";
+  gameRunning = false;
+  ghostActive = false;
+  // JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
+}
+
+/* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== */
+function drawMap(){
+  for(let y=0;y<MAP_H;y++){
+    for(let x=0;x<MAP_W;x++){
+      const t = mapData[y][x];
+      if(t===1){
+        ctx.fillStyle="#b91c1c";
+        ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+        ctx.strokeStyle="rgba(249,250,251,0.6)";
+        ctx.lineWidth=1;
+        ctx.strokeRect(x*TILE+0.5,y*TILE+0.5,TILE-1,TILE-1);
+      } else {
+        ctx.fillStyle="#020617";
+        ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+        if(t===2){
+          ctx.fillStyle="#ffd700";
+          ctx.beginPath();
+          ctx.arc(x*TILE+TILE/2,y*TILE+TILE/2,3,0,Math.PI*2);
+          ctx.fill();
         }
-    }
-
-    // ... (Fungsi drawMap, drawPacman, drawGhosts, movePacman, checkCollision, dll. Lanjutkan di sini) ...
-    
-    function drawMap() {
-        for (let row = 0; row < GRID_HEIGHT; row++) {
-            for (let col = 0; col < GRID_WIDTH; col++) {
-                const tileValue = map[row * GRID_WIDTH + col];
-                const x = col * TILE_SIZE;
-                const y = row * TILE_SIZE;
-
-                if (tileValue === 0) {
-                    ctx.fillStyle = 'darkred';
-                    ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);
-                    ctx.strokeStyle = '#a00';
-                    ctx.strokeRect(x, y, TILE_SIZE, TILE_SIZE);
-                } else if (tileValue === 2) {
-                    ctx.fillStyle = 'yellow';
-                    ctx.beginPath();
-                    ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, 3, 0, 2 * Math.PI);
-                    ctx.fill();
-                } else if (tileValue === 3) {
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(x + TILE_SIZE / 2, y + TILE_SIZE / 2, 5, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-            }
-        }
-    }
-
-    function drawPacman() {
-        ctx.fillStyle = 'yellow';
-        ctx.beginPath();
-        // Sederhana: Lingkaran penuh
-        ctx.arc(pacmanX + TILE_SIZE / 2, pacmanY + TILE_SIZE / 2, TILE_SIZE / 2 - 2, 0, 2 * Math.PI);
-        ctx.fill();
-    }
-
-    function drawGhosts() {
-        ghosts.forEach(ghost => {
-            ctx.fillStyle = ghostFrightened ? 'blue' : ghost.color;
-            ctx.beginPath();
-            // Sederhana: Lingkaran
-            ctx.arc(ghost.x + TILE_SIZE / 2, ghost.y + TILE_SIZE / 2, TILE_SIZE / 2 - 2, 0, 2 * Math.PI);
-            ctx.fill();
-            // Mata (Opsional)
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(ghost.x + TILE_SIZE / 2 - 3, ghost.y + TILE_SIZE / 2 - 3, 2, 0, 2 * Math.PI);
-            ctx.arc(ghost.x + TILE_SIZE / 2 + 3, ghost.y + TILE_SIZE / 2 - 3, 2, 0, 2 * Math.PI);
-            ctx.fill();
-        });
-    }
-    
-    function canMove(x, y, dir) {
-        let newX = x;
-        let newY = y;
-        
-        // Memeriksa hanya di posisi tengah TILE berikutnya
-        if (dir === 'UP') newY -= speed;
-        if (dir === 'DOWN') newY += speed;
-        if (dir === 'LEFT') newX -= speed;
-        if (dir === 'RIGHT') newX += speed;
-
-        // Posisikan di tengah tile
-        const targetX = newX + TILE_SIZE / 2;
-        const targetY = newY + TILE_SIZE / 2;
-
-        return getTile(targetX, targetY) !== 0;
-    }
-
-    function movePacman() {
-        if (canMove(pacmanX, pacmanY, nextDirection)) {
-            direction = nextDirection;
-        }
-
-        let moved = false;
-        if (direction === 'UP' && canMove(pacmanX, pacmanY, 'UP')) {
-            pacmanY -= speed; moved = true;
-        } else if (direction === 'DOWN' && canMove(pacmanX, pacmanY, 'DOWN')) {
-            pacmanY += speed; moved = true;
-        } else if (direction === 'LEFT' && canMove(pacmanX, pacmanY, 'LEFT')) {
-            pacmanX -= speed; moved = true;
-        } else if (direction === 'RIGHT' && canMove(pacmanX, pacmanY, 'RIGHT')) {
-            pacmanX += speed; moved = true;
-        }
-
-        // Loop di pinggir (jika peta memungkinkan)
-        if (pacmanX < -TILE_SIZE) pacmanX = GRID_WIDTH * TILE_SIZE;
-        if (pacmanX > GRID_WIDTH * TILE_SIZE) pacmanX = -TILE_SIZE;
-        
-        return moved;
-    }
-
-    function moveGhosts() {
-        // Implementasi pergerakan hantu sederhana (random atau berbasis target Pacman)
-        ghosts.forEach(ghost => {
-            // Logika sederhana: ambil arah acak yang valid
-            const possibleDirections = ['UP', 'DOWN', 'LEFT', 'RIGHT'];
-            let newDir = ghost.direction;
-            let attempts = 0;
-
-            while (!canMove(ghost.x, ghost.y, newDir) && attempts < 4) {
-                newDir = possibleDirections[Math.floor(Math.random() * 4)];
-                attempts++;
-            }
-            
-            ghost.direction = newDir;
-
-            if (ghost.direction === 'UP' && canMove(ghost.x, ghost.y, 'UP')) ghost.y -= speed;
-            else if (ghost.direction === 'DOWN' && canMove(ghost.x, ghost.y, 'DOWN')) ghost.y += speed;
-            else if (ghost.direction === 'LEFT' && canMove(ghost.x, ghost.y, 'LEFT')) ghost.x -= speed;
-            else if (ghost.direction === 'RIGHT' && canMove(ghost.x, ghost.y, 'RIGHT')) ghost.x += speed;
-            
-            // Loop di pinggir
-            if (ghost.x < -TILE_SIZE) ghost.x = GRID_WIDTH * TILE_SIZE;
-            if (ghost.x > GRID_WIDTH * TILE_SIZE) ghost.x = -TILE_SIZE;
-        });
-    }
-
-
-    function checkDotCollision() {
-        const tileX = pacmanX + TILE_SIZE / 2;
-        const tileY = pacmanY + TILE_SIZE / 2;
-        
-        const tileValue = getTile(tileX, tileY);
-
-        if (tileValue === 2) {
-            setTile(tileX, tileY, 1);
-            score += 10;
-            // Kirim sinyal suara dot dimakan ke parent (app.js)
-            parent.postMessage({ type: "dotEaten" }, "*");
-        } else if (tileValue === 3) {
-            setTile(tileX, tileY, 1);
-            score += 50;
-            ghostFrightened = true;
-            // Matikan mode takut setelah beberapa detik
-            setTimeout(() => {
-                ghostFrightened = false;
-            }, 8000); 
-        }
-    }
-
-    function checkGhostCollision() {
-        const pacmanCenter = { x: pacmanX + TILE_SIZE / 2, y: pacmanY + TILE_SIZE / 2 };
-        
-        for (let i = 0; i < ghosts.length; i++) {
-            const ghost = ghosts[i];
-            const ghostCenter = { x: ghost.x + TILE_SIZE / 2, y: ghost.y + TILE_SIZE / 2 };
-            
-            const dx = pacmanCenter.x - ghostCenter.x;
-            const dy = pacmanCenter.y - ghostCenter.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-
-            if (distance < TILE_SIZE) { 
-                if (ghostFrightened) {
-                    // Makan Hantu
-                    score += 200;
-                    ghost.x = 8 * TILE_SIZE; // Kirim kembali ke markas
-                    ghost.y = 10 * TILE_SIZE;
-                } else {
-                    // Game Over atau Kurangi Nyawa
-                    lives--;
-                    if (lives <= 0) {
-                        gameOver();
-                    } else {
-                        // Reset posisi Pacman dan Hantu
-                        pacmanX = 8 * TILE_SIZE; 
-                        pacmanY = 16 * TILE_SIZE; 
-                        ghosts = [
-                            { x: 7 * TILE_SIZE, y: 10 * TILE_SIZE, color: 'cyan', direction: 'UP' },
-                            { x: 8 * TILE_SIZE, y: 10 * TILE_SIZE, color: 'pink', direction: 'DOWN' }
-                        ];
-                    }
-                }
-                return;
-            }
-        }
-    }
-
-    function checkWinCondition() {
-        let dotsLeft = 0;
-        for (let i = 0; i < map.length; i++) {
-            if (map[i] === 2 || map[i] === 3) {
-                dotsLeft++;
-            }
-        }
-        if (dotsLeft === 0) {
-            gameWin();
-            return true;
-        }
-        return false;
-    }
-
-    // Fungsi Utama Loop
-    function gameLoop() {
-        if (!gameRunning) return;
-
-        // 1. Update posisi
-        movePacman();
-        moveGhosts();
-        
-        // 2. Cek tabrakan/makan
-        checkDotCollision();
-        checkGhostCollision();
-        
-        // 3. Cek kondisi menang
-        if (checkWinCondition()) return;
-
-        // 4. Gambar ulang
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawMap();
-        drawGhosts();
-        drawPacman();
-        
-        // Tampilkan skor di parent (untuk UI top bar)
-        parent.postMessage({ type: "updateScore", score, lives }, "*");
-
-        requestAnimationFrame(gameLoop);
-    }
-    
-    // Fungsi untuk Kemenangan
-    function gameWin(){
-        gameRunning = false;
-        finalScore = score;
-        gm.textContent = "YOU WIN! Score: " + finalScore;
-        
-        // 🔥 KRITIS: TAMPILKAN 3 TOMBOL AKSI, TIDAK ADA DELAY
-        msgArea.style.display = "flex"; 
-        if (actionBtns) actionBtns.style.display = "block";
-        
-        const submitBtn = document.getElementById('submitScoreBtn');
-        if (submitBtn) {
-            submitBtn.textContent = `Submit Score ${finalScore} (On-Chain)`;
-            submitBtn.disabled = false; // Pastikan aktif lagi
-        }
-    }
-
-    // Fungsi Diperbarui untuk Game Over
-    function gameOver(){
-      gameRunning = false;
-      finalScore = score;
-      gm.textContent = "GAME OVER! Score: " + finalScore;
-      
-      // 🔥 KRITIS: TAMPILKAN 3 TOMBOL AKSI, TIDAK ADA DELAY
-      msgArea.style.display = "flex"; 
-      if (actionBtns) actionBtns.style.display = "block";
-      
-      const submitBtn = document.getElementById('submitScoreBtn');
-      if (submitBtn) {
-          submitBtn.textContent = `Submit Score ${finalScore} (On-Chain)`;
-          submitBtn.disabled = false; // Pastikan aktif lagi
       }
     }
+  }
+}
 
-    // Fungsi Reset Game untuk Main Lagi
-    function resetGame() {
-        // Reset Map (Anda perlu fungsi yang memuat ulang map awal)
-        // map = originalMapData; 
-        
-        // Reset State
-        pacmanX = 8 * TILE_SIZE; 
-        pacmanY = 16 * TILE_SIZE; 
-        direction = 'RIGHT'; 
-        nextDirection = 'RIGHT'; 
-        score = 0;
-        lives = 3;
-        ghostFrightened = false;
-        
-        ghosts = [
-            { x: 7 * TILE_SIZE, y: 10 * TILE_SIZE, color: 'cyan', direction: 'UP' },
-            { x: 8 * TILE_SIZE, y: 10 * TILE_SIZE, color: 'pink', direction: 'DOWN' }
-        ];
+function drawPacman(){
+  const wobbleY = Math.sin(Date.now() / 150) * 1.5;
+  const x = pacman.x*TILE + TILE/2;
+  const y = pacman.y*TILE + TILE/2 + wobbleY;
+  const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
+  const angle = {right:0,left:Math.PI,up:-Math.PI/2,down:Math.PI/2}[pacman.dir];
 
-        // Sembunyikan pesan dan tombol
-        msgArea.style.display = "none";
-        if (actionBtns) actionBtns.style.display = "none";
+  ctx.fillStyle="#facc15";
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.arc(x,y,TILE/2-2,angle+mouth*0.6,angle-mouth*0.6+Math.PI*2);
+  ctx.fill();
 
-        // Tampilkan pesan "READY!"
-        gm.textContent = "READY!";
-        msgArea.style.display = "flex";
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(x, y + TILE/8, TILE/3.5, 0, Math.PI * 2);
+  ctx.fill();
 
-        setTimeout(() => {
-            msgArea.style.display = "none";
-            gameRunning = true;
-            gameLoop();
-        }, 3000); 
+  ctx.fillStyle="#cc0000";
+  ctx.beginPath();
+  ctx.moveTo(x - TILE*0.35, y - TILE*0.3);
+  ctx.lineTo(x + TILE*0.35, y - TILE*0.3);
+  ctx.lineTo(x, y - TILE*0.8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(x, y - TILE*0.8, 3.5, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle="white";
+  ctx.fillRect(x - TILE*0.35, y - TILE*0.3, TILE*0.7, 3);
+}
+
+function drawGhosts(){
+  ghosts.forEach(g=>{
+    const wobbleY = Math.sin(Date.now() / 150 + g.x * 0.5) * 1.5;
+    const x = g.x*TILE + TILE/2;
+    const y = g.y*TILE + TILE/2 + wobbleY;
+    const size = TILE * 0.45;
+    const headWobble = Math.sin(Date.now() / 200) * 1;
+
+    ctx.save();
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = g.color;
+    ctx.fillStyle = g.color;
+    roundRect(ctx, x - size, y - size, size * 2, size * 2, 6);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.arc(x - TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);
+    ctx.arc(x + TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle="black";
+    ctx.beginPath();
+    ctx.arc(x - TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);
+    ctx.arc(x + TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle=g.noseColor;
+    ctx.beginPath();
+    ctx.arc(x, y + TILE*0.25, 3, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle=g.antlerColor;
+    ctx.fillRect(x - TILE*0.35, y - TILE*0.4, 2, 5);
+    ctx.fillRect(x - TILE*0.35 + 2, y - TILE*0.4 - 2, 5, 2);
+    ctx.fillRect(x + TILE*0.35 - 2, y - TILE*0.4, 2, 5);
+    ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
+  });
+}
+
+/* ========== MOVEMENT ========== */
+function canMove(x,y){ 
+    // Handle Teleport (misalnya di row 8/9, kolom 0 atau 19)
+    if (y >= 8 && y <= 9 && x === -1) return true; // move left past wall
+    if (y >= 8 && y <= 9 && x === MAP_W) return true; // move right past wall
+    
+    return mapData[y] && mapData[y][x] !== 1; 
+}
+
+function movePacman(){
+  let nx = pacman.x, ny = pacman.y;
+  const d = pacman.next;
+  
+  // Try to move in next direction
+  nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
+  ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
+  
+  // Handle Teleport logic
+  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { // Left edge
+      pacman.x = MAP_W - 1; 
+      pacman.dir = d;
+      return;
+  }
+  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { // Right edge
+      pacman.x = 0;
+      pacman.dir = d;
+      return;
+  }
+
+  // If new tile is movable
+  if(canMove(nx,ny)){
+    pacman.x = nx;
+    pacman.y = ny;
+    pacman.dir = d;
+  } else {
+    // If next move is blocked, try current direction
+    const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
+    const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
+    if(canMove(cx,cy)){
+        pacman.x = cx;
+        pacman.y = cy;
+    }
+  }
+}
+
+function moveGhosts(){
+  if(!ghostActive) return;
+  ghosts.forEach(g=>{
+    // Sederhana: Kejar Pacman atau Random
+    const dx = pacman.x - g.x;
+    const dy = pacman.y - g.y;
+    let newX = g.x, newY = g.y;
+    
+    // 70% chance to chase, 30% chance to random
+    if (Math.random() < 0.7) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+            newX = g.x + (dx > 0 ? 1 : -1);
+        } else {
+            newY = g.y + (dy > 0 ? 1 : -1);
+        }
+    } else {
+        const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+        newX = g.x + d[0];
+        newY = g.y + d[1];
+    }
+
+    if(canMove(newX, newY)){ 
+        g.x = newX; g.y = newY; 
+    }
+  });
+}
+
+/* ========== COLLISIONS & MESSAGES ========== */
+function checkCollision(){
+  // Check Dot Eaten
+  if(mapData[pacman.y][pacman.x] === 2){
+    mapData[pacman.y][pacman.x] = 0;
+    score += 10;
+    document.getElementById("current-score-display").textContent = score;
+    parent.postMessage({ type: "dotEaten" }, "*");
+  }
+
+  // Check Ghost Collision
+  for(const g of ghosts){
+    if(g.x === pacman.x && g.y === pacman.y){
+      gameOver();
+      return;
+    }
+  }
+
+  // Check Win Condition
+  let win = true;
+  for(let y=0;y<mapData.length;y++){
+    for(let x=0;x<mapData[y].length;x++){
+      if(mapData[y][x] === 2) { win = false; break; }
+    }
+    if(!win) break;
+  }
+  if(win){
+    gameRunning = false;
+    const gm = document.getElementById("game-message");
+    gm.textContent = "YOU WIN! Score: " + score;
+    gm.style.display = "block";
+    parent.postMessage({ type: "submitScore", score }, "*");
+  }
+}
+
+function gameOver(){
+  gameRunning = false;
+  const gm = document.getElementById("game-message");
+  gm.textContent = "GAME OVER! Score: " + score;
+  gm.style.display = "block";
+  parent.postMessage({ type: "submitScore", score }, "*");
+}
+
+/* ========== COUNTDOWN helper ========== */
+function startCountdownAndPlay(){
+  // show countdown -> after that ghostActive=true and gameRunning=true
+  const gm = document.getElementById("game-message");
+  let count = 3;
+  gm.style.display = "block";
+  gm.textContent = "READY " + count;
+  const t = setInterval(()=>{
+    count--;
+    if(count >= 0) gm.textContent = "READY " + count;
+    if(count < 0){
+      clearInterval(t);
+      gm.style.display = "none";
+      ghostActive = true;
+      gameRunning = true;
+      lastMove = performance.now();
+    }
+  }, 1000);
+}
+
+/* ========== LOOP ========== */
+function loop(ts){
+  if(gameRunning && ts - lastMove > MOVE_INTERVAL){
+    movePacman();
+    moveGhosts();
+    checkCollision();
+    lastMove = ts;
+  }
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawMap();
+  drawPacman();
+  drawGhosts();
+  requestAnimationFrame(loop);
+}
+
+/* ========== MESSAGES & CONTROLS ========== */
+/* PENTING: Message Listener yang Paling Bersih */
+window.addEventListener("message", (e) => {
+  const d = e.data || {};
+  if(d.type === "paySuccess"){
+    // FIX PENTING: HANYA set allowLocalPlay ke true di sini.
+    allowLocalPlay = true;
+    resetGame();
+    startCountdownAndPlay();
+  }
+  if(d.type === "forceReset"){
+    resetGame();
+  }
+});
+
+/* FIX: Fungsi untuk mengatur input internal D-Pad/Keyboard */
+function handleGameInput(direction){
+  if(direction && typeof direction === "string"){
+    pacman.next = direction.toLowerCase();
+  }
+}
+
+/* INPUT HANDLERS - gated by allowLocalPlay */
+document.querySelectorAll("#mobileControls button").forEach(btn=>{
+  const dir = btn.getAttribute("data-dir");
+  const start = (ev) => {
+    ev.preventDefault();
+    btn.style.transform = "translateY(2px)";
+    
+    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
+    if(!allowLocalPlay){
+      const gm = document.getElementById("game-message");
+      gm.textContent = "Please connect / pay to start the game.";
+      gm.style.display = "block";
+      setTimeout(()=> gm.style.display = "none", 1200);
+      return;
     }
     
-    // Inisialisasi Kontrol D-Pad
-    document.addEventListener('DOMContentLoaded', () => {
-        // Ambil referensi D-Pad dari parent/index.html jika ada, atau gunakan ini
-        const dpads = [
-            document.getElementById('dpadUp'),
-            document.getElementById('dpadDown'),
-            document.getElementById('dpadLeft'),
-            document.getElementById('dpadRight')
-        ];
-        
-        // Logika kontrol sentuh/keyboard di sini
-        // ...
-        
-        // Kontrol Keyboard
-        document.addEventListener('keydown', (e) => {
-            if (!gameRunning) return;
-            if (e.key === 'ArrowUp') nextDirection = 'UP';
-            else if (e.key === 'ArrowDown') nextDirection = 'DOWN';
-            else if (e.key === 'ArrowLeft') nextDirection = 'LEFT';
-            else if (e.key === 'ArrowRight') nextDirection = 'RIGHT';
-        });
+    // Jika ada izin, segera proses input
+    handleGameInput(dir); 
+  };
+  const end = (ev) => {
+    ev.preventDefault();
+    btn.style.transform = "";
+  };
+  // Menggunakan passive:false sangat penting untuk preventDefault pada touch
+  btn.addEventListener("touchstart", start, {passive:false});
+  btn.addEventListener("mousedown", start);
+  btn.addEventListener("touchend", end);
+  btn.addEventListener("mouseup", end);
+});
 
-        // 🔥 KRITIS: Event Listeners untuk 3 Tombol Aksi di Game Over
-        
-        actionBtns = document.getElementById('actionBtns');
-        const submitBtn = document.getElementById('submitScoreBtn');
-        const backBtn = document.getElementById('backBtn');
-        const playBtn = document.getElementById('playAgainBtn');
-
-        if (submitBtn) {
-            submitBtn.addEventListener('click', () => {
-                // Kirim score HANYA saat tombol SubmitScore ditekan
-                parent.postMessage({ type: "submitScore", score: finalScore }, "*");
-                submitBtn.disabled = true; // Nonaktifkan tombol
-                submitBtn.textContent = 'Submitting... (Check Wallet)';
-            });
-        }
-
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                // Sembunyikan pesan Game Over/Win dan tombol
-                msgArea.style.display = "none";
-                if (actionBtns) actionBtns.style.display = "none";
-                parent.postMessage({ type: "forceShowLogo" }, "*"); // Kirim sinyal kembali ke menu
-            });
-        }
-
-        if (playBtn) {
-            playBtn.addEventListener('click', () => {
-                // Sembunyikan pesan Game Over/Win dan tombol
-                msgArea.style.display = "none";
-                if (actionBtns) actionBtns.style.display = "none";
-                
-                // Minta izin bayar ulang ke app.js
-                parent.postMessage({ type: "requestStartGame" }, "*"); 
-                
-                // TIDAK resetGame() di sini. resetGame() akan dipanggil oleh app.js setelah transaksi sukses
-                // Anda bisa tambahkan pesan tunggu di sini jika perlu: gm.textContent = "Waiting for payment...";
-            });
-        }
-    });
-
-    // Message Handler dari Parent (app.js)
-    window.addEventListener("message", (e) => {
-        const d = e.data || {};
-        
-        // Pemicu dari app.js setelah pembayaran sukses
-        if (d.type === "paySuccess") {
-            resetGame();
-        }
-        
-        // Pemicu dari app.js untuk update D-Pad state (jika D-Pad ada di parent)
-        if (d.type === "dpadControl" && gameRunning) {
-             if (d.direction === 'UP') nextDirection = 'UP';
-             else if (d.direction === 'DOWN') nextDirection = 'DOWN';
-             else if (d.direction === 'LEFT') nextDirection = 'LEFT';
-             else if (d.direction === 'RIGHT') nextDirection = 'RIGHT';
-        }
-
-        // Jika app.js berhasil memproses submit (opsional)
-        // Kita tidak lagi memerlukan scoreTxConfirmed/Failed karena tombol selalu muncul.
-        // Namun, jika Anda ingin mengaktifkan kembali tombol Submit setelah gagal TX:
-        if (d.type === "scoreTxFailed") {
-             const submitBtn = document.getElementById('submitScoreBtn');
-             if (submitBtn) {
-                 submitBtn.disabled = false;
-                 submitBtn.textContent = `Submit Score ${finalScore} (On-Chain)`;
-             }
-        }
-    });
+/* keyboard arrows: same gating */
+window.addEventListener("keydown", (e)=>{
+  if(e.key.includes("Arrow")){
+    const dir = e.key.replace("Arrow","").toLowerCase();
     
-    // Mulai inisialisasi tampilan
-    drawMap();
-    drawGhosts();
-    drawPacman();
-</script>
+    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
+    if(!allowLocalPlay){
+      const gm = document.getElementById("game-message");
+      gm.textContent = "Please connect / pay to start the game.";
+      gm.style.display = "block";
+      setTimeout(()=> gm.style.display = "none", 1200);
+      return;
+    }
+    
+    // Jika ada izin, segera proses input
+    handleGameInput(dir);
+  }
+});
 
+/* ========== STARTUP ========== */
+resetGame();
+requestAnimationFrame(loop);
+
+})();
+</script>
 </body>
 </html>
 
