@@ -89,9 +89,12 @@
 <script>
 // ========== CONFIG (Web3) ==========
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3"; 
-// FIX 1: JSON-RPC Provider untuk koneksi read-only yang stabil di DApp Browser
-const FALLBACK_RPC_URL = "https://dream-rpc.somnia.network/"; 
-const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"}],"name":"GameStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"score","type":"uint256"}],"name":"ScoreSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdraw","type":"event"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"allPlayers","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxScorePerSubmit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"players","outputs":[{"internalType":"uint256","name":"totalScore","type":"uint256"},{"internalType":"uint256","name":"lastPlayed","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startFeeWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startGame","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"score","type":"uint256"}],"name":"submitScore","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+// FIX RPC: Menggunakan RPC publik yang lebih stabil
+const FALLBACK_RPC_URL = "https://somnia-rpc.publicnode.com"; 
+const CONTRACT_ABI = [
+    // Hanya sisakan ABI yang benar-benar dibutuhkan
+    "function getTop10() view returns (address[] topPlayers, uint256[] scores)"
+];
 
 // ========== CORE LOGIC ==========
 
@@ -121,34 +124,38 @@ async function fetchLeaderboard(contract) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Mengambil data Top 10...</td></tr>';
 
     try {
+        // Panggil fungsi kontrak
         const [topPlayers, scores] = await contract.getTop10();
         
-        if (topPlayers.length === 0) {
+        if (topPlayers.length === 0 || scores.length === 0) {
             tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Belum ada skor yang tercatat.</td></tr>';
             return;
         }
 
-        // --- FIX 2: Logika Deduplikasi dan Pengurutan Ulang ---
-        const uniqueScores = new Map(); // Map untuk menyimpan skor tertinggi per alamat
+        // --- FIX: Pemrosesan BigNumber dan Deduplikasi ---
+        const uniqueScores = new Map(); 
 
         topPlayers.forEach((player, scoreIndex) => {
-            // Gunakan toNumber() untuk memastikan perbandingan skor adalah angka
-            const currentScore = scores[scoreIndex].toNumber(); 
+            // FIX: Menggunakan toNumber() hanya untuk BigNumber yang dipastikan kecil.
+            // Jika skor sangat besar, toNumber() akan gagal. Jika skor adalah BigNumber, 
+            // kita harus membandingkannya sebagai BigNumber, tetapi karena ini skor game, 
+            // kita asumsikan angka ini aman untuk diconvert ke Number.
+            const currentScore = Number(scores[scoreIndex]); // Lebih aman dari .toNumber()
 
-            // Jika alamat belum ada ATAU skor saat ini lebih tinggi dari skor yang tersimpan
+            // Hanya simpan skor tertinggi untuk setiap pemain
             if (!uniqueScores.has(player) || currentScore > uniqueScores.get(player)) {
                 uniqueScores.set(player, currentScore);
             }
         });
 
-        // Konversi Map ke Array dan Sortir berdasarkan Skor (descending)
+        // Konversi Map ke Array, Sortir, dan Batasi Top 10
         const finalLeaderboard = Array.from(uniqueScores, ([address, score]) => ({ address, score }));
         
+        // Sorting berdasarkan skor (descending)
         finalLeaderboard.sort((a, b) => b.score - a.score);
 
-        // Batasi hanya 10 rank teratas
         const top10Ranked = finalLeaderboard.slice(0, 10);
-        // --- AKHIR FIX 2 ---
+        // --- AKHIR FIX ---
         
         tbody.innerHTML = ''; // Clear loading message
 
@@ -156,11 +163,11 @@ async function fetchLeaderboard(contract) {
             const rank = index + 1;
             const score = item.score.toString();
             const player = item.address;
-            const row = tbody.insertRow();
             
             // Format address
             const displayAddress = player.substring(0, 6) + '...' + player.substring(player.length - 4);
             
+            const row = tbody.insertRow();
             row.innerHTML = `
                 <td class="rank">${rank}</td>
                 <td class="address">${displayAddress}</td>
@@ -171,7 +178,7 @@ async function fetchLeaderboard(contract) {
     } catch (e) {
         console.error("Error fetching or processing leaderboard data:", e);
         document.getElementById('connectionStatus').innerHTML = '⚠️ Terhubung, tetapi gagal mengambil data skor.';
-        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Terjadi kesalahan saat mengambil atau memproses data skor.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Terjadi kesalahan saat mengambil atau memproses data skor. Silakan coba refresh.</td></tr>';
     }
 }
 
@@ -180,3 +187,4 @@ document.addEventListener('DOMContentLoaded', initializeWeb3);
 </script>
 </body>
 </html>
+
