@@ -57,15 +57,21 @@
     user-select:none;
     -webkit-tap-highlight-color: transparent;
   }
+  
+  /* FIX: Tombol lebih besar untuk touch yang lebih baik */
   #mobileControls button{
-    width:64px;height:64px;border-radius:10px;border:0;
+    width: 70px; /* Dulu 64px */
+    height: 70px; /* Dulu 64px */
+    border-radius:10px;border:0;
     background:linear-gradient(90deg,#cc0000,#16a34a);color:#fff;font-size:22px;
     display:inline-flex;align-items:center;justify-content:center;
     box-shadow:0 4px rgba(0,0,0,0.4);
     touch-action: manipulation;
   }
   .dpad-row{display:flex;align-items:center;gap:8px}
-  .center-filler{width:64px;height:64px}
+  
+  /* FIX: Sesuaikan pengisi tengah dengan ukuran tombol yang baru */
+  .center-filler{width: 70px; height: 70px;}
 
   /* Desktop: hide mobile pad, allow centering large canvas */
   @media(min-width:900px){
@@ -88,7 +94,6 @@
 
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
 
-    <!-- Mobile D-PAD placed in document flow (below canvas) -->
     <div id="mobileControls" aria-hidden="false">
       <button data-dir="up" id="btn-up">↑</button>
       <div class="dpad-row">
@@ -375,9 +380,6 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 
-
-/* ... (Kode di atas tidak berubah) ... */
-
 /* ========== MESSAGES & CONTROLS ========== */
 /* parent must send {type:'paySuccess'} to allow play */
 window.addEventListener("message", (e) => {
@@ -406,8 +408,7 @@ function handleGameInput(direction){
   if(direction && typeof direction === "string"){
     pacman.next = direction.toLowerCase();
   }
-  // Tidak perlu mengirim postMessage ke parent di sini karena tombol D-Pad ada di iframe
-  // dan hanya perlu mengubah state lokal (pacman.next).
+  // Tidak perlu mengirim postMessage ke parent di sini
 }
 
 
