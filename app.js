@@ -138,12 +138,12 @@ async function connectWallet() {
     
     // Pastikan jaringan sudah di Somnia Mainnet (Chain ID 1729)
     const { chainId } = await provider.getNetwork();
-    if (chainId.toString() !== '1729') {
+    if (chainId.toString() !== '5031') {
         const somniaConfig = {
-            chainId: '0x6C9', // 1729 dalam heksa
+            chainId: '0x13a7', // 1729 dalam heksa
             chainName: 'Somnia Mainnet',
             nativeCurrency: { name: 'SOMI', symbol: 'SOMI', decimals: 18 },
-            rpcUrls: ['https://rpc.somnia.network'],
+            rpcUrls: ['https://somnia-json-rpc.stakely.io'],
             blockExplorerUrls: ['https://explorer.somnia.network']
         };
         try {
