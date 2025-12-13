@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <title>Somnia Leaderboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
+
 <style>
 /* Pastikan CSS ini ada dan sesuai dengan desain Anda */
 body {
@@ -66,17 +69,14 @@ h2 {
     </table>
 
 <script>
-    // Asumsi ethers.js sudah dimuat di index.html atau di sini
-    if (!window.ethers) {
-        document.getElementById('statusMessage').textContent = "Error: Ethers library not found. Make sure it's loaded in index.html.";
-    }
-
     // Konfigurasi harus sama dengan di app.js
     const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
+    
+    // 🛑 LANGKAH 2: ABI KONTRAK LENGKAP UNTUK FETCHING
     const CONTRACT_ABI = [
         "function getTopScores() view returns (tuple(address player, uint256 score)[] memory)",
-        "function jackpotBalance() view returns (uint256)", 
-        "function topScore() view returns (uint256)" 
+        "function jackpotBalance() view returns (uint256)", // Untuk Jackpot
+        "function topScore() view returns (uint256)" // Untuk Top Score
     ];
 
     const SOMNIA_RPC_URL = 'https://somnia-rpc.publicnode.com'; 
@@ -86,7 +86,10 @@ h2 {
     const statusMessage = $('statusMessage');
 
     async function fetchLeaderboardData() {
-        if (!window.ethers) return;
+        if (!window.ethers) {
+            statusMessage.textContent = "Error: Ethers library not found. Please check network script loading.";
+            return;
+        }
 
         try {
             const provider = new ethers.providers.JsonRpcProvider(SOMNIA_RPC_URL);
@@ -101,22 +104,24 @@ h2 {
             const jackpotSomi = ethers.utils.formatEther(jackpotWei);
             const topScoreValue = currentTopScore.toString();
 
-            // 2. Kirim data Jackpot/Top Score ke Parent (app.js) untuk Header
+            // 🛑 LANGKAH 3: KIRIM DATA JACKPOT/TOP SCORE KE PARENT (app.js)
+            // Ini yang memperbaiki header Jackpot/Top Score yang nol (Gambar 1000411787.jpg)
             window.parent.postMessage({ 
                 type: "leaderboardData", 
                 jackpot: jackpotSomi, 
                 topScore: topScoreValue 
             }, "*");
             
-            // 3. Fetch Data Leaderboard (Top Players)
+            // 2. Fetch Data Leaderboard (Top Players)
             const topScores = await readContract.getTopScores();
 
-            // 4. Render Leaderboard Body
+            // 3. Render Leaderboard Body
             leaderboardBody.innerHTML = ''; 
             topScores.forEach((entry, index) => {
                 const row = leaderboardBody.insertRow();
                 row.insertCell().textContent = index + 1;
-                row.insertCell().textContent = entry.player.substring(0, 6) + '...' + entry.player.slice(-4);
+                // Menampilkan 4 karakter awal dan 4 karakter akhir address
+                row.insertCell().textContent = entry.player.substring(0, 6) + '...' + entry.player.slice(-4); 
                 row.insertCell().textContent = entry.score.toString(); 
             });
 
@@ -124,13 +129,13 @@ h2 {
                  leaderboardBody.innerHTML = '<tr><td colspan="3">Belum ada data skor.</td></tr>';
             }
             
-            // Sembunyikan pesan status setelah sukses (jika tidak ada error)
+            // Sembunyikan pesan status setelah sukses 
             statusMessage.style.display = 'none'; 
 
         } catch (error) {
             console.error("Gagal mengambil data Leaderboard:", error);
-            statusMessage.textContent = `⚠️ Terhubung, tetapi gagal mengambil data skor: ${error.message}.`;
-            // Kirim data default ke parent jika gagal
+            statusMessage.textContent = `⚠️ Terjadi kesalahan saat mengambil atau memproses data skor. Error: ${error.message}.`;
+            // Kirim data default ke parent jika terjadi error agar header tidak error
             window.parent.postMessage({ 
                 type: "leaderboardData", 
                 jackpot: "0.000000", 
