@@ -1,4 +1,4 @@
-// app.js (FINAL CLEANED & FIXED)
+// app.js (FINAL CLEANED & FIXED for Large Audio File)
 // Requires ethers v5 UMD loaded in index.html
 
 // ---------------- CONFIG ----------------
@@ -12,7 +12,7 @@ const CONTRACT_ABI = [
 // audio paths (relative to index.html)
 const SFX_START_SRC = "assets/sfx_start.mp3";
 const SFX_DOT_EAT_SRC = "assets/sfx_dot_eat.mp3";
-const BGM_SRC = "assets/music_background.mp3";
+const BGM_SRC = "assets/music_background.mp3"; // File 1MB Anda
 
 // ---------------- STATE ----------------
 let provider = null;
@@ -34,45 +34,73 @@ const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
 
 // graceful init audio objects (no autoplay)
+// FIX: HANYA memuat SFX yang kecil di sini. BGM dimuat secara asinkron (loadBackgroundMusic).
 function initAudio() {
-  if (backgroundMusic && sfxStart && sfxDot) return;
+  if (sfxStart && sfxDot) return;
   
-  // Inisialisasi SFX yang kecil terlebih dahulu (prioritas)
   try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
   try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
-
-  // Inisialisasi BGM (bisa jadi file besar)
-  try {
-    backgroundMusic = new Audio(BGM_SRC);
-    backgroundMusic.loop = true;
-    backgroundMusic.volume = 0.35; 
-  } catch (e){ backgroundMusic = null; }
 }
+
+// Fungsi baru: Memuat BGM dan menunggu hingga BGM siap diputar
+function loadBackgroundMusic() {
+    return new Promise((resolve) => {
+        if (backgroundMusic) return resolve(); // Sudah dimuat
+        
+        try {
+            backgroundMusic = new Audio(BGM_SRC);
+            backgroundMusic.loop = true;
+            backgroundMusic.volume = 0.35;
+            
+            // Tunggu hingga browser melaporkan bahwa ia dapat memutar seluruh file
+            backgroundMusic.addEventListener('canplaythrough', () => {
+                console.log("BGM file loaded and ready to play (1MB).");
+                resolve();
+            }, { once: true });
+            
+            // Fallback timeout jika loading gagal atau lambat (misalnya setelah 10 detik)
+            setTimeout(() => {
+                if (!backgroundMusic || backgroundMusic.readyState < 3) {
+                    console.warn("BGM loading timeout (10s). Proceeding without BGM.");
+                    resolve();
+                }
+            }, 10000); // 10 detik
+            
+        } catch (e) { 
+            backgroundMusic = null;
+            console.error("Failed to initialize Audio object for BGM:", e);
+            resolve();
+        }
+    });
+}
+
 
 // unlock audio on first user gesture (best-effort)
 // FIX: Membiarkan BGM berjalan senyap (volume 0) setelah unlock
-// agar Audio Context tetap aktif selama konfirmasi transaksi.
 function unlockAudioOnGesture() {
   if (audioUnlocked) return;
   initAudio();
+  
+  // NOTE: Di sini BGM mungkin belum diinisialisasi jika ini dipanggil sebelum payToPlay
+  // Kita coba putar saja jika sudah ada, untuk SFX yang sudah di-initAudio()
+  
   const tryPlay = () => {
-    if (backgroundMusic) {
-      // 1. Set volume ke 0 (senyap)
-      backgroundMusic.volume = 0; 
-      // 2. Coba putar. Jika berhasil, biarkan berjalan senyap
-      backgroundMusic.play().then(()=> {
-        audioUnlocked = true;
-        window.removeEventListener('pointerdown', tryPlay);
-        console.log("Audio Context unlocked and BGM running silently.");
-      }).catch((e)=> { 
-        // Fallback jika gagal play (kemungkinan file besar/lambat)
-        audioUnlocked = true;
-        window.removeEventListener('pointerdown', tryPlay);
-        console.warn("BGM play failed during unlock. Check file size/loading issue.", e);
-      });
+    // Kita coba putar SFX kecil sebagai jaminan membuka konteks
+    if (sfxStart) {
+        sfxStart.volume = 0; // Senyapkan
+        sfxStart.play().then(() => {
+            sfxStart.volume = 0.95; // Kembalikan volume normal
+            audioUnlocked = true;
+            window.removeEventListener('pointerdown', tryPlay);
+            console.log("Audio Context unlocked via SFX.");
+        }).catch((e) => {
+             audioUnlocked = true;
+             window.removeEventListener('pointerdown', tryPlay);
+             console.warn("SFX play failed during unlock, but context attempted.", e);
+        });
     } else {
-      audioUnlocked = true;
-      window.removeEventListener('pointerdown', tryPlay);
+        audioUnlocked = true;
+        window.removeEventListener('pointerdown', tryPlay);
     }
   };
   window.addEventListener('pointerdown', tryPlay, { once: true });
@@ -126,7 +154,6 @@ async function connectWallet() {
     return false;
   }
   try {
-    // FIX: Menggunakan ethers.providers.Web3Provider untuk v5
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
@@ -143,7 +170,7 @@ async function connectWallet() {
             chainId: '0x13a7', // 1729 dalam heksa
             chainName: 'Somnia Mainnet',
             nativeCurrency: { name: 'SOMI', symbol: 'SOMI', decimals: 18 },
-            rpcUrls: ['https://somnia-json-rpc.stakely.io'],
+            rpcUrls: ['https://somnia-rpc.publicnode.com'],
             blockExplorerUrls: ['https://explorer.somnia.network']
         };
         try {
@@ -152,7 +179,6 @@ async function connectWallet() {
                 params: [{ chainId: somniaConfig.chainId }],
             });
         } catch (switchError) {
-            // This error code indicates that the chain has not been added to MetaMask.
             if (switchError.code === 4902) {
                 try {
                     await window.ethereum.request({
@@ -176,7 +202,6 @@ async function connectWallet() {
     // update UI (if elements exist)
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
     try {
-      // FIX: Menggunakan ethers.utils.formatEther untuk v5
       const balWei = await provider.getBalance(userAddress);
       safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(balWei)).toFixed(6));
     } catch(e){ console.warn("balance fetch failed", e); }
@@ -221,6 +246,10 @@ async function payToPlay() {
   if (!startFeeWei) {
     try { startFeeWei = await readContract.startFeeWei(); } catch(e){ startFeeWei = ethers.utils.parseEther("0.01"); }
   }
+  
+  // 🛑 LANGKAH BARU: Tunggu BGM yang besar selesai dimuat
+  console.log("Starting BGM loading (expect 1MB) and waiting...");
+  await loadBackgroundMusic(); // Blokir eksekusi hingga file 1MB siap
 
   try {
     // check balance
@@ -242,9 +271,9 @@ async function payToPlay() {
     isGameActive = true;
     
     // PANGGIL FUNGSI YANG DIPISAHKAN
-    playStartSfx(); // Mainkan SFX startup (jika ada)
-    startBackgroundMusic(); // Mainkan BGM
-
+    playStartSfx(); 
+    startBackgroundMusic(); // BGM di sini pasti sudah siap dimainkan
+    
     // notify iframe and index
     try { 
       window.postMessage({ type: "paySuccess" }, "*");
@@ -304,8 +333,7 @@ window.addEventListener("message", async (ev) => {
   if (data.type === "requestStartFee") {
     try {
       if (!readContract) {
-        // FIX: Menggunakan JsonRpcProvider untuk v5
-        const rp = provider || new ethers.providers.JsonRpcProvider('https://somnia-json-rpc.stakely.io'); 
+        const rp = provider || new ethers.providers.JsonRpcProvider('https://somnia-rpc.publicnode.com'); 
         readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp);
       }
       let fee = startFeeWei;
@@ -387,9 +415,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Optional: Refresh summary or leaderboard data
     if (!readContract) { 
-        // We need to initialize contract for reading if not connected
         try {
-           const rp = provider || new ethers.providers.JsonRpcProvider('https://rpc.somnia.network'); 
+           const rp = provider || new ethers.providers.JsonRpcProvider('https://somnia-rpc.publicnode.com'); 
            readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp);
         } catch(e){ console.warn("Leaderboard init error", e); }
     }
@@ -433,4 +460,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 });
-      
+                  
