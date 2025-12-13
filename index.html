@@ -9,7 +9,7 @@
 
 <style>
 /* ---------------------------------------------------- */
-/* --- PERBAIKAN CSS FINAL UNTUK LAYOUT & CENTERING --- */
+/* --- PERBAIKAN CSS UNTUK VIEWPORT MOBILE & DAPPS --- */
 /* ---------------------------------------------------- */
 
 *{
@@ -19,24 +19,22 @@
   font-family:Trebuchet MS,sans-serif;
 }
 
-/* FIX 1: Body harus mencakup seluruh tinggi viewport dan menggunakan Grid/Flexbox untuk centring yang keras */
+/* FIX 1: Memaksa BODY menggunakan 100% tinggi viewport dan menggunakan Flexbox vertikal */
 body {
   height: 100vh;
   min-height: 100%; 
   background: linear-gradient(to right, #fff, #ff0000);
   color: #fff;
-  overflow: hidden; 
-  display: grid; /* Gunakan Grid untuk centring halaman */
-  place-items: center; /* Posisikan #wrap tepat di tengah secara vertikal dan horizontal */
+  overflow: hidden; /* Mencegah scroll global */
+  display: flex; /* Aktifkan Flexbox di body */
+  flex-direction: column; /* Konten body disusun vertikal */
 }
 
 /* ==== LAYOUT UTAMA ==== */
 #wrap {
   display: flex;
+  flex: 1; /* FIX 2: Membuat wrap mengisi sisa ruang body (100% tinggi) */
   width: 100%;
-  max-width: 800px; /* Batasan lebar agar tidak terlalu lebar di desktop */
-  height: 100%; /* FIX 2: Izinkan wrap mengambil tinggi yang tersedia */
-  /* Di desktop, ini akan menjadi row (header di kiri) */
 }
 
 /* Sidebar diubah menjadi header horizontal di mobile */
@@ -48,21 +46,18 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex-shrink: 0; 
+  flex-shrink: 0; /* Pastikan sidebar tidak menyusut */
 }
 
 #main {
   flex: 1; /* Mengambil sisa lebar */
   padding: 10px;
   display: flex;
-  flex-direction: column; 
+  flex-direction: column; /* FIX 3: Susun konten #main secara vertikal */
   align-items: center;
   background: linear-gradient(to bottom, #ff0000, #800000);
   position: relative;
-  min-height: 0;
-  
-  /* FIX 3: Tambahkan justify-content: center untuk memposisikan konten utama (game area) di tengah vertikal di desktop */
-  justify-content: center; 
+  min-height: 0; /* Penting untuk Flexbox agar tidak overflow */
 }
 
 button {
@@ -73,7 +68,6 @@ button {
   color: #fff;
   cursor: pointer;
   font-weight: bold;
-  white-space: nowrap; /* Mencegah tombol putus baris */
 }
 
 #title {
@@ -87,22 +81,22 @@ button {
   color: #0ff;
   text-shadow: 0 0 4px #0ff;
   font-size: 12px;
-  flex-shrink: 0; 
+  flex-shrink: 0; /* Pastikan footer tetap di bawah */
 }
 
 /* ==== AREA UTAMA (LOGO / GAME / LEADERBOARD) ==== */
 .content-area {
   width: 100%;
   max-width: 480px;
-  /* Hapus flex: 1 di sini untuk menghindari iframe melebar terlalu jauh. Konten sudah dipusatkan oleh #main. */
-  
+  /* FIX 4: Gunakan flex: 1 untuk membuat area konten game mengisi ruang vertikal yang tersisa di #main */
+  flex: 1; 
   background: rgba(0,0,0,0.25);
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  min-height: 300px; /* Memastikan iframe punya tinggi awal */
-  /* Gunakan margin: auto agar game area selalu terpusat di tengah jika max-width tercapai */
-  margin: 10px auto; 
+  /* Tambahkan min-height agar iframe memiliki ruang */
+  min-height: 300px;
+  margin-bottom: 10px; /* Jarak dari footer */
 }
 
 iframe {
@@ -113,7 +107,6 @@ iframe {
 }
 
 /* ==== POSTER LOGO & OVERLAY (TIDAK BERUBAH) ==== */
-/* ... (Tetap sama seperti kode Anda) ... */
 #logoPlaceholder {
   width: 100%;
   height: 100%;
@@ -156,27 +149,15 @@ iframe {
   cursor:pointer;
 }
 
-
 /* ==== MOBILE LOCK (Hingga 768px) ==== */
 @media (max-width:768px){
-  /* FIX 4: Sesuaikan #wrap agar mengisi seluruh ruang (seperti Flex Column) */
+  /* FIX 5: Layout utama di mobile menjadi tumpukan vertikal */
   #wrap {
       flex-direction: column;
-      height: 100vh; /* Sangat penting di mobile */
       min-height: 100%;
-      max-width: 100%;
-      /* Karena body menggunakan Grid, kita perlu memaksa #wrap memuat konten secara vertikal */
-      /* Hapus justify-content: center di #main saat di mobile, biarkan konten mengalir ke atas */
+      flex: 1;
   }
   
-  #main {
-      flex: 1; /* Mengisi sisa ruang vertikal di bawah header */
-      min-height: 0;
-      /* Hapus justify-content: center untuk mobile */
-      justify-content: flex-start; 
-      overflow-y: auto; /* Izinkan scroll jika konten melebihi 100vh di mode column */
-  }
-
   /* Sidebar/Header */
   #sidebar {
     width: 100%;
@@ -185,7 +166,6 @@ iframe {
     flex-wrap: wrap;
     padding: 8px 10px;
     gap: 4px;
-    height: auto; /* Izinkan tinggi header menyesuaikan konten */
   }
 
   /* Wallet Info yang lebih ringkas */
@@ -203,11 +183,22 @@ iframe {
     padding: 6px 10px;
     font-size: 12px;
   }
+
+  /* Main area harus mengambil sisa ruang di bawah header */
+  #main {
+    flex: 1; 
+    min-height: 0; 
+  }
+  
+  /* Ringkaskan Summary */
+  #topScoreSummary {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
   
   /* Pastikan iframe mengambil seluruh ruang content-area */
   .content-area {
-    min-height: 400px; /* Menambah tinggi minimum agar game terlihat lebih besar di mobile */
-    margin-top: 5px;
+    min-height: 300px; /* Memastikan iframe memiliki tinggi minimum yang layak */
   }
 }
 </style>
@@ -380,4 +371,3 @@ showMain('logoPlaceholder');
   
 </body>
 </html>
-
