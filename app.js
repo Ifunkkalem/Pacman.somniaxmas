@@ -1,5 +1,4 @@
-// app.js (FINAL ATTEMPT: FIXED Wallet Connection & Flow)
-// Requires ethers v5 UMD loaded in index.html
+// app.js (FINAL & FIXED: Mengatasi SyntaxError & CALL_EXCEPTION)
 
 // ---------------- CONFIG ----------------
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
@@ -19,7 +18,7 @@ const SOMNIA_NETWORK_CONFIG = {
     blockExplorerUrls: ['https://explorer.somnia.network']
 };
 
-// audio paths (relative to index.html)
+// audio paths
 const SFX_START_SRC = "assets/sfx_start.mp3";
 const SFX_DOT_EAT_SRC = "assets/sfx_dot_eat.mp3";
 const BGM_SRC = "assets/music_background.mp3"; 
@@ -38,14 +37,15 @@ let sfxDot = null;
 let audioUnlocked = false;
 let isGameActive = false; 
 
+// 🔥 HANYA SATU DEKLARASI GLOBAL 'gameFrame'
 let gameFrame = null; 
 
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
 
-// [showWaitingMessage, initAudio, loadBackgroundMusic, unlockAudioOnGesture, playDotSound, startBackgroundMusic, playStartSfx, switchNetwork]
-// ... (Semua fungsi helper yang sama seperti di balasan sebelumnya) ...
+// [Fungsi initAudio, loadBackgroundMusic, unlockAudioOnGesture, playDotSound, 
+//  startBackgroundMusic, playStartSfx, showWaitingMessage, switchNetwork - (DIPERSINGKAT DI SINI UNTUK KETERBACAAN)]
 
 function initAudio() {
     if (sfxStart && sfxDot) return;
@@ -56,52 +56,23 @@ function initAudio() {
 async function loadBackgroundMusic() {
     return new Promise((resolve) => {
         if (backgroundMusic && backgroundMusic.readyState >= 3) return resolve();
-        
         try {
             backgroundMusic = new Audio(BGM_SRC);
             backgroundMusic.loop = true;
             backgroundMusic.volume = 0.35;
-            
-            backgroundMusic.addEventListener('canplaythrough', () => {
-                console.log("BGM file loaded and ready to play (1MB).");
-                resolve();
-            }, { once: true });
-            
-            setTimeout(() => {
-                if (!backgroundMusic || backgroundMusic.readyState < 3) {
-                    console.warn("BGM loading timeout (10s). Proceeding without BGM.");
-                    resolve();
-                }
-            }, 10000); 
-            
-        } catch (e) { 
-            backgroundMusic = null;
-            console.error("Failed to initialize Audio object for BGM:", e);
-            resolve();
-        }
+            backgroundMusic.addEventListener('canplaythrough', () => { resolve(); }, { once: true });
+            setTimeout(() => { if (!backgroundMusic || backgroundMusic.readyState < 3) resolve(); }, 10000); 
+        } catch (e) { backgroundMusic = null; resolve(); }
     });
 }
 
 function unlockAudioOnGesture() {
-  if (audioUnlocked) return;
-  initAudio();
-  
+  if (audioUnlocked) return; initAudio();
   const tryPlay = () => {
     if (sfxStart) {
         sfxStart.volume = 0; 
-        sfxStart.play().then(() => {
-            sfxStart.volume = 0.95; 
-            audioUnlocked = true;
-            window.removeEventListener('pointerdown', tryPlay);
-            console.log("Audio Context unlocked via SFX.");
-        }).catch(() => {
-             audioUnlocked = true;
-             window.removeEventListener('pointerdown', tryPlay);
-        });
-    } else {
-        audioUnlocked = true;
-        window.removeEventListener('pointerdown', tryPlay);
-    }
+        sfxStart.play().then(() => { sfxStart.volume = 0.95; audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); }).catch(() => { audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); });
+    } else { audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); }
   };
   window.addEventListener('pointerdown', tryPlay, { once: true });
 }
@@ -109,11 +80,7 @@ function unlockAudioOnGesture() {
 function playDotSound() {
   try {
     if (!audioUnlocked) initAudio();
-    if (sfxDot) {
-      const inst = sfxDot.cloneNode();
-      inst.volume = sfxDot.volume;
-      inst.play().catch(()=>{});
-    }
+    if (sfxDot) { const inst = sfxDot.cloneNode(); inst.volume = sfxDot.volume; inst.play().catch(()=>{}); }
   } catch (e) { console.warn("dot sound failed", e); }
 }
 
@@ -159,8 +126,6 @@ function showWaitingMessage(text, duration = 4000) {
     }
 }
 
-// ---------------- WALLET & CONTRACT ----------------
-
 async function switchNetwork(provider) {
     try {
         const network = await provider.getNetwork();
@@ -198,6 +163,9 @@ async function switchNetwork(provider) {
     }
 }
 
+
+// ---------------- WALLET & CONTRACT ----------------
+
 async function connectWallet() {
   initAudio();
   unlockAudioOnGesture();
@@ -208,32 +176,24 @@ async function connectWallet() {
   }
   
   try {
-    // 1. Request accounts (pemicu utama dialog koneksi)
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
-    await provider.send("eth_requestAccounts", []); // Meminta koneksi akun
+    await provider.send("eth_requestAccounts", []); 
     
-    // 2. Inisialisasi Signer dan Alamat setelah akun terhubung
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
     
-    // 3. Switch/Add Network to Somnia
     const networkSwitched = await switchNetwork(provider);
     if (!networkSwitched) {
-        // Jika gagal switch, reset state agar tombol connect bisa ditekan lagi
         signer = null; userAddress = null; provider = null;
         return false;
     }
     
-    // 4. Re-initialize provider and signer after potential network switch
-    // Ini penting karena network switch mengubah state Metamask.
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     signer = provider.getSigner();
     
-    // 5. Create contract instances
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-    // 6. Update UI and fetch data
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
     
     try {
@@ -244,11 +204,11 @@ async function connectWallet() {
     try {
       startFeeWei = await readContract.startFeeWei();
     } catch (e) {
-      startFeeWei = ethers.utils.parseEther("0.01");
-      console.warn("failed read startFeeWei:", e);
+      // Menangani error CALL_EXCEPTION jika RPC gagal membaca startFeeWei
+      startFeeWei = ethers.utils.parseEther("0.01"); 
+      console.warn("failed read startFeeWei (using default 0.01):", e);
     }
     
-    // 7. Notify index (for UI update)
     const balData = await provider.getBalance(userAddress);
     try { 
         window.postMessage({ 
@@ -262,8 +222,6 @@ async function connectWallet() {
     return true;
   } catch (err) {
     console.error("connectWallet error", err);
-    // 4001: User rejected request
-    // -32603: Internal Error (often happens on failed network switch)
     if (err.code !== 4001) {
         alert("Connection Failed: " + (err && err.message ? err.message : String(err)) + " (Code: " + err.code + ")");
     } else {
@@ -302,7 +260,8 @@ async function payToPlay() {
     
     showWaitingMessage("📝 Requesting Game Start... Please CONFIRM the transaction in your wallet.", 0);
 
-    const tx = await gameContract.startGame({ value: startFeeFee });
+    // 🔥 FIX TYPO: Mengganti startFeeFee menjadi startFeeWei
+    const tx = await gameContract.startGame({ value: startFeeWei });
     console.log("startGame tx:", tx.hash);
     
     showWaitingMessage("Transaction sent. Waiting for confirmation...", 0);
@@ -344,7 +303,7 @@ async function payToPlay() {
   }
 }
 
-// 🔥 FUNGSI KRITIS: Submit Score
+// FUNGSI KRITIS: Submit Score
 async function submitScoreTx(score) {
     if (!gameContract || !signer) {
         showWaitingMessage("🚨 Error: Wallet not connected or contract failed to load.", 5000);
@@ -433,7 +392,7 @@ window.addEventListener("message", async (ev) => {
 
 // ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
-  // Inisialisasi variabel gameFrame saat DOM sudah dimuat
+  // 🔥 KRITIS: Hanya di sini gameFrame mendapatkan nilai.
   gameFrame = document.getElementById("gameFrame");
 
   initAudio();
@@ -465,7 +424,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Check connection status on load (best effort)
   (async ()=> {
     if (window.ethereum) {
       try {
@@ -478,4 +436,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 });
-
+              
