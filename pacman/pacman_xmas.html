@@ -89,12 +89,9 @@
 <body>
   <div id="gameWrapper">
     <div id="ui">Score: <span id="current-score-display">0</span></div>
-    <div id="game-message">CONNECT WALLET & PAY TO START</div>
-
-    <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
+    <div id="game-message"></div> <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
     
-    <div id="mobileControls" aria-hidden="false">
-      <button data-dir="up" id="btn-up">↑</button>
+    <div id="mobileControls" aria-hidden="false" style="display: none;"> <button data-dir="up" id="btn-up">↑</button>
       <div class="dpad-row">
         <button data-dir="left" id="btn-left">←</button>
         <div class="center-filler" aria-hidden="true"></div>
@@ -152,10 +149,10 @@ function roundRect(ctx, x, y, w, h, r) {
 
 /* ========== STATE ========== */
 let mapData, pacman, ghosts, score = 0;
-// Hapus lastMove dan MOVE_INTERVAL
 let gameRunning = false;
 let ghostActive = false;
 let allowLocalPlay = false; 
+let gameTickInterval = null; // Didefinisikan di sini
 
 /* ========== INIT ========== */
 function resetGame(){
@@ -172,16 +169,16 @@ function resetGame(){
   gameRunning = false;
   ghostActive = false;
   
-  const gm = document.getElementById("game-message");
-  if (!allowLocalPlay) {
-      gm.textContent = "CONNECT WALLET & PAY TO START";
-  } else {
-      gm.textContent = "GAME READY. Press arrow key to begin.";
-  }
-  gm.style.display = "block";
+  // FIX: Clear interval jika ada
+  if (gameTickInterval) clearInterval(gameTickInterval); 
+
+  // FIX: Hapus semua logic pesan/display di sini. Akan diatur oleh requestInitialState.
+  document.getElementById("game-message").style.display = "none";
+  const mobileControls = document.getElementById("mobileControls");
+  if (mobileControls) mobileControls.style.display = "none";
 }
 
-/* ========== DRAWING (Santa & Reindeer visuals) (Tidak Berubah) ========== */
+/* ========== DRAWING (Santa & Reindeer visuals) ========== */
 function drawMap(){
   // ... (Fungsi drawMap tetap sama)
   for(let y=0;y<MAP_H;y++){
@@ -340,7 +337,7 @@ function moveGhosts(){
   });
 }
 
-// FIX: Pindahkan logic movePacman, moveGhosts, dan checkCollision ke TICK internal
+// FIX: Game logic diatur oleh interval (game tick)
 function gameTick() {
     if (!gameRunning) return;
     
@@ -349,18 +346,13 @@ function gameTick() {
     checkCollision();
 }
 
-// Tambahkan interval untuk game logic
-let gameTickInterval = null;
-
 function checkCollision(){
   // Check Dot Eaten
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
-    
-    // FIX PENTING: Hapus postMessage({ type: "dotEaten" }, "*");
-    // Memanggil parent terlalu sering menyebabkan lag/crash.
+    // FIX: Tidak perlu postMessage untuk setiap dotEaten
   }
 
   // Check Ghost Collision
@@ -406,9 +398,6 @@ function startCountdownAndPlay(){
   let count = 3;
   gm.style.display = "block";
   gm.textContent = "READY " + count;
-  
-  const mobileControls = document.getElementById("mobileControls");
-  if (mobileControls) mobileControls.style.display = "flex";
 
   const t = setInterval(()=>{
     count--;
@@ -420,14 +409,15 @@ function startCountdownAndPlay(){
       gameRunning = true;
       
       // FIX PENTING: Set interval game logic 
-      gameTickInterval = setInterval(gameTick, 240); // Pindahkan game logic ke interval stabil
+      // 240ms adalah kecepatan klasik Pacman (sekitar 4x per detik)
+      gameTickInterval = setInterval(gameTick, 240); 
     }
   }, 1000);
 }
 
 /* ========== LOOP (Hanya untuk Rendering) ========== */
 function loop(ts){
-  // FIX: Hapus semua logic gerakan di sini, hanya sisakan drawing/rendering
+  // Hanya Rendering
   ctx.clearRect(0,0,canvas.width,canvas.height);
   drawMap();
   drawPacman();
@@ -437,16 +427,42 @@ function loop(ts){
 
 /* ========== MESSAGES & CONTROLS ========== */
 
+// FIX: Fungsi baru untuk meminta status awal dari parent
+function requestInitialState() {
+  window.parent.postMessage({ type: 'requestGameStatus' }, '*');
+}
+
 // HANDLER PESAN UTAMA DARI PARENT (index.html)
 window.addEventListener("message", (e) => {
   const d = e.data || {};
+  if(!d || typeof d !== 'object') return;
+
   if(d.type === "paySuccess"){
+    // Parent mengonfirmasi pembayaran/start
     allowLocalPlay = true;
     resetGame();
     startCountdownAndPlay();
   }
+  
+  // FIX: Tangani respons status dari parent
+  if (d.type === "gameStatusResponse") {
+    allowLocalPlay = d.allowLocalPlay;
+    
+    const gm = document.getElementById("game-message");
+    const mobileControls = document.getElementById("mobileControls");
+
+    if (allowLocalPlay) {
+      gm.textContent = "GAME READY. Press arrow key to begin.";
+      if (mobileControls) mobileControls.style.display = "flex";
+    } else {
+      gm.textContent = "CONNECT WALLET & PAY TO START";
+      if (mobileControls) mobileControls.style.display = "none";
+    }
+    gm.style.display = "block";
+  }
+
   if(d.type === "forceReset"){
-    if (gameTickInterval) clearInterval(gameTickInterval); // Pastikan interval berhenti
+    if (gameTickInterval) clearInterval(gameTickInterval);
     resetGame();
   }
   if(d.type === "waitingForTx"){
@@ -476,7 +492,7 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
     
     if(!allowLocalPlay){
       const gm = document.getElementById("game-message");
-      gm.textContent = "Please pay the fee on the menu to start!";
+      gm.textContent = "Please connect / pay the fee on the menu to start!";
       gm.style.display = "block";
       setTimeout(()=> gm.style.display = "none", 1200);
       return;
@@ -501,7 +517,7 @@ window.addEventListener("keydown", (e)=>{
     
     if(!allowLocalPlay){
       const gm = document.getElementById("game-message");
-      gm.textContent = "Please pay the fee on the menu to start!";
+      gm.textContent = "Please connect / pay the fee on the menu to start!";
       gm.style.display = "block";
       setTimeout(()=> gm.style.display = "none", 1200);
       return;
@@ -514,8 +530,8 @@ window.addEventListener("keydown", (e)=>{
 /* ========== STARTUP ========== */
 document.addEventListener("DOMContentLoaded", () => {
     resetGame();
-    const mobileControls = document.getElementById("mobileControls");
-    if (mobileControls) mobileControls.style.display = "none";
+    // FIX: Minta status awal dari parent
+    requestInitialState(); 
 });
 
 requestAnimationFrame(loop);
