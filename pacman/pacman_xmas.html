@@ -415,36 +415,19 @@ function checkCollision(){
 function gameWin(){
     gameRunning = false;
     gm.textContent = "YOU WIN! Score: " + score;
-    
-    msgArea.style.display = "flex"; 
-    actionBtns.style.display = "none";
-    
-    // 1. Kirim skor ke parent
+    msgArea.style.display = "flex"; // Tampilkan area pesan/tombol
+    actionBtns.style.display = "block"; // Tampilkan tombol
     parent.postMessage({ type: "submitScore", score }, "*");
-    
-    // 2. Tampilkan pesan tunggu (opsional, bisa dinonaktifkan jika parent menampilkan pesan yang lebih baik)
-    gm.textContent = "Submitting score... please check your wallet!"; 
-    
-    // Kritis: KODE SEKARANG MENGANDALKAN SIKNAL BALIK DARI APP.JS
 }
 
 // Fungsi Diperbarui untuk Game Over
 function gameOver(){
   gameRunning = false;
   gm.textContent = "GAME OVER! Score: " + score;
-  
-  msgArea.style.display = "flex"; 
-  actionBtns.style.display = "none";
-  
-  // 1. Kirim skor ke parent
+  msgArea.style.display = "flex"; // Tampilkan area pesan/tombol
+  actionBtns.style.display = "block"; // Tampilkan tombol
   parent.postMessage({ type: "submitScore", score }, "*");
-
-  // 2. Tampilkan pesan tunggu (opsional)
-  gm.textContent = "Submitting score... please check your wallet!"; 
-
-  // Kritis: KODE SEKARANG MENGANDALKAN SIKNAL BALIK DARI APP.JS
 }
-
 
 /* ========== COUNTDOWN helper ========== */
 function startCountdownAndPlay(){
@@ -481,45 +464,64 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 
-// pacman_xmas.html (Tambahkan ini di window.addEventListener("message", ...))
-
+/* ========== MESSAGE HANDLER ========== */
 window.addEventListener("message", (e) => {
   const d = e.data || {};
+  if(d.type === "paySuccess"){
+    allowLocalPlay = true;
+    resetGame();
+    startCountdownAndPlay();
+  }
+  if(d.type === "forceReset"){
+    resetGame();
+  }
+});
+
+function handleGameInput(direction){
+  if(direction && typeof direction === "string"){
+    pacman.next = direction.toLowerCase();
+  }
+}
+
+// Fungsi Baru untuk Kemenangan
+function gameWin(){
+    gameRunning = false;
+    gm.textContent = "YOU WIN! Score: " + score;
+    
+    // 1. Tampilkan pesan Game Over/Win
+    msgArea.style.display = "flex"; 
+    actionBtns.style.display = "none"; // Pastikan tombol masih tersembunyi
+    
+    // 2. Kirim skor ke parent (ini memicu tx dan dialog "Score submission sent...")
+    parent.postMessage({ type: "submitScore", score }, "*");
+
+    // 3. TAMBAHKAN DELAY (2.5 detik) sebelum menampilkan tombol
+    setTimeout(() => {
+        actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
+    }, 7500); // Tunggu 2.5 detik
+}
+
+// Fungsi Diperbarui untuk Game Over
+function gameOver(){
+  gameRunning = false;
+  gm.textContent = "GAME OVER! Score: " + score;
   
-  // ... (handlers lain) ...
+  // 1. Tampilkan pesan Game Over/Win
+  msgArea.style.display = "flex"; 
+  actionBtns.style.display = "none"; // Pastikan tombol masih tersembunyi
+  
+  // 2. Kirim skor ke parent
+  parent.postMessage({ type: "submitScore", score }, "*");
 
-  // 🔥 BARU: Transaksi skor berhasil dikonfirmasi di blockchain
-  if(d.type === "scoreTxConfirmed"){
-    // Ganti pesan game over/win dengan konfirmasi akhir
-    gm.textContent = gm.textContent.replace("Submitting score...", "Score Submission Complete!");
-    actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
-  }
+  // 3. TAMBAHKAN DELAY (2.5 detik) sebelum menampilkan tombol
+  setTimeout(() => {
+      actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
+  }, 7500); // Tunggu 2.5 detik
+}
 
-  // 🔥 BARU: Transaksi skor gagal (misal dibatalkan user)
-  if(d.type === "scoreTxFailed"){
-    // Ganti pesan game over/win dengan notifikasi gagal
-    gm.textContent = gm.textContent.replace("Submitting score...", "Submission Cancelled or Failed.");
-    actionBtns.style.display = "block"; // Tampilkan tombol Kembali/Main Lagi
-  }
-});
+/* ========== COUNTDOWN helper ========== */
+// ... (Sisa kode tetap sama) ...
 
-/* ========== TOMBOL BARU HANDLERS ========== */
-
-// Tombol 1: Kembali ke Menu Utama
-document.getElementById("btn-back-to-menu").addEventListener("click", () => {
-    // Kirim sinyal ke parent (app.js) untuk menampilkan logo/poster
-    parent.postMessage({ type: "forceShowLogo" }, "*");
-    resetGame();
-    allowLocalPlay = false;
-});
-
-// Tombol 2: Main Lagi (Bayar Ulang)
-document.getElementById("btn-play-again").addEventListener("click", () => {
-    // Kirim sinyal ke parent (app.js) untuk meminta proses pembayaran ulang
-    parent.postMessage({ type: "requestStartGame" }, "*");
-    resetGame();
-    allowLocalPlay = false; // Akan disetel true lagi jika pembayaran sukses
-});
 
 /* INPUT HANDLERS - gated by allowLocalPlay */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
