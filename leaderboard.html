@@ -1,150 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Somnia Leaderboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
-
-<style>
-/* Pastikan CSS ini ada dan sesuai dengan desain Anda */
-body {
-    background: #cc0000; /* Warna Merah Natal */
-    color: #fff;
-    font-family: Arial, Helvetica, sans-serif;
-    margin: 0;
-    padding: 20px;
-    box-sizing: border-box;
-}
-#leaderboard {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-#leaderboard th, #leaderboard td {
-    border: 1px solid #ffaa00;
-    padding: 10px;
-    text-align: left;
-}
-#leaderboard th {
-    background: #a30000;
-    color: #ffd700;
-}
-.status-message {
-    padding: 10px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 5px;
-    margin-bottom: 15px;
-}
-.header-trophy {
-    font-size: 24px;
-    color: #ffd700;
-    margin-right: 10px;
-}
-h2 {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffd700;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - Somnia</title>
+    <script src="libs/ethers.min.js"></script>
+    <style>
+        body {
+            font-family: Trebuchet MS, sans-serif;
+            background: #800000;
+            color: white;
+            padding: 10px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h2 {
+            color: #00ffae;
+            text-shadow: 0 0 5px black;
+            margin-bottom: 10px;
+        }
+        #connectionStatus {
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            max-width: 600px;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        th {
+            background: rgba(0, 0, 0, 0.4);
+            font-weight: bold;
+            color: #ff0000;
+        }
+        tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        tr:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .rank {
+            width: 50px;
+            text-align: center;
+        }
+        .address {
+            font-size: 0.9em;
+        }
+        .score {
+            text-align: right;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .address {
+                font-size: 0.8em;
+            }
+        }
+    </style>
 </head>
 <body>
-
-    <h2><span class="header-trophy">🏆</span> SOMNIA LEADERBOARD</h2>
-    <div id="statusMessage" class="status-message">Loading leaderboard data...</div>
-
-    <table id="leaderboard">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Wallet Address</th>
-                <th>Score</th>
-            </tr>
-        </thead>
-        <tbody id="leaderboardBody">
+    <h2>🏆 SOMNIA LEADERBOARD</h2>
+    <div id="connectionStatus">... Connecting to Blockchain ...</div>
+    <div id="leaderboardTableContainer">
+        <table id="leaderboardTable">
+            <thead>
+                <tr>
+                    <th class="rank">#</th>
+                    <th class="address">Wallet Address</th>
+                    <th class="score">Score</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+                <tr><td colspan="3" style="text-align: center;">Memuat data...</td></tr>
             </tbody>
-    </table>
+        </table>
+    </div>
 
 <script>
-    // Konfigurasi harus sama dengan di app.js
-    const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
-    
-    // 🛑 LANGKAH 2: ABI KONTRAK LENGKAP UNTUK FETCHING
-    const CONTRACT_ABI = [
-        "function getTopScores() view returns (tuple(address player, uint256 score)[] memory)",
-        "function jackpotBalance() view returns (uint256)", // Untuk Jackpot
-        "function topScore() view returns (uint256)" // Untuk Top Score
-    ];
+// ========== CONFIG (Web3) ==========
+const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3"; 
+// FIX RPC: Menggunakan RPC publik yang lebih stabil
+const FALLBACK_RPC_URL = "https://somnia-rpc.publicnode.com"; 
+const CONTRACT_ABI = [
+    // Hanya sisakan ABI yang benar-benar dibutuhkan
+    "function getTop10() view returns (address[] topPlayers, uint256[] scores)"
+];
 
-    const SOMNIA_RPC_URL = 'https://somnia-rpc.publicnode.com'; 
-    
-    const $ = (id) => document.getElementById(id);
-    const leaderboardBody = $('leaderboardBody');
-    const statusMessage = $('statusMessage');
+// ========== CORE LOGIC ==========
 
-    async function fetchLeaderboardData() {
-        if (!window.ethers) {
-            statusMessage.textContent = "Error: Ethers library not found. Please check network script loading.";
+async function initializeWeb3() {
+    let provider;
+    
+    try {
+        // Langsung gunakan JSON-RPC Provider untuk koneksi read-only yang cepat dan stabil
+        provider = new ethers.providers.JsonRpcProvider(FALLBACK_RPC_URL);
+        
+        const network = await provider.getNetwork();
+        
+        document.getElementById('connectionStatus').innerHTML = `✅ Terhubung ke Blockchain: Chain ID ${network.chainId}`;
+
+        const gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        await fetchLeaderboard(gameContract);
+
+    } catch (error) {
+        console.error("Web3 Connection Error:", error);
+        document.getElementById('connectionStatus').innerHTML = '❌ Gagal terhubung ke blockchain leaderboard. Cek koneksi internet atau RPC URL.';
+        document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="3" style="text-align: center;">Gagal memuat data leaderboard.</td></tr>';
+    }
+}
+
+async function fetchLeaderboard(contract) {
+    const tbody = document.getElementById('leaderboardBody');
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Mengambil data Top 10...</td></tr>';
+
+    try {
+        // Panggil fungsi kontrak
+        const [topPlayers, scores] = await contract.getTop10();
+        
+        if (topPlayers.length === 0 || scores.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Belum ada skor yang tercatat.</td></tr>';
             return;
         }
 
-        try {
-            const provider = new ethers.providers.JsonRpcProvider(SOMNIA_RPC_URL);
-            const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        // --- FIX: Pemrosesan BigNumber dan Deduplikasi ---
+        const uniqueScores = new Map(); 
 
-            statusMessage.textContent = "Terhubung ke Blockchain: Chain ID 5031";
+        topPlayers.forEach((player, scoreIndex) => {
+            // FIX: Menggunakan toNumber() hanya untuk BigNumber yang dipastikan kecil.
+            // Jika skor sangat besar, toNumber() akan gagal. Jika skor adalah BigNumber, 
+            // kita harus membandingkannya sebagai BigNumber, tetapi karena ini skor game, 
+            // kita asumsikan angka ini aman untuk diconvert ke Number.
+            const currentScore = Number(scores[scoreIndex]); // Lebih aman dari .toNumber()
 
-            // 1. Fetch Data Global (Jackpot & Top Score)
-            const jackpotWei = await readContract.jackpotBalance(); 
-            const currentTopScore = await readContract.topScore(); 
-
-            const jackpotSomi = ethers.utils.formatEther(jackpotWei);
-            const topScoreValue = currentTopScore.toString();
-
-            // 🛑 LANGKAH 3: KIRIM DATA JACKPOT/TOP SCORE KE PARENT (app.js)
-            // Ini yang memperbaiki header Jackpot/Top Score yang nol (Gambar 1000411787.jpg)
-            window.parent.postMessage({ 
-                type: "leaderboardData", 
-                jackpot: jackpotSomi, 
-                topScore: topScoreValue 
-            }, "*");
-            
-            // 2. Fetch Data Leaderboard (Top Players)
-            const topScores = await readContract.getTopScores();
-
-            // 3. Render Leaderboard Body
-            leaderboardBody.innerHTML = ''; 
-            topScores.forEach((entry, index) => {
-                const row = leaderboardBody.insertRow();
-                row.insertCell().textContent = index + 1;
-                // Menampilkan 4 karakter awal dan 4 karakter akhir address
-                row.insertCell().textContent = entry.player.substring(0, 6) + '...' + entry.player.slice(-4); 
-                row.insertCell().textContent = entry.score.toString(); 
-            });
-
-            if (topScores.length === 0) {
-                 leaderboardBody.innerHTML = '<tr><td colspan="3">Belum ada data skor.</td></tr>';
+            // Hanya simpan skor tertinggi untuk setiap pemain
+            if (!uniqueScores.has(player) || currentScore > uniqueScores.get(player)) {
+                uniqueScores.set(player, currentScore);
             }
+        });
+
+        // Konversi Map ke Array, Sortir, dan Batasi Top 10
+        const finalLeaderboard = Array.from(uniqueScores, ([address, score]) => ({ address, score }));
+        
+        // Sorting berdasarkan skor (descending)
+        finalLeaderboard.sort((a, b) => b.score - a.score);
+
+        const top10Ranked = finalLeaderboard.slice(0, 10);
+        // --- AKHIR FIX ---
+        
+        tbody.innerHTML = ''; // Clear loading message
+
+        top10Ranked.forEach((item, index) => {
+            const rank = index + 1;
+            const score = item.score.toString();
+            const player = item.address;
             
-            // Sembunyikan pesan status setelah sukses 
-            statusMessage.style.display = 'none'; 
-
-        } catch (error) {
-            console.error("Gagal mengambil data Leaderboard:", error);
-            statusMessage.textContent = `⚠️ Terjadi kesalahan saat mengambil atau memproses data skor. Error: ${error.message}.`;
-            // Kirim data default ke parent jika terjadi error agar header tidak error
-            window.parent.postMessage({ 
-                type: "leaderboardData", 
-                jackpot: "0.000000", 
-                topScore: "0" 
-            }, "*");
-        }
+            // Format address
+            const displayAddress = player.substring(0, 6) + '...' + player.substring(player.length - 4);
+            
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td class="rank">${rank}</td>
+                <td class="address">${displayAddress}</td>
+                <td class="score">${score}</td>
+            `;
+        });
+        
+    } catch (e) {
+        console.error("Error fetching or processing leaderboard data:", e);
+        document.getElementById('connectionStatus').innerHTML = '⚠️ Terhubung, tetapi gagal mengambil data skor.';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Terjadi kesalahan saat mengambil atau memproses data skor. Silakan coba refresh.</td></tr>';
     }
+}
 
-    document.addEventListener("DOMContentLoaded", fetchLeaderboardData);
+// ========== INISIALISASI SAAT LOAD ==========
+document.addEventListener('DOMContentLoaded', initializeWeb3);
 </script>
 </body>
 </html>
