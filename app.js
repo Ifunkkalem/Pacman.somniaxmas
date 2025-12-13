@@ -1,4 +1,4 @@
-// app.js (FINAL CLEANED & FIXED for Large Audio File)
+// app.js (FINAL & FIXED VERSION)
 // Requires ethers v5 UMD loaded in index.html
 
 // ---------------- CONFIG ----------------
@@ -8,6 +8,16 @@ const CONTRACT_ABI = [
   "function startGame() payable",
   "function submitScore(uint256 _score)"
 ];
+
+// Somnia Network Configuration (Chain ID 5031)
+const SOMNIA_CHAIN_ID = '0x13a7'; // 5031 in hex
+const SOMNIA_NETWORK_CONFIG = {
+    chainId: SOMNIA_CHAIN_ID,
+    chainName: 'Somnia Mainnet',
+    nativeCurrency: { name: 'SOMI', symbol: 'SOMI', decimals: 18 },
+    rpcUrls: ['https://somnia-rpc.publicnode.com'],
+    blockExplorerUrls: ['https://explorer.somnia.network']
+};
 
 // audio paths (relative to index.html)
 const SFX_START_SRC = "assets/sfx_start.mp3";
@@ -26,45 +36,40 @@ let backgroundMusic = null;
 let sfxStart = null;
 let sfxDot = null;
 let audioUnlocked = false;
-
-let isGameActive = false; // only true after successful on-chain start
+let isGameActive = false; 
 
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
 const safeText = (id, txt) => { const el = $(id); if(el) el.textContent = txt; };
 
-// graceful init audio objects (no autoplay)
-// FIX: HANYA memuat SFX yang kecil di sini. BGM dimuat secara asinkron (loadBackgroundMusic).
 function initAudio() {
   if (sfxStart && sfxDot) return;
-  
   try { sfxStart = new Audio(SFX_START_SRC); sfxStart.volume = 0.95; } catch(e){ sfxStart = null; }
   try { sfxDot = new Audio(SFX_DOT_EAT_SRC); sfxDot.volume = 0.8; } catch(e){ sfxDot = null; }
 }
 
-// Fungsi baru: Memuat BGM dan menunggu hingga BGM siap diputar
-function loadBackgroundMusic() {
+async function loadBackgroundMusic() {
     return new Promise((resolve) => {
-        if (backgroundMusic) return resolve(); // Sudah dimuat
+        if (backgroundMusic && backgroundMusic.readyState >= 3) return resolve();
         
         try {
             backgroundMusic = new Audio(BGM_SRC);
             backgroundMusic.loop = true;
             backgroundMusic.volume = 0.35;
             
-            // Tunggu hingga browser melaporkan bahwa ia dapat memutar seluruh file
+            // Tunggu hingga BGM siap diputar
             backgroundMusic.addEventListener('canplaythrough', () => {
                 console.log("BGM file loaded and ready to play (1MB).");
                 resolve();
             }, { once: true });
             
-            // Fallback timeout jika loading gagal atau lambat (misalnya setelah 10 detik)
+            // Fallback: Resolve setelah 10 detik, walau gagal.
             setTimeout(() => {
                 if (!backgroundMusic || backgroundMusic.readyState < 3) {
                     console.warn("BGM loading timeout (10s). Proceeding without BGM.");
                     resolve();
                 }
-            }, 10000); // 10 detik
+            }, 10000); 
             
         } catch (e) { 
             backgroundMusic = null;
@@ -74,29 +79,21 @@ function loadBackgroundMusic() {
     });
 }
 
-
-// unlock audio on first user gesture (best-effort)
-// FIX: Membiarkan BGM berjalan senyap (volume 0) setelah unlock
 function unlockAudioOnGesture() {
   if (audioUnlocked) return;
   initAudio();
   
-  // NOTE: Di sini BGM mungkin belum diinisialisasi jika ini dipanggil sebelum payToPlay
-  // Kita coba putar saja jika sudah ada, untuk SFX yang sudah di-initAudio()
-  
   const tryPlay = () => {
-    // Kita coba putar SFX kecil sebagai jaminan membuka konteks
     if (sfxStart) {
-        sfxStart.volume = 0; // Senyapkan
+        sfxStart.volume = 0; 
         sfxStart.play().then(() => {
-            sfxStart.volume = 0.95; // Kembalikan volume normal
+            sfxStart.volume = 0.95; 
             audioUnlocked = true;
             window.removeEventListener('pointerdown', tryPlay);
             console.log("Audio Context unlocked via SFX.");
-        }).catch((e) => {
+        }).catch(() => {
              audioUnlocked = true;
              window.removeEventListener('pointerdown', tryPlay);
-             console.warn("SFX play failed during unlock, but context attempted.", e);
         });
     } else {
         audioUnlocked = true;
@@ -106,37 +103,27 @@ function unlockAudioOnGesture() {
   window.addEventListener('pointerdown', tryPlay, { once: true });
 }
 
-// safe play small SFX (handles concurrent plays)
 function playDotSound() {
   try {
     if (!audioUnlocked) initAudio();
     if (sfxDot) {
-      // reusing element can get cut; create temp clone for rapid repeats
       const inst = sfxDot.cloneNode();
       inst.volume = sfxDot.volume;
       inst.play().catch(()=>{});
-    } else {
-      const t = new Audio(SFX_DOT_EAT_SRC);
-      t.volume = 0.8;
-      t.play().catch(()=>{});
     }
   } catch (e) { console.warn("dot sound failed", e); }
 }
 
-// Fungsi untuk memulai BGM (setelah pay-to-play sukses)
 function startBackgroundMusic() {
   try {
     if (backgroundMusic) {
-      // 1. Reset waktu untuk mulai dari awal
       backgroundMusic.currentTime = 0; 
-      // 2. Naikkan volume ke nilai normal
       backgroundMusic.volume = 0.35; 
       backgroundMusic.play().catch((e)=>{ console.error("Final BGM play failed:", e); }); 
     }
   } catch (e) { console.warn("bgm start failed", e); }
 }
 
-// Fungsi opsional untuk SFX start (dipisah dari BGM)
 function playStartSfx() {
   try {
     if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); }
@@ -145,46 +132,27 @@ function playStartSfx() {
 
 
 // ---------------- WALLET & CONTRACT ----------------
-async function connectWallet() {
-  initAudio();
-  unlockAudioOnGesture();
-
-  if (!window.ethereum) {
-    alert("No wallet provider found (MetaMask / WalletConnect).");
-    return false;
-  }
-  try {
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
-    await provider.send("eth_requestAccounts", []);
-    signer = provider.getSigner();
-    userAddress = await signer.getAddress();
-
-    // create contract instances
-    readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-    
-    // Pastikan jaringan sudah di Somnia Mainnet (Chain ID 1729)
+async function switchNetwork(provider) {
     const { chainId } = await provider.getNetwork();
     if (chainId.toString() !== '5031') {
-        const somniaConfig = {
-            chainId: '0x13a7', // 1729 dalam heksa
-            chainName: 'Somnia Mainnet',
-            nativeCurrency: { name: 'SOMI', symbol: 'SOMI', decimals: 18 },
-            rpcUrls: ['https://somnia-rpc.publicnode.com'],
-            blockExplorerUrls: ['https://explorer.somnia.network']
-        };
         try {
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
-                params: [{ chainId: somniaConfig.chainId }],
+                params: [{ chainId: SOMNIA_CHAIN_ID }],
             });
+            // Give time for network switch to complete
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return true;
         } catch (switchError) {
-            if (switchError.code === 4902) {
+            if (switchError.code === 4902) { // Network not added
                 try {
                     await window.ethereum.request({
                         method: 'wallet_addEthereumChain',
-                        params: [somniaConfig],
+                        params: [SOMNIA_NETWORK_CONFIG],
                     });
+                    // After adding, we assume switch is automatic or next check will handle it
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    return true;
                 } catch (addError) {
                     console.error("Failed to add Somnia network", addError);
                     alert("Failed to add Somnia network. Please add it manually.");
@@ -197,92 +165,134 @@ async function connectWallet() {
             }
         }
     }
+    return true;
+}
 
+async function connectWallet() {
+  initAudio();
+  unlockAudioOnGesture();
 
-    // update UI (if elements exist)
+  if (!window.ethereum) {
+    alert("No wallet provider found (MetaMask / WalletConnect).");
+    return false;
+  }
+  try {
+    // 1. Request accounts and initialize provider
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    
+    // 2. Switch/Add Network to Somnia
+    const networkSwitched = await switchNetwork(provider);
+    if (!networkSwitched) return false;
+    
+    // After potential switch, re-initialize provider and signer
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
+    signer = provider.getSigner();
+    
+    // 3. Create contract instances
+    readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    // 4. Update UI and fetch data
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
+    
     try {
       const balWei = await provider.getBalance(userAddress);
       safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(balWei)).toFixed(6));
     } catch(e){ console.warn("balance fetch failed", e); }
 
-    // read start fee (best-effort)
     try {
       startFeeWei = await readContract.startFeeWei();
-      safeText("feeDisplay", ethers.utils.formatEther(startFeeWei));
+      // Safe guard for index.html display if needed, but not critical here
     } catch (e) {
       startFeeWei = ethers.utils.parseEther("0.01");
-      safeText("feeDisplay", "0.01 (fallback)");
       console.warn("failed read startFeeWei:", e);
     }
+    
+    // 5. Notify index (for UI update)
+    try { 
+        window.postMessage({ 
+            type: "walletInfo", 
+            address: userAddress, 
+            balance: Number(ethers.utils.formatEther(await provider.getBalance(userAddress))).toFixed(6)
+        }, "*"); 
+    } catch(e){}
 
-    // enable play button UI if exists
-    const playBtn = $("btnPlay") || $("playBtn");
-    if (playBtn) playBtn.style.display = "block";
+    console.log("Connected to Somnia Network", userAddress);
+    return true;
+  } catch (err) {
+    console.error("connectWallet error", err);
+    // 4001 is user rejected request
+    if (err.code !== 4001) {
+        alert("Connect failed: " + (err && err.message ? err.message : String(err)));
+    }
+    return false;
+  }
+}
 
-    // notify index (if index wants this)
-    try { window.postMessage({ type: "walletInfo", address: userAddress }, "*"); } catch(e){}
-
-    c// pay to play (on-chain) then start game
+// pay to play (on-chain) then start game
 async function payToPlay() {
   initAudio();
   unlockAudioOnGesture();
 
   if (!signer || !gameContract || !userAddress) {
     alert("Please connect wallet first.");
-    return;
+    return false;
   }
 
+  // Ensure network is still Somnia
+  const networkOk = await switchNetwork(provider);
+  if (!networkOk) return false;
+  
   // ensure startFeeWei
   if (!startFeeWei) {
     try { startFeeWei = await readContract.startFeeWei(); } catch(e){ startFeeWei = ethers.utils.parseEther("0.01"); }
   }
   
-  // 🛑 LANGKAH BARU: Tunggu BGM yang besar selesai dimuat
+  // 🛑 Wajib: Tunggu BGM yang besar selesai dimuat SEBELUM Transaksi
   console.log("Starting BGM loading (expect 1MB) and waiting...");
-  await loadBackgroundMusic(); // Blokir eksekusi hingga file 1MB siap
+  await loadBackgroundMusic(); 
 
   try {
     // check balance
     const bal = await provider.getBalance(userAddress);
     if (bal.lt(startFeeWei)) {
-      alert("Insufficient balance to pay start fee.");
-      return;
+      alert("Insufficient balance to pay start fee. Need " + ethers.utils.formatEther(startFeeWei) + " SOMI.");
+      return false;
     }
 
     // send tx
     const tx = await gameContract.startGame({ value: startFeeWei });
     console.log("startGame tx:", tx.hash);
-    // optional notify index
     try { window.postMessage({ type: "startTxSent", txHash: tx.hash }, "*"); } catch(e){}
 
+    alert("Transaction sent. Waiting for confirmation...");
     await tx.wait();
 
-    // mark game active and play audio
+    // Game is now active
     isGameActive = true;
     
-    // PANGGIL FUNGSI YANG DIPISAHKAN
     playStartSfx(); 
-    startBackgroundMusic(); // BGM di sini pasti sudah siap dimainkan
+    startBackgroundMusic();
     
-    // NOTIFIKASI PENTING KE IFRAME UNTUK MEMULAI GAME
+    // FIX PENTING: NOTIFIKASI IFRAME UNTUK MEMULAI GAME & MENGAKTIFKAN D-PAD
+    const gameFrame = $("gameFrame");
     try { 
       // Kirim ke index (wrapper)
       window.postMessage({ type: "paySuccess" }, "*");
       
-      // FIX: Kirim ke iframe game secara eksplisit
-      const gf = $("gameFrame");
-      if (gf && gf.contentWindow) {
-         gf.contentWindow.postMessage({ type: "paySuccess" }, "*");
-         console.log("Sent 'paySuccess' to game iframe.");
+      // Kirim ke iframe game secara eksplisit (ini yang mengaktifkan allowLocalPlay)
+      if (gameFrame && gameFrame.contentWindow) {
+         gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+         console.log("Sent 'paySuccess' to game iframe. D-Pad now active.");
       }
     } catch(e){ console.warn("postMessage paySuccess failed", e); }
 
-    // show game iframe if index expects
-    const gf = $("gameFrame");
-    if (gf) { gf.style.display = "block"; }
-    const logo = $("logoPlaceholder");
-    if (logo) logo.style.display = "none";
+    // Update UI
+    if ($("logoPlaceholder")) $("logoPlaceholder").style.display = "none";
+    if (gameFrame) gameFrame.style.display = "block";
 
     // refresh UI summary on index
     try { window.postMessage({ type: "refreshSummary" }, "*"); } catch(e){}
@@ -290,20 +300,13 @@ async function payToPlay() {
     return true;
   } catch (err) {
     console.error("payToPlay failed", err);
-    alert("Payment failed: " + (err && err.message ? err.message : String(err)));
+    // 4001 is user rejected request
+    if (err.code !== 4001) {
+        alert("Payment failed: " + (err && err.message ? err.message : String(err)));
+    }
     return false;
   }
 }
-    onsole.log("Connected", userAddress);
-    return true;
-  } catch (err) {
-    console.error("connectWallet error", err);
-    alert("Connect failed: " + (err && err.message ? err.message : String(err)));
-    return false;
-  }
-}
-
-
 
 // submit score on-chain
 async function submitScoreTx(score) {
@@ -321,13 +324,17 @@ async function submitScoreTx(score) {
     if (backgroundMusic) { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
     const tx = await gameContract.submitScore(Number(score));
     console.log("submitScore tx:", tx.hash);
+    alert("Score submission sent. Waiting for confirmation...");
     await tx.wait();
     alert("Score submitted on-chain ✅");
     // ask index to show leaderboard
     try { window.postMessage({ type: "scoreSubmitted" }, "*"); } catch(e){}
   } catch (err) {
     console.error("submitScore error", err);
-    alert("Submit score failed: " + (err && err.message ? err.message : String(err)));
+    // 4001 is user rejected request
+    if (err.code !== 4001) {
+        alert("Submit score failed: " + (err && err.message ? err.message : String(err)));
+    }
   }
 }
 
@@ -336,47 +343,21 @@ window.addEventListener("message", async (ev) => {
   const data = ev.data || {};
   if (!data || typeof data !== "object") return;
 
-  // iframe requests the start fee
-  if (data.type === "requestStartFee") {
-    try {
-      if (!readContract) {
-        const rp = provider || new ethers.providers.JsonRpcProvider('https://somnia-rpc.publicnode.com'); 
-        readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp);
-      }
-      let fee = startFeeWei;
-      if (!fee) {
-        fee = await readContract.startFeeWei();
-        startFeeWei = fee;
-      }
-      const feeEth = ethers.utils.formatEther(fee);
-      // reply to iframe
-      try {
-        const gf = $("gameFrame");
-        if (gf && gf.contentWindow) gf.contentWindow.postMessage({ type: "startFee", feeWei: fee.toString(), feeEth }, "*");
-      } catch(e){}
-    } catch(e) { console.warn("requestStartFee failed", e); }
-    return;
-  }
-
-  // game sends dotEaten -> play sfx
   if (data.type === "dotEaten") {
     if (isGameActive) playDotSound();
     return;
   }
 
-  // game asks to submit score
   if (data.type === "submitScore") {
     await submitScoreTx(data.score);
     return;
   }
 
-  // index asks to request wallet connect (from overlay)
   if (data.type === "requestConnectWallet") {
     await connectWallet();
     return;
   }
 
-  // index asks to start (it wants to ensure on-chain flow)
   if (data.type === "requestStartGame") {
     if (!signer) {
       const ok = await connectWallet();
@@ -389,11 +370,9 @@ window.addEventListener("message", async (ev) => {
 
 // ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
-  // init audio hook
   initAudio();
   unlockAudioOnGesture();
 
-  // wire buttons if exist
   const btnConnect = $("btnConnect") || $("connectWalletBtn");
   const btnPlay = $("btnPlay") || $("playBtn");
   const btnLeaderboard = $("btnLeaderboard") || $("leaderboardBtn");
@@ -403,7 +382,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   if (btnPlay) btnPlay.addEventListener("click", async () => {
-    // ensure wallet
     if (!signer) {
       const ok = await connectWallet();
       if (!ok) return;
@@ -413,58 +391,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnLeaderboard) btnLeaderboard.addEventListener("click", async () => {
     const lf = $("leaderFrame") || $("leaderboardFrame");
+    const gf = $("gameFrame");
+    const logo = $("logoPlaceholder");
+
+    if (logo) logo.style.display = "none";
+    if (gf) gf.style.display = "none";
+    
     if (lf) {
       lf.src = "leaderboard.html?ts=" + Date.now();
       lf.style.display = "block";
     }
-    const gf = $("gameFrame");
-    if (gf) gf.style.display = "none";
-    
-    // Optional: Refresh summary or leaderboard data
-    if (!readContract) { 
-        try {
-           const rp = provider || new ethers.providers.JsonRpcProvider('https://somnia-rpc.publicnode.com'); 
-           readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp);
-        } catch(e){ console.warn("Leaderboard init error", e); }
-    }
   });
 
-  // mobile pad container (if you implemented dpad in index)
-  const dpad = $("dpad-container-cross");
-  if (dpad) {
-    dpad.querySelectorAll("button").forEach(btn => {
-      const dir = btn.getAttribute("data-direction");
-      if (!dir) return;
-      const send = () => {
-        const gf = $("gameFrame");
-        if (gf && gf.contentWindow && isGameActive) {
-          gf.contentWindow.postMessage({ type: "mobileInput", direction: dir }, "*");
-        }
-      };
-      btn.addEventListener("touchstart", (e) => { e.preventDefault(); send(); }, { passive:false });
-      btn.addEventListener("mousedown", send);
-    });
-  }
-
-  // try notify index if already connected (hot reload case)
+  // Check connection status on load (best effort)
   (async ()=> {
-    if (window.ethereum && !provider) {
-      // we don't auto-connect, but if permissions already granted this returns quickly
+    if (window.ethereum) {
       try {
-        provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-        const accounts = await provider.listAccounts();
+        const tempProvider = new ethers.providers.Web3Provider(window.ethereum, "any");
+        const accounts = await tempProvider.listAccounts();
         if (accounts && accounts.length > 0) {
-          // populate info (but do not force user to re-approve)
-          signer = provider.getSigner();
-          userAddress = await signer.getAddress();
-          safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
-          try {
-            const bal = await provider.getBalance(userAddress);
-            safeText("walletBal", "SOMI: " + Number(ethers.utils.formatEther(bal)).toFixed(6));
-          } catch(e){}
+          // If already connected, run a soft connect to populate UI
+          await connectWallet(); 
         }
-      } catch(e){ /* ignore */ }
+      } catch(e){ /* ignore failures on auto-check */ }
     }
   })();
 });
-                  
+                                                  
