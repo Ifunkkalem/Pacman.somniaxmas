@@ -1,4 +1,4 @@
-// app.js (FINAL & FIXED VERSION)
+// app.js (FINAL & FIXED: Wallet dan Sinkronisasi Skor)
 // Requires ethers v5 UMD loaded in index.html
 
 // ---------------- CONFIG ----------------
@@ -29,7 +29,7 @@ let provider = null;
 let signer = null;
 let userAddress = null;
 let readContract = null;
-let gameContract = null;
+let gameContract = null; // Ini akan menjadi instance kontrak utama dengan signer
 let startFeeWei = null;
 
 let backgroundMusic = null;
@@ -38,7 +38,8 @@ let sfxDot = null;
 let audioUnlocked = false;
 let isGameActive = false; 
 
-const gameFrame = document.getElementById("gameFrame"); // Mendapatkan referensi frame game
+// Menggunakan fungsi $ untuk mendapatkan referensi frame game
+let gameFrame = null; 
 
 // ---------------- HELPERS ----------------
 const $ = (id) => document.getElementById(id);
@@ -130,6 +131,7 @@ function playStartSfx() {
   } catch (e) { console.warn("start sfx failed", e); }
 }
 
+// 🔥 Fungsi untuk menampilkan pesan tunggu/notifikasi di atas game
 function showWaitingMessage(text, duration = 4000) {
     let gm = document.getElementById('__waiting_msg');
     if (!gm) {
@@ -151,7 +153,8 @@ function showWaitingMessage(text, duration = 4000) {
 
     if (duration > 0) {
         setTimeout(() => {
-            if (gm) gm.style.display = 'none';
+            // HANYA sembunyikan jika tidak ada pesan baru
+            if (gm && gm.textContent === text) gm.style.display = 'none';
         }, duration);
     }
 }
@@ -159,37 +162,37 @@ function showWaitingMessage(text, duration = 4000) {
 
 // ---------------- WALLET & CONTRACT ----------------
 async function switchNetwork(provider) {
-    const { chainId } = await provider.getNetwork();
-    if (chainId.toString() !== '5031') {
-        try {
+    try {
+        const { chainId } = await provider.getNetwork();
+        if (chainId.toString() !== '5031') {
             await window.ethereum.request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: SOMNIA_CHAIN_ID }],
             });
             await new Promise(resolve => setTimeout(resolve, 500));
             return true;
-        } catch (switchError) {
-            if (switchError.code === 4902) { 
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [SOMNIA_NETWORK_CONFIG],
-                    });
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    return true;
-                } catch (addError) {
-                    console.error("Failed to add Somnia network", addError);
-                    alert("Failed to add Somnia network. Please add it manually.");
-                    return false;
-                }
-            } else {
-                 console.error("Failed to switch network", switchError);
-                 alert("Failed to switch to Somnia network. Please switch manually.");
-                 return false;
+        }
+        return true;
+    } catch (switchError) {
+        if (switchError.code === 4902) { 
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [SOMNIA_NETWORK_CONFIG],
+                });
+                await new Promise(resolve => setTimeout(resolve, 500));
+                return true;
+            } catch (addError) {
+                console.error("Failed to add Somnia network", addError);
+                alert("Failed to add Somnia network. Please add it manually.");
+                return false;
             }
+        } else {
+             console.error("Failed to switch network", switchError);
+             alert("Failed to switch to Somnia network. Please switch manually.");
+             return false;
         }
     }
-    return true;
 }
 
 async function connectWallet() {
@@ -200,21 +203,27 @@ async function connectWallet() {
     alert("No wallet provider found (MetaMask / WalletConnect).");
     return false;
   }
+  
   try {
+    // 1. Request accounts and initialize provider
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
     
+    // 2. Switch/Add Network to Somnia
     const networkSwitched = await switchNetwork(provider);
     if (!networkSwitched) return false;
     
+    // 3. Re-initialize provider and signer after potential network switch
     provider = new ethers.providers.Web3Provider(window.ethereum, "any"); 
     signer = provider.getSigner();
     
+    // 4. Create contract instances (MENGGUNAKAN VARIABEL GLOBAL YANG SAMA)
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
+    // 5. Update UI and fetch data
     safeText("walletAddr", "Wallet: " + userAddress.substring(0,6) + "..." + userAddress.slice(-4));
     
     try {
@@ -229,11 +238,13 @@ async function connectWallet() {
       console.warn("failed read startFeeWei:", e);
     }
     
+    // 6. Notify index (for UI update)
+    const balData = await provider.getBalance(userAddress);
     try { 
         window.postMessage({ 
             type: "walletInfo", 
             address: userAddress, 
-            balance: Number(ethers.utils.formatEther(await provider.getBalance(userAddress))).toFixed(6)
+            balance: Number(ethers.utils.formatEther(balData)).toFixed(6)
         }, "*"); 
     } catch(e){}
 
@@ -283,29 +294,28 @@ async function payToPlay() {
     showWaitingMessage("Transaction sent. Waiting for confirmation...", 0);
     await tx.wait();
 
-    // Game is now active
     isGameActive = true;
     
-    // Hapus pesan tunggu
     const gm = document.getElementById('__waiting_msg'); 
     if (gm) gm.remove();
 
     playStartSfx(); 
     startBackgroundMusic();
     
-    const gameFrame = $("gameFrame"); // Re-check frame
+    // Menggunakan variabel global gameFrame yang sudah diinisialisasi di DOMContentLoaded
+    const currentFrame = gameFrame || $("gameFrame"); 
 
     try { 
       window.postMessage({ type: "paySuccess" }, "*");
       
-      if (gameFrame && gameFrame.contentWindow) {
-         gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+      if (currentFrame && currentFrame.contentWindow) {
+         currentFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
          console.log("Sent 'paySuccess' to game iframe. D-Pad now active.");
       }
     } catch(e){ console.warn("postMessage paySuccess failed", e); }
 
     if ($("logoPlaceholder")) $("logoPlaceholder").style.display = "none";
-    if (gameFrame) gameFrame.style.display = "block";
+    if (currentFrame) currentFrame.style.display = "block";
 
     try { window.postMessage({ type: "refreshSummary" }, "*"); } catch(e){}
 
@@ -326,34 +336,40 @@ async function submitScoreTx(score) {
     // Memastikan gameContract sudah terinisialisasi dan memiliki Signer
     if (!gameContract || !signer) {
         showWaitingMessage("🚨 Error: Wallet not connected or contract failed to load.", 5000);
+        // Kirim sinyal kegagalan ke iframe agar tombol muncul
+        if (gameFrame && gameFrame.contentWindow) {
+            gameFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
+        }
         return false;
     }
     
+    const currentFrame = gameFrame || $("gameFrame");
+
     try {
         const scoreNum = Number(score);
         if (isNaN(scoreNum)) throw new Error("Invalid score format.");
 
         // 1. Tampilkan pesan konfirmasi wallet 
         showWaitingMessage(`📝 Submitting Score ${scoreNum}... Please CONFIRM in your wallet.`, 0); 
+        
+        // 2. Pause BGM agar dialog wallet lebih jelas
+        if (backgroundMusic) { backgroundMusic.pause(); }
 
-        // 2. Pemicu dialog konfirmasi wallet
+        // 3. Pemicu dialog konfirmasi wallet
         const tx = await gameContract.submitScore(scoreNum); 
 
         showWaitingMessage("Transaction sent. Waiting for confirmation...", 0);
 
-        // 3. Tunggu hingga transaksi dikonfirmasi di jaringan
+        // 4. Tunggu hingga transaksi dikonfirmasi di jaringan
         const receipt = await tx.wait(); 
 
-        // 4. Kirim sinyal konfirmasi balik ke iframe
-        if (gameFrame && gameFrame.contentWindow) {
-            gameFrame.contentWindow.postMessage({ type: "scoreTxConfirmed" }, "*");
+        // 5. Kirim sinyal konfirmasi balik ke iframe
+        if (currentFrame && currentFrame.contentWindow) {
+            currentFrame.contentWindow.postMessage({ type: "scoreTxConfirmed" }, "*");
         }
         
-        // 5. Tampilkan konfirmasi sukses
+        // 6. Tampilkan konfirmasi sukses
         showWaitingMessage(`✅ Score ${scoreNum} confirmed! TX: ${receipt.transactionHash.substring(0, 8)}...`, 4000);
-        
-        // Optional: Refresh UI
-        // try { window.postMessage({ type: "scoreSubmitted" }, "*"); } catch(e){}
         
         return true;
     } catch (error) {
@@ -362,11 +378,10 @@ async function submitScoreTx(score) {
         console.error("Score submission failed:", error);
         
         // Kirim sinyal kegagalan agar tombol muncul lebih cepat di iframe
-        if (gameFrame && gameFrame.contentWindow) {
-            gameFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
+        if (currentFrame && currentFrame.contentWindow) {
+            currentFrame.contentWindow.postMessage({ type: "scoreTxFailed" }, "*"); 
         }
         
-        // Jangan tampilkan alert, cukup pesan di showWaitingMessage
         showWaitingMessage(`❌ Score submission failed: ${error.message || 'Check console.'}`, 6000);
         return false;
     }
@@ -387,7 +402,6 @@ window.addEventListener("message", async (ev) => {
   // Dipicu saat Game Over/Win dari iframe
   if (data.type === "submitScore") {
     const score = data.score;
-    // JANGAN menggunakan Number(score) di sini, biarkan submitScoreTx yang menangani
     await submitScoreTx(score); 
     return;
   }
@@ -421,12 +435,8 @@ window.addEventListener("message", async (ev) => {
 
 // ---------------- DOM READY: wire UI ----------------
 document.addEventListener("DOMContentLoaded", () => {
-  // Pastikan referensi gameFrame didapatkan setelah DOM dimuat
-  const gameFrameEl = document.getElementById("gameFrame");
-  if (gameFrameEl) {
-      // Inisialisasi gameFrame global untuk digunakan di submitScoreTx
-      window.gameFrame = gameFrameEl;
-  }
+  // 🔥 KRITIS: Inisialisasi variabel gameFrame di sini, saat DOM sudah dimuat
+  gameFrame = document.getElementById("gameFrame");
 
   initAudio();
   unlockAudioOnGesture();
@@ -440,7 +450,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   if (btnPlay) btnPlay.addEventListener("click", async () => {
-    // Logika Play sudah dihandle di requestStartGame message handler
+    // Memicu alur lewat message handler
     try { window.postMessage({ type: "requestStartGame" }, "*"); } catch(e){}
   });
 
@@ -458,6 +468,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Check connection status on load (best effort)
   (async ()=> {
     if (window.ethereum) {
       try {
@@ -470,4 +481,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 });
-        
+      
