@@ -105,6 +105,8 @@
     </div>
   </div>
 
+  /* ... (Kode di atas tidak berubah) ... */
+
 <script>
 (() => {
 const canvas = document.getElementById("pacman-canvas");
@@ -160,7 +162,7 @@ let ghostActive = false;
 const MOVE_INTERVAL = 240;
 
 /* SECURITY: require parent paySuccess before allowing local start */
-let allowLocalPlay = false;   // only set true when parent signals paySuccess
+let allowLocalPlay = false; // Kunci utama: hanya set true di postMessage
 
 /* ========== INIT ========== */
 function resetGame(){
@@ -176,7 +178,7 @@ function resetGame(){
   document.getElementById("game-message").style.display = "none";
   gameRunning = false;
   ghostActive = false;
-  allowLocalPlay = false; // reset lock
+  // JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
 }
 
 /* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== */
@@ -280,39 +282,88 @@ function drawGhosts(){
 }
 
 /* ========== MOVEMENT ========== */
-function canMove(x,y){ return mapData[y] && mapData[y][x] !== 1; }
+function canMove(x,y){ 
+    // Handle Teleport (misalnya di row 8/9, kolom 0 atau 19)
+    if (y >= 8 && y <= 9 && x === -1) return true; // move left past wall
+    if (y >= 8 && y <= 9 && x === MAP_W) return true; // move right past wall
+    
+    return mapData[y] && mapData[y][x] !== 1; 
+}
 
 function movePacman(){
+  let nx = pacman.x, ny = pacman.y;
   const d = pacman.next;
-  const nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
-  const ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
+  
+  // Try to move in next direction
+  nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
+  ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
+  
+  // Handle Teleport logic
+  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { // Left edge
+      pacman.x = MAP_W - 1; 
+      pacman.dir = d;
+      return;
+  }
+  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { // Right edge
+      pacman.x = 0;
+      pacman.dir = d;
+      return;
+  }
+
+  // If new tile is movable
   if(canMove(nx,ny)){
     pacman.x = nx;
     pacman.y = ny;
     pacman.dir = d;
+  } else {
+    // If next move is blocked, try current direction
+    const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
+    const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
+    if(canMove(cx,cy)){
+        pacman.x = cx;
+        pacman.y = cy;
+    }
   }
 }
 
 function moveGhosts(){
   if(!ghostActive) return;
   ghosts.forEach(g=>{
-    const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
-    const nx = g.x + d[0];
-    const ny = g.y + d[1];
-    if(canMove(nx,ny)){ g.x = nx; g.y = ny; }
+    // Sederhana: Kejar Pacman atau Random
+    const dx = pacman.x - g.x;
+    const dy = pacman.y - g.y;
+    let newX = g.x, newY = g.y;
+    
+    // 70% chance to chase, 30% chance to random
+    if (Math.random() < 0.7) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+            newX = g.x + (dx > 0 ? 1 : -1);
+        } else {
+            newY = g.y + (dy > 0 ? 1 : -1);
+        }
+    } else {
+        const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+        newX = g.x + d[0];
+        newY = g.y + d[1];
+    }
+
+    if(canMove(newX, newY)){ 
+        g.x = newX; g.y = newY; 
+    }
   });
 }
 
 /* ========== COLLISIONS & MESSAGES ========== */
 function checkCollision(){
+  // Check Dot Eaten
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
-    // notify parent so parent can play dot SFX
     parent.postMessage({ type: "dotEaten" }, "*");
   }
 
+  // Check Ghost Collision
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
       gameOver();
@@ -320,6 +371,7 @@ function checkCollision(){
     }
   }
 
+  // Check Win Condition
   let win = true;
   for(let y=0;y<mapData.length;y++){
     for(let x=0;x<mapData[y].length;x++){
@@ -330,7 +382,7 @@ function checkCollision(){
   if(win){
     gameRunning = false;
     const gm = document.getElementById("game-message");
-    gm.textContent = "YOU WIN!";
+    gm.textContent = "YOU WIN! Score: " + score;
     gm.style.display = "block";
     parent.postMessage({ type: "submitScore", score }, "*");
   }
@@ -339,7 +391,7 @@ function checkCollision(){
 function gameOver(){
   gameRunning = false;
   const gm = document.getElementById("game-message");
-  gm.textContent = "GAME OVER";
+  gm.textContent = "GAME OVER! Score: " + score;
   gm.style.display = "block";
   parent.postMessage({ type: "submitScore", score }, "*");
 }
@@ -381,25 +433,17 @@ function loop(ts){
 }
 
 /* ========== MESSAGES & CONTROLS ========== */
-/* parent must send {type:'paySuccess'} to allow play */
+/* PENTING: Message Listener yang Paling Bersih */
 window.addEventListener("message", (e) => {
   const d = e.data || {};
   if(d.type === "paySuccess"){
-    // allow local play and start countdown
+    // FIX PENTING: HANYA set allowLocalPlay ke true di sini.
     allowLocalPlay = true;
-    resetGame();    // fresh level
-    // parent usually plays BGM and start SFX; we only manage logic & countdown
+    resetGame();
     startCountdownAndPlay();
   }
   if(d.type === "forceReset"){
     resetGame();
-  }
-  // Tetap siapkan receiver ini untuk input eksternal atau debugging
-  if(d.type === "mobileInput"){
-    const dir = (d.direction || "").toLowerCase();
-    if(["up","down","left","right"].includes(dir)){
-      pacman.next = dir;
-    }
   }
 });
 
@@ -408,9 +452,7 @@ function handleGameInput(direction){
   if(direction && typeof direction === "string"){
     pacman.next = direction.toLowerCase();
   }
-  // Tidak perlu mengirim postMessage ke parent di sini
 }
-
 
 /* INPUT HANDLERS - gated by allowLocalPlay */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
@@ -418,6 +460,8 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
   const start = (ev) => {
     ev.preventDefault();
     btn.style.transform = "translateY(2px)";
+    
+    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
     if(!allowLocalPlay){
       const gm = document.getElementById("game-message");
       gm.textContent = "Please connect / pay to start the game.";
@@ -425,14 +469,15 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
       setTimeout(()=> gm.style.display = "none", 1200);
       return;
     }
-    // FIX: Langsung panggil fungsi internal
+    
+    // Jika ada izin, segera proses input
     handleGameInput(dir); 
   };
   const end = (ev) => {
     ev.preventDefault();
     btn.style.transform = "";
   };
-  // FIX: Menggunakan passive:false pada touchstart sangat penting untuk preventDefault
+  // Menggunakan passive:false sangat penting untuk preventDefault pada touch
   btn.addEventListener("touchstart", start, {passive:false});
   btn.addEventListener("mousedown", start);
   btn.addEventListener("touchend", end);
@@ -443,6 +488,8 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
 window.addEventListener("keydown", (e)=>{
   if(e.key.includes("Arrow")){
     const dir = e.key.replace("Arrow","").toLowerCase();
+    
+    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
     if(!allowLocalPlay){
       const gm = document.getElementById("game-message");
       gm.textContent = "Please connect / pay to start the game.";
@@ -450,7 +497,8 @@ window.addEventListener("keydown", (e)=>{
       setTimeout(()=> gm.style.display = "none", 1200);
       return;
     }
-    // FIX: Gunakan fungsi yang sama untuk pergerakan keyboard
+    
+    // Jika ada izin, segera proses input
     handleGameInput(dir);
   }
 });
