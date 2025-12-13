@@ -305,7 +305,7 @@ window.addEventListener("message", async (ev) => {
     try {
       if (!readContract) {
         // FIX: Menggunakan JsonRpcProvider untuk v5
-        const rp = provider || new ethers.providers.JsonRpcProvider('https://rpc.somnia.network'); 
+        const rp = provider || new ethers.providers.JsonRpcProvider('https://somnia-json-rpc.stakely.io'); 
         readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rp);
       }
       let fee = startFeeWei;
