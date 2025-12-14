@@ -94,23 +94,25 @@ async function init(){
 }
 
 /* ================= SUMMARY (JACKPOT + TOP) ================= */
-async function loadSummary(contract){
-  try{
-    const jackpotWei = await contract.jackpotBalance();
-    const top = await contract.topScore();
-
+async function loadSummary(contract, provider){
+  try {
+    // ✅ JACKPOT = SALDO KONTRAK
+    const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
     const jackpot = ethers.utils.formatEther(jackpotWei);
-    const topScore = top.toString();
 
-    // 🔥 INI YANG FIX
+    // ✅ TOP SCORE = score tertinggi
+    const [, scores] = await contract.getTop10();
+    const topScore = scores.length ? scores[0].toString() : "0";
+
+    // 🔥 KIRIM KE INDEX (INI YANG DITUNGGU)
     window.parent.postMessage({
       type: 'updateSummary',
       jackpot: Number(jackpot).toFixed(4),
       topScore: topScore
     }, '*');
 
-  }catch(e){
-    console.warn('Summary error', e);
+  } catch (e) {
+    console.error("Summary fetch failed", e);
   }
 }
 
