@@ -145,6 +145,8 @@ async function connectWallet() {
     
     // Kirim info wallet ke iframe setelah koneksi sukses
     try { 
+        // Menggunakan window.postMessage di sini untuk komunikasi global (bukan hanya iframe)
+        // karena status koneksi wallet juga penting di halaman utama.
         window.postMessage({ 
             type: "walletInfo", 
             address: userAddress, 
@@ -255,19 +257,35 @@ async function submitScoreTx(score) {
     if (backgroundMusic) { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
     const tx = await gameContract.submitScore(Number(score));
     console.log("submitScore tx:", tx.hash);
+    
+    const gameFrame = $("gameFrame");
+    if (gameFrame && gameFrame.contentWindow) {
+        // Kirim sinyal ke iframe agar pesan Waiting muncul selama submit
+        gameFrame.contentWindow.postMessage({ type: "waitingForScoreTx" }, "*");
+    }
+
     alert("Score submission sent. Waiting for confirmation...");
     await tx.wait();
-    alert("Score submitted on-chain ✅");
+    
+    const statusMsg = "Score submitted on-chain ✅";
+    alert(statusMsg);
+    console.log(statusMsg);
     
     try { window.postMessage({ type: "scoreSubmitted" }, "*"); } catch(e){} 
     
-    const gameFrame = $("gameFrame");
     if (gameFrame && gameFrame.contentWindow) {
         gameFrame.contentWindow.postMessage({ type: "scoreSubmissionComplete" }, "*");
     }
 
   } catch (err) {
     console.error("submitScore error", err);
+    
+    const gameFrame = $("gameFrame");
+    if (gameFrame && gameFrame.contentWindow) {
+        // Kirim sinyal bahwa Tx gagal
+        gameFrame.contentWindow.postMessage({ type: "scoreSubmissionFailed" }, "*");
+    }
+
     if (err.code !== 4001) {
         alert("Submit score failed: " + (err && err.message ? err.message : String(err)));
     }
@@ -308,15 +326,20 @@ window.addEventListener("message", async (ev) => {
     return;
   }
   
-  if (data.type === 'requestGameStatus') {
-      const gameFrame = $("gameFrame");
-      if (gameFrame && gameFrame.contentWindow) {
-          gameFrame.contentWindow.postMessage({ 
-              type: 'gameStatusResponse', 
-              allowLocalPlay: !!signer // Ganti logika ini, harusnya selalu false jika Tx di game
-          }, ev.origin);
-      }
-      return;
+  // BARU: Iframe meminta beralih ke Leaderboard
+  if (data.type === "showLeaderboardView") {
+    const lf = $("leaderFrame") || $("leaderboardFrame");
+    const gf = $("gameFrame");
+    const logo = $("logoPlaceholder");
+
+    if (logo) logo.style.display = "none";
+    if (gf) gf.style.display = "none";
+    
+    if (lf) {
+      lf.src = "leaderboard.html?ts=" + Date.now();
+      lf.style.display = "block";
+    }
+    return;
   }
   
   // Menerima Jackpot/Top Score dari Leaderboard.html
@@ -362,6 +385,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (gameFrame) {
         gameFrame.style.display = "block"; 
         
+        // --- KRITIS: Delay 300ms untuk memastikan iframe termuat sebelum mengirim sinyal ---
+        await new Promise(resolve => setTimeout(resolve, 300)); 
+        
         // Kirim sinyal ke iframe untuk menampilkan menu mode game
         if (gameFrame.contentWindow) {
             gameFrame.contentWindow.postMessage({ type: "showGameMenu" }, "*");
@@ -395,4 +421,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 });
-        
+                                       
