@@ -119,15 +119,44 @@ function renderLeaderboard(players, scores) {
     return;
   }
 
+  function renderLeaderboard(players, scores) {
+  const body = document.getElementById("leaderboardBody");
+  body.innerHTML = "";
+
+  if (!players.length) {
+    body.innerHTML =
+      `<tr><td colspan="3" style="text-align:center">No scores yet</td></tr>`;
+    return;
+  }
+
+  // 1️⃣ SIMPAN SKOR TERTINGGI PER WALLET
+  const walletBestScore = new Map();
+
   players.forEach((addr, i) => {
+    const score = Number(scores[i]);
+
+    if (!walletBestScore.has(addr) || score > walletBestScore.get(addr)) {
+      walletBestScore.set(addr, score);
+    }
+  });
+
+  // 2️⃣ CONVERT KE ARRAY & SORT DESC
+  const leaderboard = Array.from(walletBestScore.entries())
+    .map(([address, score]) => ({ address, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 10); // max 10 wallet unik
+
+  // 3️⃣ RENDER
+  leaderboard.forEach((item, index) => {
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td class="rank">${i + 1}</td>
-      <td>${addr.slice(0,6)}...${addr.slice(-4)}</td>
-      <td class="score">${scores[i]}</td>
+      <td class="rank">${index + 1}</td>
+      <td>${item.address.slice(0,6)}...${item.address.slice(-4)}</td>
+      <td class="score">${item.score}</td>
     `;
     body.appendChild(row);
   });
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
