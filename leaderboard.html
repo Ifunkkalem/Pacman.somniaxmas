@@ -1,164 +1,220 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Somnia Leaderboard</title>
-<script src="libs/ethers.min.js"></script>
-
-<style>
-body{
-  margin:0;
-  padding:10px;
-  font-family:Trebuchet MS,sans-serif;
-  background:#800000;
-  color:white;
-}
-h2{
-  color:#00ffae;
-  text-align:center;
-  margin-bottom:8px;
-}
-#status{
-  text-align:center;
-  font-size:13px;
-  margin-bottom:10px;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-  background:rgba(0,0,0,0.35);
-  border-radius:8px;
-  overflow:hidden;
-}
-th,td{
-  padding:10px;
-  border-bottom:1px solid rgba(255,255,255,0.15);
-}
-th{
-  background:rgba(0,0,0,0.4);
-  color:#ffcc00;
-}
-td.score{
-  text-align:right;
-  font-weight:bold;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard - Somnia</title>
+    
+    <script src="libs/ethers.min.js"></script>
+    
+    <style>
+        /* ... (CSS Anda) ... */
+        body {
+            font-family: Trebuchet MS, sans-serif;
+            background: #800000;
+            color: white;
+            padding: 10px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h2 {
+            color: #00ffae;
+            text-shadow: 0 0 5px black;
+            margin-bottom: 10px;
+        }
+        #connectionStatus {
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            max-width: 600px;
+            border-collapse: collapse;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        th {
+            background: rgba(0, 0, 0, 0.4);
+            font-weight: bold;
+            color: #ff0000;
+        }
+        tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        tr:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .rank {
+            width: 50px;
+            text-align: center;
+        }
+        .address {
+            font-size: 0.9em;
+        }
+        .score {
+            text-align: right;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .address {
+                font-size: 0.8em;
+            }
+        }
+    </style>
 </head>
-
 <body>
-
-<h2>🏆 SOMNIA LEADERBOARD</h2>
-<div id="status">⏳ Connecting…</div>
-
-<table>
-<thead>
-<tr>
-  <th>#</th>
-  <th>Wallet</th>
-  <th>Score</th>
-</tr>
-</thead>
-<tbody id="leaderboardBody">
-<tr><td colspan="3" style="text-align:center">Loading…</td></tr>
-</tbody>
-</table>
+    <h2>🏆 SOMNIA LEADERBOARD</h2>
+    <div id="connectionStatus">... Connecting to Blockchain ...</div>
+    <div id="leaderboardTableContainer">
+        <table id="leaderboardTable">
+            <thead>
+                <tr>
+                    <th class="rank">#</th>
+                    <th class="address">Wallet Address</th>
+                    <th class="score">Score</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+                <tr><td colspan="3" style="text-align: center;">Memuat data...</td></tr>
+            </tbody>
+        </table>
+    </div>
 
 <script>
-/* ================= CONFIG ================= */
-const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
-const RPC_URL = "https://somnia-rpc.publicnode.com";
+// ========== CONFIG (Web3) ==========
+const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3"; 
+const FALLBACK_RPC_URL = "https://somnia-rpc.publicnode.com"; 
 
-const ABI = [
-  "function getTop10() view returns (address[] players, uint256[] scores)",
+// FIX 1: ABI hanya butuh getTop10()
+const CONTRACT_ABI = [
+    "function getTop10() view returns (address[] topPlayers, uint256[] scores)"
 ];
 
-/* ================= INIT ================= */
-async function init(){
-  try{
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    const net = await provider.getNetwork();
-    document.getElementById('status').textContent =
-      `✅ Connected to Somnia (Chain ${net.chainId})`;
+// ========== CORE LOGIC ==========
 
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-    await loadSummary(contract);
-    await loadLeaderboard(contract);
-
-  }catch(e){
-    console.error(e);
-    document.getElementById('status').textContent = '❌ Blockchain error';
-  }
-}
-
-/* ================= SUMMARY (JACKPOT + TOP) ================= */
-async function loadSummary(contract, provider){
-  try {
-    // ✅ JACKPOT = SALDO KONTRAK
-    const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
-    const jackpot = ethers.utils.formatEther(jackpotWei);
-
-    // ✅ TOP SCORE = score tertinggi
-    const [, scores] = await contract.getTop10();
-    const topScore = scores.length ? scores[0].toString() : "0";
-
-    // 🔥 KIRIM KE INDEX (INI YANG DITUNGGU)
-    window.parent.postMessage({
-      type: 'updateSummary',
-      jackpot: Number(jackpot).toFixed(4),
-      topScore: topScore
-    }, '*');
-
-  } catch (e) {
-    console.error("Summary fetch failed", e);
-  }
-}
-
-/* ================= LEADERBOARD ================= */
-async function loadLeaderboard(contract){
-  const tbody = document.getElementById('leaderboardBody');
-
-  try{
-    const [players, scores] = await contract.getTop10();
-
-    if(!players.length){
-      tbody.innerHTML =
-        `<tr><td colspan="3" style="text-align:center">No scores yet</td></tr>`;
-      return;
+// FIX 2: Fungsi untuk fetching Jackpot dan Top Score dari sumber yang benar
+async function fetchHeaderData(provider, contract) {
+    let jackpotSomi = "0.000000";
+    let topScoreValue = "0";
+    
+    try {
+        // --- JACKPOT: Ambil saldo native token dari alamat kontrak ---
+        const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
+        jackpotSomi = ethers.utils.formatEther(jackpotWei);
+        
+        // --- TOP SCORE: Ambil dari Top 1 Leaderboard ---
+        const [topPlayers, scores] = await contract.getTop10();
+        
+        if (scores.length > 0) {
+            // Top Score adalah skor pertama dari array yang diurutkan
+            topScoreValue = scores[0].toString();
+        }
+        
+        // 3. Kirim data ke parent (app.js)
+        window.parent.postMessage({ 
+            type: "leaderboardData", 
+            jackpot: jackpotSomi, 
+            topScore: topScoreValue 
+        }, "*");
+        
+    } catch (e) {
+        console.error("Error fetching header data (Jackpot/Top):", e);
+        // Kirim nilai default jika gagal
+        window.parent.postMessage({ 
+            type: "leaderboardData", 
+            jackpot: jackpotSomi, // Menggunakan nilai yang sudah difetch (mungkin 0 jika gagal sebelum fetch)
+            topScore: topScoreValue 
+        }, "*");
     }
-
-    // 🔒 1 WALLET = 1 SKOR TERTINGGI
-    const best = {};
-    players.forEach((addr,i)=>{
-      const s = Number(scores[i]);
-      if(!best[addr] || s > best[addr]) best[addr] = s;
-    });
-
-    const final = Object.entries(best)
-      .map(([a,s])=>({address:a,score:s}))
-      .sort((a,b)=>b.score-a.score)
-      .slice(0,10);
-
-    tbody.innerHTML = '';
-
-    final.forEach((row,i)=>{
-      const short = row.address.slice(0,6)+'…'+row.address.slice(-4);
-      tbody.innerHTML += `
-        <tr>
-          <td>${i+1}</td>
-          <td>${short}</td>
-          <td class="score">${row.score}</td>
-        </tr>`;
-    });
-
-  }catch(e){
-    console.error(e);
-    tbody.innerHTML =
-      `<tr><td colspan="3" style="text-align:center">Failed to load</td></tr>`;
-  }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+
+async function initializeWeb3() {
+    let provider;
+    
+    try {
+        provider = new ethers.providers.JsonRpcProvider(FALLBACK_RPC_URL);
+        const network = await provider.getNetwork();
+        
+        document.getElementById('connectionStatus').innerHTML = `✅ Terhubung ke Blockchain: Chain ID ${network.chainId}`;
+
+        const gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+        
+        // Panggil fungsi fetching Header BARU
+        await fetchHeaderData(provider, gameContract); 
+        
+        await fetchLeaderboard(gameContract);
+
+    } catch (error) {
+        console.error("Web3 Connection Error:", error);
+        document.getElementById('connectionStatus').innerHTML = '❌ Gagal terhubung ke blockchain leaderboard. Cek koneksi internet atau RPC URL.';
+        document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="3" style="text-align: center;">Gagal memuat data leaderboard.</td></tr>';
+    }
+}
+
+async function fetchLeaderboard(contract) {
+    const tbody = document.getElementById('leaderboardBody');
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Mengambil data Top 10...</td></tr>';
+
+    try {
+        const [topPlayers, scores] = await contract.getTop10();
+        
+        if (topPlayers.length === 0 || scores.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Belum ada skor yang tercatat.</td></tr>';
+            return;
+        }
+
+        const uniqueScores = new Map(); 
+
+        topPlayers.forEach((player, scoreIndex) => {
+            const currentScore = Number(scores[scoreIndex]); 
+
+            if (!uniqueScores.has(player) || currentScore > uniqueScores.get(player)) {
+                uniqueScores.set(player, currentScore);
+            }
+        });
+
+        const finalLeaderboard = Array.from(uniqueScores, ([address, score]) => ({ address, score }));
+        finalLeaderboard.sort((a, b) => b.score - a.score);
+
+        const top10Ranked = finalLeaderboard.slice(0, 10);
+        
+        tbody.innerHTML = ''; 
+
+        top10Ranked.forEach((item, index) => {
+            const rank = index + 1;
+            const score = item.score.toString();
+            const player = item.address;
+            
+            const displayAddress = player.substring(0, 6) + '...' + player.substring(player.length - 4);
+            
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td class="rank">${rank}</td>
+                <td class="address">${displayAddress}</td>
+                <td class="score">${score}</td>
+            `;
+        });
+        
+    } catch (e) {
+        console.error("Error fetching or processing leaderboard data:", e);
+        document.getElementById('connectionStatus').innerHTML = '⚠️ Terhubung, tetapi gagal mengambil data skor.';
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Terjadi kesalahan saat mengambil atau memproses data skor. Silakan coba refresh.</td></tr>';
+    }
+}
+
+// ========== INISIALISASI SAAT LOAD ==========
+document.addEventListener('DOMContentLoaded', initializeWeb3);
 </script>
 </body>
 </html>
+
