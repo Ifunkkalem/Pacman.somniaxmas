@@ -5,82 +5,52 @@
 <title>Pacman XMAS - Santa vs Reindeer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  /* Layout: canvas + pad dalam flow kolom supaya pad tidak meng-overlay di mobile */
   html,body{
-    margin:0;
-    background:#000;
-    height:100%;
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    font-family:Arial, Helvetica, sans-serif;
-    padding:12px;
-    box-sizing:border-box;
+    margin:0; background:#000; height:100%; min-height:100vh;
+    display:flex; justify-content:center; align-items:flex-start;
+    font-family:Arial, Helvetica, sans-serif; padding:12px; box-sizing:border-box;
   }
-
   #gameWrapper{
-    width: calc(20 * 20px + 40px); /* fallback */
-    max-width: 92vw;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:12px;
+    width: calc(20 * 20px + 40px); max-width: 92vw;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    position: relative;
   }
-
   canvas{
-    background:#020617;
-    border-radius:10px;
-    display:block;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    image-rendering: optimizeSpeed;
+    background:#020617; border-radius:10px; display:block;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6); image-rendering: optimizeSpeed;
   }
-
   #ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
   #game-message{
-    color:white;
-    background:rgba(0,0,0,.6);
-    padding:6px 10px;
-    border-radius:8px;
-    display:none;
-    z-index:12;
+    color:white; background:rgba(0,0,0,.8); padding:10px 15px; border-radius:8px;
+    display:none; z-index:12; position:absolute; top: 50%; left: 50%; 
+    transform: translate(-50%, -50%); text-align: center;
+  }
+  /* Tombol Restart Manual */
+  #restart-button {
+      position: absolute; top: 10px; right: 10px;
+      background: #b91c1c; color: white; border: none; padding: 5px 10px;
+      border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 10;
   }
 
-  /* Mobile D-PAD: placed under canvas (not fixed) */
+  /* Mobile D-PAD */
   #mobileControls{
-    position:relative;
-    margin-top:6px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:8px;
-    user-select:none;
-    -webkit-tap-highlight-color: transparent;
+    position:relative; margin-top:6px; display:flex; flex-direction:column;
+    align-items:center; gap:8px; user-select:none; -webkit-tap-highlight-color: transparent;
   }
-  
-  /* FIX: Tombol lebih besar untuk touch yang lebih baik */
   #mobileControls button{
-    width: 70px; /* Dulu 64px */
-    height: 70px; /* Dulu 64px */
-    border-radius:10px;border:0;
+    width: 70px; height: 70px; border-radius:10px;border:0;
     background:linear-gradient(90deg,#cc0000,#16a34a);color:#fff;font-size:22px;
     display:inline-flex;align-items:center;justify-content:center;
-    box-shadow:0 4px rgba(0,0,0,0.4);
-    touch-action: manipulation;
+    box-shadow:0 4px rgba(0,0,0,0.4); touch-action: manipulation;
   }
   .dpad-row{display:flex;align-items:center;gap:8px}
-  
-  /* FIX: Sesuaikan pengisi tengah dengan ukuran tombol yang baru */
   .center-filler{width: 70px; height: 70px;}
 
-  /* Desktop: hide mobile pad, allow centering large canvas */
   @media(min-width:900px){
     body{align-items:center}
     #gameWrapper{max-width:760px}
     #mobileControls{display:none}
   }
-
-  /* ensure small screens canvas fits and leaves room for pad */
   @media(max-width:480px){
     #gameWrapper{ width: 90vw; }
   }
@@ -90,6 +60,7 @@
 <body>
   <div id="gameWrapper">
     <div id="ui">Score: <span id="current-score-display">0</span></div>
+    <button id="restart-button" style="display:none;" onclick="handleGameRestart()">Restart Game</button>
     <div id="game-message"></div>
 
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
@@ -107,12 +78,17 @@
 
 <script>
 (() => {
-/* ================= SECURITY ================= */
-const TRUSTED_ORIGIN = "https://pac-man-halloween.vercel.app";
+/* ================= SECURITY & CONFIG ================= */
+// PERHATIAN: GANTI BARIS INI DENGAN DOMAIN PARENT APP ANDA YANG SESUNGGUHNYA
+// Contoh: "https://pacman-somniaxmasv1.vercel.app"
+const TRUSTED_ORIGIN = "https://pac-man-halloween.vercel.app"; 
+
+const TILE = 20;
+const MOVE_INTERVAL = 240; 
 
 const canvas = document.getElementById("pacman-canvas");
-const ctx = canvas.getContext("2d");
-const TILE = 20;
+const ctx = canvas ? canvas.getContext("2d") : null;
+if (!ctx) return; 
 
 /* ================== MAP ================== */
 const GAME_MAP = [
@@ -139,7 +115,6 @@ const GAME_MAP = [
 const MAP_W = GAME_MAP[0].length;
 const MAP_H = GAME_MAP.length;
 
-/* set canvas size based on map */
 canvas.width = MAP_W * TILE;
 canvas.height = MAP_H * TILE;
 
@@ -155,21 +130,62 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/* ========== STATE ========== */
+/* ========== AUDIO SYSTEM ========== */
+let audioCtx = null;
+const DOT_SOUND_VOLUME = 0.5;
+let dotPool = [];
+const DOT_POOL_SIZE = 5;
+
+function initAudioPool() {
+    if (audioCtx) return;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        for (let i = 0; i < DOT_POOL_SIZE; i++) {
+            dotPool.push({ freq: 500 + i * 20, duration: 0.05 });
+        }
+    } catch(e) {
+        console.error("AudioContext failed to initialize:", e);
+    }
+    document.removeEventListener('touchstart', initAudioPool);
+    document.removeEventListener('mousedown', initAudioPool);
+}
+
+let dotIndex = 0;
+function playDotSound() {
+    if (!audioCtx) return;
+    dotIndex = (dotIndex + 1) % DOT_POOL_SIZE;
+    const sound = dotPool[dotIndex];
+    
+    const source = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    source.type = 'sine';
+    source.frequency.setValueAtTime(sound.freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(DOT_SOUND_VOLUME, audioCtx.currentTime);
+    
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + sound.duration);
+
+    source.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    source.start();
+    source.stop(audioCtx.currentTime + sound.duration);
+}
+
+document.addEventListener('touchstart', initAudioPool, { once: true });
+document.addEventListener('mousedown', initAudioPool, { once: true });
+
+
+/* ========== STATE & INIT ========== */
 let mapData, pacman, ghosts, score = 0;
 let lastMove = 0;
 let gameRunning = false;
 let ghostActive = false;
-const MOVE_INTERVAL = 240;
+let scoreSubmitted = false;
+let sessionStartTime = 0;
+let allowLocalPlay = false; 
+let animationFrameId = null;
 
-/* 🔒 SECURITY FLAGS (PATCH) */
-let allowLocalPlay = false;
-let sessionActive = false;      // ⬅️ FIX BUG
-let scoreSubmitted = false;     // ⬅️ PREVENT MULTI SUBMIT
-let sessionStartTime = 0;       // ⬅️ BASIC ANTI-SPAM
-
- 
-/* ========== INIT ========== */
 function resetGame(){
   mapData = GAME_MAP.map(r=>[...r]);
   pacman = {x:1,y:1,dir:"right",next:"right"};
@@ -179,16 +195,50 @@ function resetGame(){
     {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"}
   ];
   score = 0;
-  scoreSubmitted = false;          // ⬅️ PATCH
-  sessionStartTime = Date.now();   // ⬅️ PATCH
+  scoreSubmitted = false;
+  sessionStartTime = Date.now();
   document.getElementById("current-score-display").textContent = score;
   document.getElementById("game-message").style.display = "none";
+  document.getElementById("restart-button").style.display = "none";
   gameRunning = false;
   ghostActive = false;
-  // JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
 }
 
-/* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== */
+window.handleGameRestart = function() {
+    if(!allowLocalPlay) {
+         document.getElementById("game-message").textContent = "Game not yet active. Please connect/pay.";
+         document.getElementById("game-message").style.display = "block";
+         setTimeout(() => document.getElementById("game-message").style.display = "none", 1500);
+         return;
+    }
+    resetGame();
+    startCountdown();
+};
+
+function startCountdown() {
+    const gm = document.getElementById("game-message");
+    let count = 3;
+    gm.style.display = "block";
+    gm.textContent = "READY " + count;
+    
+    if(window.gameStartInterval) clearInterval(window.gameStartInterval);
+
+    window.gameStartInterval = setInterval(()=>{
+        count--;
+        if(count >= 0) gm.textContent = "READY " + count;
+        if(count < 0){
+            clearInterval(window.gameStartInterval);
+            gm.style.display = "none";
+            ghostActive = true;
+            gameRunning = true;
+            lastMove = performance.now();
+            document.getElementById("restart-button").style.display = "block";
+        }
+    }, 1000);
+}
+
+
+/* ========== DRAWING ========== */
 function drawMap(){
   for(let y=0;y<MAP_H;y++){
     for(let x=0;x<MAP_W;x++){
@@ -212,7 +262,6 @@ function drawMap(){
     }
   }
 }
-
 function drawPacman(){
   const wobbleY = Math.sin(Date.now() / 150) * 1.5;
   const x = pacman.x*TILE + TILE/2;
@@ -287,13 +336,13 @@ function drawGhosts(){
     ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
   });
 }
+/* ========== END DRAWING ========== */
 
-/* ========== MOVEMENT ========== */
+
+/* ========== MOVEMENT & COLLISIONS ========== */
 function canMove(x,y){ 
-    // Handle Teleport (misalnya di row 8/9, kolom 0 atau 19)
-    if (y >= 8 && y <= 9 && x === -1) return true; // move left past wall
-    if (y >= 8 && y <= 9 && x === MAP_W) return true; // move right past wall
-    
+    if (y >= 8 && y <= 9 && x === -1) return true; 
+    if (y >= 8 && y <= 9 && x === MAP_W) return true; 
     return mapData[y] && mapData[y][x] !== 1; 
 }
 
@@ -301,34 +350,23 @@ function movePacman(){
   let nx = pacman.x, ny = pacman.y;
   const d = pacman.next;
   
-  // Try to move in next direction
   nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
   ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
   
-  // Handle Teleport logic
-  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { // Left edge
-      pacman.x = MAP_W - 1; 
-      pacman.dir = d;
-      return;
+  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { 
+      pacman.x = MAP_W - 1; pacman.dir = d; return;
   }
-  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { // Right edge
-      pacman.x = 0;
-      pacman.dir = d;
-      return;
+  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { 
+      pacman.x = 0; pacman.dir = d; return;
   }
 
-  // If new tile is movable
   if(canMove(nx,ny)){
-    pacman.x = nx;
-    pacman.y = ny;
-    pacman.dir = d;
+    pacman.x = nx; pacman.y = ny; pacman.dir = d;
   } else {
-    // If next move is blocked, try current direction
     const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
     const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
     if(canMove(cx,cy)){
-        pacman.x = cx;
-        pacman.y = cy;
+        pacman.x = cx; pacman.y = cy;
     }
   }
 }
@@ -336,12 +374,10 @@ function movePacman(){
 function moveGhosts(){
   if(!ghostActive) return;
   ghosts.forEach(g=>{
-    // Sederhana: Kejar Pacman atau Random
     const dx = pacman.x - g.x;
     const dy = pacman.y - g.y;
     let newX = g.x, newY = g.y;
     
-    // 70% chance to chase, 30% chance to random
     if (Math.random() < 0.7) {
         if (Math.abs(dx) > Math.abs(dy)) {
             newX = g.x + (dx > 0 ? 1 : -1);
@@ -353,32 +389,28 @@ function moveGhosts(){
         newX = g.x + d[0];
         newY = g.y + d[1];
     }
-
     if(canMove(newX, newY)){ 
         g.x = newX; g.y = newY; 
     }
   });
 }
 
-/* ========== COLLISIONS & MESSAGES ========== */
 function checkCollision(){
-  // Check Dot Eaten
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
-    parent.postMessage(
-  { type: "dotEaten" }, TRUSTED_ORIGIN );
- }
-  // Check Ghost Collision
+    playDotSound(); 
+    parent.postMessage({ type: "dotEaten" }, TRUSTED_ORIGIN );
+  }
+  
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
-      gameOver();
+      gameEnd(false);
       return;
     }
   }
 
-  // Check Win Condition
   let win = true;
   for(let y=0;y<mapData.length;y++){
     for(let x=0;x<mapData[y].length;x++){
@@ -386,53 +418,26 @@ function checkCollision(){
     }
     if(!win) break;
   }
-  if(win){
-    gameRunning = false;
-    const gm = document.getElementById("game-message");
-    gm.textContent = "YOU WIN! Score: " + score;
-    gm.style.display = "block";
-    if(scoreSubmitted) return;
-scoreSubmitted = true;
-
-const playDuration = (Date.now() - sessionStartTime) / 1000;
-if(playDuration < 5) return; // anti instant fake play
-
-parent.postMessage(
-  { type: "submitScore", score },
-  TRUSTED_ORIGIN
-);
+  if(win) gameEnd(true);
 }
 
-function gameOver(){
+function gameEnd(isWin){
   gameRunning = false;
+  ghostActive = false;
+  document.getElementById("restart-button").style.display = "block"; 
+  
   const gm = document.getElementById("game-message");
-  gm.textContent = "GAME OVER! Score: " + score;
+  gm.textContent = (isWin ? "YOU WIN! " : "GAME OVER! ") + "Skor: " + score;
   gm.style.display = "block";
+  
   if(scoreSubmitted) return;
-scoreSubmitted = true;
+  scoreSubmitted = true;
 
-const playDuration = (Date.now() - sessionStartTime) / 1000;
-if(playDuration < 5) return; // anti instant fake play
+  const playDuration = (Date.now() - sessionStartTime) / 1000;
+  if(playDuration < 5) return; 
 
-parent.postMessage({ type: "submitScore", score }, "*");
-}
-
-  // show countdown -> after that ghostActive=true and gameRunning=true
-  const gm = document.getElementById("game-message");
-  let count = 3;
-  gm.style.display = "block";
-  gm.textContent = "READY " + count;
-  const t = setInterval(()=>{
-    count--;
-    if(count >= 0) gm.textContent = "READY " + count;
-    if(count < 0){
-      clearInterval(t);
-      gm.style.display = "none";
-      ghostActive = true;
-      gameRunning = true;
-      lastMove = performance.now();
-    }
-  }, 1000);
+  // PERBAIKAN KRITIS: Menggunakan TRUSTED_ORIGIN spesifik, bukan "*"
+  parent.postMessage({ type: "submitScore", score }, TRUSTED_ORIGIN); 
 }
 
 /* ========== LOOP ========== */
@@ -448,81 +453,74 @@ function loop(ts){
   drawMap();
   drawPacman();
   drawGhosts();
-  requestAnimationFrame(loop);
+  animationFrameId = requestAnimationFrame(loop);
 }
 
-/* ================= MESSAGE ================= */
+/* ================= MESSAGE & INPUT HANDLERS ================= */
 window.addEventListener("message",(e)=>{
-  if(e.origin!==TRUSTED_ORIGIN) return;
+  // Memastikan pesan hanya diterima dari TRUSTED_ORIGIN
+  if(e.origin!==TRUSTED_ORIGIN) return; 
   if(e.data?.type==="paySuccess"){
-    if(sessionActive) return;
-    sessionActive=true;
-    allowLocalPlay=true;
+    if(allowLocalPlay) return;
+    allowLocalPlay = true;
+    
+    const gm = document.getElementById("game-message");
+    gm.textContent = "PAYMENT SUCCESS! Starting Game...";
+    gm.style.display = "block";
+    
     resetGame();
-    gameRunning=true;
-    ghostActive=true;
+    startCountdown();
   }
 });
 
-/* FIX: Fungsi untuk mengatur input internal D-Pad/Keyboard */
 function handleGameInput(direction){
+  if(!allowLocalPlay || !gameRunning) {
+    const gm = document.getElementById("game-message");
+    if(gm.style.display !== "block" || gm.textContent.includes("READY")) {
+        gm.textContent = "Please connect / pay to start the game.";
+        gm.style.display = "block";
+        setTimeout(()=> gm.style.display = "none", 1200);
+    }
+    return;
+  }
   if(direction && typeof direction === "string"){
     pacman.next = direction.toLowerCase();
   }
 }
 
-/* INPUT HANDLERS - gated by allowLocalPlay */
+/* INPUT HANDLERS D-PAD */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
   const dir = btn.getAttribute("data-dir");
   const start = (ev) => {
     ev.preventDefault();
     btn.style.transform = "translateY(2px)";
-    
-    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
-    if(!allowLocalPlay){
-      const gm = document.getElementById("game-message");
-      gm.textContent = "Please connect / pay to start the game.";
-      gm.style.display = "block";
-      setTimeout(()=> gm.style.display = "none", 1200);
-      return;
-    }
-    
-    // Jika ada izin, segera proses input
     handleGameInput(dir); 
   };
   const end = (ev) => {
     ev.preventDefault();
     btn.style.transform = "";
   };
-  // Menggunakan passive:false sangat penting untuk preventDefault pada touch
   btn.addEventListener("touchstart", start, {passive:false});
   btn.addEventListener("mousedown", start);
   btn.addEventListener("touchend", end);
   btn.addEventListener("mouseup", end);
 });
 
-/* keyboard arrows: same gating */
+/* keyboard arrows */
 window.addEventListener("keydown", (e)=>{
   if(e.key.includes("Arrow")){
     const dir = e.key.replace("Arrow","").toLowerCase();
-    
-    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
-    if(!allowLocalPlay){
-      const gm = document.getElementById("game-message");
-      gm.textContent = "Please connect / pay to start the game.";
-      gm.style.display = "block";
-      setTimeout(()=> gm.style.display = "none", 1200);
-      return;
-    }
-    
-    // Jika ada izin, segera proses input
     handleGameInput(dir);
   }
 });
 
 /* ========== STARTUP ========== */
-resetGame();
-requestAnimationFrame(loop);
+document.addEventListener('DOMContentLoaded', () => {
+    resetGame(); 
+    document.getElementById("game-message").textContent = "Waiting for payment/connection...";
+    document.getElementById("game-message").style.display = "block";
+    requestAnimationFrame(loop);
+});
 
 })();
 </script>
