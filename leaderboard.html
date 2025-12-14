@@ -22,6 +22,7 @@ body {
 h2 {
   color: #00ffae;
   text-shadow: 0 0 5px black;
+  margin-bottom: 10px;
 }
 #connectionStatus {
   margin-bottom: 20px;
@@ -33,6 +34,7 @@ table {
   border-collapse: collapse;
   background: rgba(255,255,255,0.1);
   border-radius: 8px;
+  overflow: hidden;
 }
 th, td {
   padding: 12px;
@@ -42,21 +44,22 @@ th {
   background: rgba(0,0,0,0.4);
   color: #ff0000;
 }
-.rank { text-align:center; width:50px }
-.score { text-align:right; font-weight:bold }
+.rank { width: 50px; text-align:center; }
+.score { text-align:right; font-weight:bold; }
 </style>
 </head>
 
 <body>
+
 <h2>🏆 SOMNIA LEADERBOARD</h2>
 <div id="connectionStatus">Connecting...</div>
 
 <table>
 <thead>
 <tr>
-<th>#</th>
+<th class="rank">#</th>
 <th>Wallet</th>
-<th>Score</th>
+<th class="score">Score</th>
 </tr>
 </thead>
 <tbody id="leaderboardBody">
@@ -65,101 +68,88 @@ th {
 </table>
 
 <script>
+// ================= CONFIG =================
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
-const RPC = "https://somnia-rpc.publicnode.com";
+const RPC_URL = "https://somnia-rpc.publicnode.com";
 
 const ABI = [
   "function getTop10() view returns (address[] topPlayers, uint256[] scores)"
 ];
 
+// ================= INIT =================
 async function init() {
   try {
-    const provider = new ethers.providers.JsonRpcProvider(RPC);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    const net = await provider.getNetwork();
 
     document.getElementById("connectionStatus").innerText =
-      "✅ Connected to Somnia";
+      "✅ Connected to Somnia (Chain " + net.chainId + ")";
 
-    // ===== JACKPOT = SALDO KONTRAK =====
-    const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
-    const jackpot = ethers.utils.formatEther(jackpotWei);
-
-    // ===== LEADERBOARD =====
-    const [players, scores] = await contract.getTop10();
-
-    let topScore = 0;
-    scores.forEach(s => {
-      const val = Number(s);
-      if (val > topScore) topScore = val;
-    });
-
-    // Kirim ke app.js (header)
-    window.parent.postMessage({
-      type: "leaderboardData",
-      jackpot,
-      topScore
-    }, "*");
-
-    renderLeaderboard(players, scores);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    await fetchLeaderboard(contract);
 
   } catch (e) {
     console.error(e);
     document.getElementById("connectionStatus").innerText =
-      "❌ Failed to load blockchain data";
+      "❌ Failed to connect";
   }
 }
 
+// ================= FETCH =================
+async function fetchLeaderboard(contract) {
+  const body = document.getElementById("leaderboardBody");
+  body.innerHTML = '<tr><td colspan="3" style="text-align:center">Loading...</td></tr>';
+
+  try {
+    const [players, scores] = await contract.getTop10();
+    renderLeaderboard(players, scores);
+  } catch (e) {
+    console.error("Leaderboard error:", e);
+    body.innerHTML =
+      '<tr><td colspan="3" style="text-align:center">Failed to load</td></tr>';
+  }
+}
+
+// ================= RENDER =================
 function renderLeaderboard(players, scores) {
   const body = document.getElementById("leaderboardBody");
   body.innerHTML = "";
 
-  if (!players.length) {
+  if (!players || players.length === 0) {
     body.innerHTML =
-      `<tr><td colspan="3" style="text-align:center">No scores yet</td></tr>`;
+      '<tr><td colspan="3" style="text-align:center">No scores yet</td></tr>';
     return;
   }
 
-  function renderLeaderboard(players, scores) {
-  const body = document.getElementById("leaderboardBody");
-  body.innerHTML = "";
-
-  if (!players.length) {
-    body.innerHTML =
-      `<tr><td colspan="3" style="text-align:center">No scores yet</td></tr>`;
-    return;
-  }
-
-  // 1️⃣ SIMPAN SKOR TERTINGGI PER WALLET
-  const walletBestScore = new Map();
+  // 🔒 1 WALLET = 1 SCORE (AMBIL TERTINGGI)
+  const bestScore = new Map();
 
   players.forEach((addr, i) => {
     const score = Number(scores[i]);
-
-    if (!walletBestScore.has(addr) || score > walletBestScore.get(addr)) {
-      walletBestScore.set(addr, score);
+    if (!bestScore.has(addr) || score > bestScore.get(addr)) {
+      bestScore.set(addr, score);
     }
   });
 
-  // 2️⃣ CONVERT KE ARRAY & SORT DESC
-  const leaderboard = Array.from(walletBestScore.entries())
+  const leaderboard = Array.from(bestScore.entries())
     .map(([address, score]) => ({ address, score }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10); // max 10 wallet unik
+    .slice(0, 10);
 
-  // 3️⃣ RENDER
   leaderboard.forEach((item, index) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td class="rank">${index + 1}</td>
       <td>${item.address.slice(0,6)}...${item.address.slice(-4)}</td>
       <td class="score">${item.score}</td>
     `;
-    body.appendChild(row);
+    body.appendChild(tr);
   });
-  }
 }
 
+// ================= START =================
 document.addEventListener("DOMContentLoaded", init);
 </script>
+
 </body>
 </html>
