@@ -1,109 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Leaderboard</title>
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leaderboard - Somnia</title>
+
+<script src="libs/ethers.min.js"></script>
+
 <style>
 body {
+  font-family: Trebuchet MS, sans-serif;
+  background: #800000;
+  color: white;
+  padding: 10px;
   margin: 0;
-  padding: 12px;
-  background: #000;
-  color: #fff;
-  font-family: Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
 }
-h2 { text-align: center; }
+h2 {
+  color: #00ffae;
+  text-shadow: 0 0 5px black;
+}
+#connectionStatus {
+  margin-bottom: 20px;
+  font-weight: bold;
+}
 table {
   width: 100%;
+  max-width: 600px;
   border-collapse: collapse;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
 }
 th, td {
-  border-bottom: 1px solid #333;
-  padding: 6px;
-  text-align: center;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
 }
+th {
+  background: rgba(0,0,0,0.4);
+  color: #ff0000;
+}
+.rank { text-align:center; width:50px }
+.score { text-align:right; font-weight:bold }
 </style>
 </head>
 
 <body>
-
-<h2>🏆 Leaderboard</h2>
-
-<div style="text-align:center;margin-bottom:10px;">
-  Jackpot: <b id="jackpot">Loading...</b><br/>
-  Top Score: <b id="topScore">-</b>
-</div>
+<h2>🏆 SOMNIA LEADERBOARD</h2>
+<div id="connectionStatus">Connecting...</div>
 
 <table>
 <thead>
 <tr>
 <th>#</th>
-<th>Player</th>
+<th>Wallet</th>
 <th>Score</th>
 </tr>
 </thead>
-<tbody id="leaderRows">
-<tr><td colspan="3">Loading...</td></tr>
+<tbody id="leaderboardBody">
+<tr><td colspan="3" style="text-align:center">Loading...</td></tr>
 </tbody>
 </table>
 
 <script>
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
+const RPC = "https://somnia-rpc.publicnode.com";
+
 const ABI = [
-  "function jackpotPool() view returns(uint256)",
-  "function getTopScores() view returns(address[] memory, uint256[] memory)"
+  "function getTop10() view returns (address[] topPlayers, uint256[] scores)"
 ];
 
-const provider = new ethers.providers.JsonRpcProvider(
-  "https://somnia-rpc.publicnode.com"
-);
-
-const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
-
-async function loadLeaderboard() {
+async function init() {
   try {
-    const jackpotWei = await contract.jackpotPool();
+    const provider = new ethers.providers.JsonRpcProvider(RPC);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+
+    document.getElementById("connectionStatus").innerText =
+      "✅ Connected to Somnia";
+
+    // ===== JACKPOT = SALDO KONTRAK =====
+    const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
     const jackpot = ethers.utils.formatEther(jackpotWei);
 
-    const [players, scores] = await contract.getTopScores();
+    // ===== LEADERBOARD =====
+    const [players, scores] = await contract.getTop10();
 
-    // Jackpot & Top
-    document.getElementById("jackpot").innerText =
-      parseFloat(jackpot).toFixed(6) + " SOMI";
-
-    const top = scores.length ? scores[0].toString() : "0";
-    document.getElementById("topScore").innerText = top;
-
-    // Rows
-    const tbody = document.getElementById("leaderRows");
-    tbody.innerHTML = "";
-
-    players.forEach((addr, i) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${i+1}</td>
-        <td>${addr.slice(0,6)}...${addr.slice(-4)}</td>
-        <td>${scores[i]}</td>
-      `;
-      tbody.appendChild(tr);
+    let topScore = 0;
+    scores.forEach(s => {
+      const val = Number(s);
+      if (val > topScore) topScore = val;
     });
 
-    // 🔥 KIRIM KE app.js (INI YANG SEBELUMNYA HILANG)
+    // Kirim ke app.js (header)
     window.parent.postMessage({
       type: "leaderboardData",
-      jackpot: jackpot,
-      topScore: top
+      jackpot,
+      topScore
     }, "*");
 
+    renderLeaderboard(players, scores);
+
   } catch (e) {
-    console.error("Leaderboard error:", e);
-    document.getElementById("leaderRows").innerHTML =
-      "<tr><td colspan='3'>Failed to load</td></tr>";
+    console.error(e);
+    document.getElementById("connectionStatus").innerText =
+      "❌ Failed to load blockchain data";
   }
 }
 
-loadLeaderboard();
-</script>
+function renderLeaderboard(players, scores) {
+  const body = document.getElementById("leaderboardBody");
+  body.innerHTML = "";
 
+  if (!players.length) {
+    body.innerHTML =
+      `<tr><td colspan="3" style="text-align:center">No scores yet</td></tr>`;
+    return;
+  }
+
+  players.forEach((addr, i) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td class="rank">${i + 1}</td>
+      <td>${addr.slice(0,6)}...${addr.slice(-4)}</td>
+      <td class="score">${scores[i]}</td>
+    `;
+    body.appendChild(row);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
 </body>
 </html>
