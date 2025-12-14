@@ -120,13 +120,15 @@
   
   // Variabel untuk Game Loop
   let lastTime = 0;
-  const GAME_UPDATE_INTERVAL = 150;
+  const GAME_UPDATE_INTERVAL = 200; // Ditingkatkan ke 200ms untuk kecepatan Classic
   let gameUpdateTimer = 0;
 
 
   function updateScoreDisplay() {
     const scoreEl = $("#current-score-display");
     if(scoreEl) scoreEl.textContent = score;
+    // PENTING: Jika skor tetap 0, ini harusnya log di console untuk debug
+    // console.log("Score updated to:", score); 
   }
   function updateLivesDisplay() {
     const livesEl = $("#lives-display");
@@ -148,7 +150,7 @@
       if(!canvas || !ctx) return;
       canvas.width = MAP_WIDTH * TILE_SIZE;
       canvas.height = MAP_HEIGHT * TILE_SIZE;
-      console.log(`[DEBUG] Canvas dimensions set: ${canvas.width}x${canvas.height}`); // Log Debug
+      console.log(`[DEBUG] Canvas dimensions set: ${canvas.width}x${canvas.height}`); 
       
       resetMapData();
       playerLives = 1;
@@ -158,20 +160,19 @@
       const gm = $('#game-message');
       if(gm) gm.style.display = 'none';
       gameRunning = false;
-      drawMap(); // Gambar peta pertama
-      // Catatan: drawPacman/drawGhosts akan dipanggil di gameLoop saat statis
+      drawMap(); 
   }
 
   function drawMap() {
       if (!ctx) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height); // Bersihkan setiap frame
+      ctx.clearRect(0, 0, canvas.width, canvas.height); 
       
       for (let y = 0; y < MAP_HEIGHT; y++) {
           for (let x = 0; x < MAP_WIDTH; x++) {
               const type = mapData[y][x];
 
               if (type === 1) {
-                  ctx.fillStyle = '#ff0033'; // Merah cerah untuk dinding
+                  ctx.fillStyle = '#ff0033'; 
                   ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                   ctx.strokeStyle = '#ffffff';
                   ctx.lineWidth = 1;
@@ -239,7 +240,6 @@
   }
 
   function movePacman() {
-      // (Logika pergerakan Pacman)
       const nextX = pacman.x + (pacman.nextDir === 'right' ? 1 : pacman.nextDir === 'left' ? -1 : 0);
       const nextY = pacman.y + (pacman.nextDir === 'down' ? 1 : pacman.nextDir === 'up' ? -1 : 0);
 
@@ -263,7 +263,6 @@
   }
 
   function moveGhosts() {
-      // (Logika pergerakan Hantu)
       ghosts.forEach(ghost => {
           const possibleMoves = [];
           const moves = [
@@ -301,7 +300,8 @@
       if (mapData[pacman.y][pacman.x] === 2) {
           mapData[pacman.y][pacman.x] = 0;
           score += 10;
-          updateScoreDisplay();
+          // Perbarui score display (Harusnya berfungsi dengan baik di sini)
+          updateScoreDisplay(); 
       }
 
       ghosts.forEach(ghost => {
@@ -330,7 +330,6 @@
   function gameLoop(timestamp) {
       if (!gameRunning) {
         animationFrameId = requestAnimationFrame(gameLoop);
-        // Pastikan drawing Pacman dan Ghost dipanggil saat game statis
         drawMap(); 
         drawPacman();
         drawGhosts();
@@ -365,12 +364,9 @@
       gm.textContent = msg + " Skor Akhir: " + score;
       gm.style.display = 'block';
 
-      if (score > 0 || isWin) {
-        window.parent.postMessage({ type: 'submitScore', score: score, modeName: 'Classic' }, '*');
-      } else {
-        window.parent.postMessage({ type: 'notifyNoScore' }, '*');
-      }
-
+      // Selalu kirimkan skor, bahkan jika 0, untuk memastikan parent app menerima sinyal
+      window.parent.postMessage({ type: 'submitScore', score: score, modeName: 'Classic' }, '*');
+      
       setTimeout(()=>{
         gm.style.display = 'none';
         window.parent.postMessage({ type: 'returnHome' }, '*');
@@ -407,12 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. Tambahkan Listener Input
     document.addEventListener('keydown', handleGlobalKeydown); 
     
-    // Mobile Controls
+    // Mobile Controls: Menggunakan touchstart untuk responsivitas yang lebih baik
     const mobileControls = $("#mobileControls");
     if(mobileControls){
-        mobileControls.addEventListener('click', (e) => {
+        mobileControls.addEventListener('touchstart', (e) => {
             const btn = e.target.closest('button');
             if (btn && btn.dataset.dir) {
+                e.preventDefault(); 
                 pacman.nextDir = btn.dataset.dir;
             }
         });
