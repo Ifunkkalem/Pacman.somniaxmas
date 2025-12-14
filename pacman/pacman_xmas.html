@@ -368,9 +368,8 @@ function checkCollision(){
     score += 10;
     document.getElementById("current-score-display").textContent = score;
     parent.postMessage(
-  { type: "dotEaten" },
-  TRUSTED_ORIGIN
-);
+  { type: "dotEaten" }, TRUSTED_ORIGIN );
+ }
   // Check Ghost Collision
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
