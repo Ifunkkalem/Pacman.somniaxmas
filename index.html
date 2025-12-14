@@ -1,402 +1,369 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Somnia Christmas — Pacman</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOMNIA CHRISTMAS CARNIVAL</title>
+    <style>
+        /* CSS LENGKAP (Memastikan layout responsif) */
+        :root {
+            --red: #cc0000;
+            --green: #16a34a;
+            --dark: #0f172a;
+            --white: #f1f5f9;
+        }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: var(--dark);
+            color: var(--white);
+            display: flex;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+        #header {
+            background-color: var(--red);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+        #header button {
+            background-color: var(--green);
+            color: var(--white);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #wallet-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 14px;
+        }
+        #wallet-address, #wallet-balance {
+            padding: 5px 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        #main-container {
+            display: flex;
+            flex: 1;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 20px;
+        }
+        #sidebar {
+            width: 250px;
+            padding: 20px;
+            background-color: #1e293b;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 500px;
+        }
+        .sidebar-section h3 {
+            margin-top: 0;
+            color: var(--green);
+            border-bottom: 2px solid var(--red);
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        .mode-button, #btnLeaderboard {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+        }
+        .mode-button {
+            background-color: var(--red);
+            color: var(--white);
+        }
+        .mode-button:hover {
+            background-color: #e03333;
+        }
+        #btnLeaderboard {
+            background-color: var(--green);
+            color: var(--white);
+        }
+        #btnLeaderboard:hover {
+            background-color: #27d057;
+        }
+        #logoPlaceholder {
+            background-image: url('https://via.placeholder.com/800x450/cc0000/ffffff?text=SOMNIA+CHRISTMAS+CARNIVAL+POSTER');
+            background-size: cover;
+            background-position: center;
+            height: 450px;
+            width: 100%;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #gameFrame, #leaderFrame {
+            border: none;
+            width: 100%;
+            height: 600px;
+            background-color: #0f172a;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            display: none; /* Default hidden */
+        }
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+        
+        /* Loading/Waiting Overlay */
+        #loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            padding: 20px;
+            z-index: 20;
+            display: none;
+        }
 
-<script src="libs/ethers.min.js"></script>
+        /* Mobile Adjustments */
+        @media (max-width: 768px) {
+            #main-container {
+                flex-direction: column;
+                padding: 10px;
+            }
+            #sidebar {
+                width: 100%;
+                min-height: auto;
+            }
+            #wallet-info {
+                display: none; /* Sembunyikan di HP, bisa diganti dengan menu */
+            }
+            #gameFrame, #leaderFrame {
+                height: 500px;
+            }
+        }
+        
+        #jackpot-info {
+            background: linear-gradient(90deg, #1e293b, #334155);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        #jackpot-info span {
+            color: gold;
+            font-weight: bold;
+        }
 
-<style>
-/* ---------------------------------------------------- */
-/* --- PERBAIKAN CSS UNTUK VIEWPORT MOBILE & DAPPS --- */
-/* ---------------------------------------------------- */
-
-*{
-  box-sizing:border-box;
-  margin:0;
-  padding:0;
-  font-family:Trebuchet MS,sans-serif;
-}
-
-/* FIX 1: Memaksa BODY menggunakan 100% tinggi viewport dan menggunakan Flexbox vertikal */
-body {
-  height: 100vh;
-  min-height: 100%; 
-  background: linear-gradient(to right, #fff, #ff0000);
-  color: #fff;
-  overflow: hidden; /* Mencegah scroll global */
-  display: flex; /* Aktifkan Flexbox di body */
-  flex-direction: column; /* Konten body disusun vertikal */
-}
-
-/* ==== LAYOUT UTAMA ==== */
-#wrap {
-  display: flex;
-  flex: 1; /* FIX 2: Membuat wrap mengisi sisa ruang body (100% tinggi) */
-  width: 100%;
-}
-
-/* Sidebar diubah menjadi header horizontal di mobile */
-#sidebar {
-  width: 180px; /* Lebarkan sedikit untuk tombol mode */
-  background: #fff;
-  color: #000;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  flex-shrink: 0; 
-}
-
-#main {
-  flex: 1; /* Mengambil sisa lebar */
-  padding: 10px;
-  display: flex;
-  flex-direction: column; /* FIX 3: Susun konten #main secara vertikal */
-  align-items: center;
-  background: linear-gradient(to bottom, #ff0000, #800000);
-  position: relative;
-  min-height: 0; 
-  z-index: 1; /* Pastikan di atas iframe saat dibutuhkan */
-}
-
-button {
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  background: linear-gradient(90deg, #b91c1c, #16a34a); /* Merah dan Hijau */
-  color: #fff;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-.mode-button {
-  padding: 8px;
-  font-size: 13px;
-  background: linear-gradient(90deg, #ff0000, #00ffae); /* Merah ke Neon Hijau */
-}
-
-#title {
-  color: #00ffae;
-  font-size: 26px;
-  margin-bottom: 10px;
-}
-
-.footer {
-  margin-top: 10px;
-  color: #0ff;
-  text-shadow: 0 0 4px #0ff;
-  font-size: 12px;
-  flex-shrink: 0; 
-}
-
-/* ==== AREA UTAMA (LOGO / GAME / LEADERBOARD) ==== */
-.content-area {
-  width: 100%;
-  max-width: 480px;
-  flex: 1; 
-  background: rgba(0,0,0,0.25);
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-  min-height: 300px;
-  margin-bottom: 10px; 
-}
-
-iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-  display: none;
-}
-
-/* ==== POSTER LOGO & OVERLAY ==== */
-#logoPlaceholder {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(255,255,255,0.02));
-}
-
-#logoPlaceholder img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-#poster-overlay{
-  position:absolute;
-  inset:0;
-  display:flex;
-  flex-direction:column;
-  justify-content:space-between;
-  align-items:center;
-  text-align:center;
-  padding:20px;
-  text-shadow:0 0 5px black;
-  pointer-events:none; 
-}
-
-#poster-overlay h2{font-size:1.6em;color:#facc15}
-#poster-overlay p{font-size:1em}
-
-/* Hapus styling overlay-cta karena tombol sudah dipindahkan */
-.overlay-cta{
-  display:none; 
-}
-
-/* ==== MOBILE LOCK (Hingga 768px) ==== */
-@media (max-width:768px){
-  /* FIX 5: Layout utama di mobile menjadi tumpukan vertikal */
-  #wrap {
-      flex-direction: column;
-      min-height: 100%;
-      flex: 1;
-  }
-  
-  /* Sidebar/Header */
-  #sidebar {
-    width: 100%;
-    flex-direction: row;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    padding: 8px 10px;
-    gap: 4px;
-    /* PENTING: Sembunyikan Mode Buttons di mobile agar Header tidak terlalu penuh */
-  }
-
-  /* Sembunyikan Mode Buttons di Mobile Header */
-  #modeButtonsSidebar {
-    display: none !important;
-  }
-  
-  /* TAMPILKAN Mode Buttons di Mobile di area utama saat Home */
-  #modeButtonsMain {
-    display: flex !important;
-    flex-direction: row;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 10px;
-  }
-
-  /* Wallet Info yang lebih ringkas */
-  #walletAddr,#walletBal {
-      display:block;
-      font-size:10px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      margin: 0 4px;
-  }
-  
-  /* Ukuran tombol lebih kecil di mobile header */
-  #btnConnect, #btnHome, #btnLeaderboard {
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  /* Ringkaskan Summary */
-  #topScoreSummary {
-    padding: 5px 10px;
-    font-size: 12px;
-  }
-  
-  /* Pastikan iframe mengambil seluruh ruang content-area */
-  .content-area {
-    min-height: 300px;
-  }
-}
-</style>
+    </style>
 </head>
-
 <body>
-<div id="wrap">
 
-  <div id="sidebar">
-    <button id="btnConnect">Connect Wallet</button>
-    <button id="btnHome">Home</button> 
-    <div style="display:flex; flex-direction:column; justify-content:center; flex-shrink: 0;">
-        <div id="walletAddr" title="Wallet address">Wallet: -</div>
-        <div id="walletBal" title="Native balance">SOMI: -</div>
-    </div>
-    
-    <div id="modeButtonsSidebar" style="display:flex; flex-direction:column; gap:8px; width:100%;">
-        <button id="btnModeClassic" class="mode-button" data-mode="Classic" data-fee="0.001">Classic (0.01 SOMI)</button>
-        <button id="btnModeTime" class="mode-button" data-mode="TimeAttack" data-fee="0.001">Time Attack (0.03 SOMI)</button>
-        <button id="btnModeHardcore" class="mode-button" data-mode="Hardcore" data-fee="0.001">Hardcore (0.05 SOMI)</button>
-    </div>
-    
-    <button id="btnLeaderboard">Leaderboard</button>
-  </div>
-
-  <div id="main">
-
-    <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
-
-    <div id="topScoreSummary" style="color:#fff;padding:10px;margin-bottom:12px;border-radius:6px;background:rgba(0,0,0,0.4);width:100%;max-width:480px;text-align:center;">
-      💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> |
-      🏆 <b>Top:</b> <span id="topScoreValue">0</span>
-    </div>
-    
-    <div id="modeButtonsMain" style="display:none; width:100%; max-width:480px; margin-bottom: 12px; padding: 0 10px; box-sizing: border-box;">
-        <button id="btnModeClassicMobile" class="mode-button" data-mode="Classic" data-fee="0.001" style="flex:1;">Classic</button>
-        <button id="btnModeTimeMobile" class="mode-button" data-mode="TimeAttack" data-fee="0.001" style="flex:1;">Time Attack</button>
-        <button id="btnModeHardcoreMobile" class="mode-button" data-mode="Hardcore" data-fee="0.001" style="flex:1;">Hardcore</button>
+    <div id="header">
+        <span style="font-size: 20px; font-weight: bold;">SOMNIA CHRISTMAS CARNIVAL</span>
+        <div id="wallet-info">
+            <span id="wallet-address">Wallet: Disconnected</span>
+            <span id="wallet-balance">Balance: 0 SOMI</span>
+            <button id="btnConnectWallet">Connect Wallet</button>
+        </div>
     </div>
 
-    <div class="content-area">
+    <div id="main-container">
+        
+        <div id="sidebar">
+            <div id="jackpot-info">
+                Jackpot: <span id="jackpot-display">0.0000 SOMI</span> | Top: <span id="top-score-display">0</span>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>Select Mode</h3>
+                <div id="modeButtonsSidebar" style="display:flex; flex-direction:column; gap:8px; width:100%;">
+                    <button class="mode-button" data-mode="Classic" data-fee="0.001" data-game-file="pacman_classic.html">Classic (x1, 0.001 SOMI)</button>
+                    <button class="mode-button" data-mode="TimeAttack" data-fee="0.001" data-game-file="pacman_time.html">Time Attack (x2, 0.001 SOMI)</button>
+                    <button class="mode-button" data-mode="Hardcore" data-fee="0.001" data-game-file="pacman_hardcore.html">Hardcore (x4, 0.001 SOMI)</button>
+                </div>
+            </div>
 
-      <div id="logoPlaceholder" role="img" aria-label="Somnia poster">
-        <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
-        <div id="poster-overlay">
-          <div style="margin-top:8px;">
-            <h2>SOMNIA CHRISTMAS!</h2>
-            <p>Main & menangkan Jackpot Natal 🎁</p>
-          </div>
-          </div>
-      </div>
+            <div class="sidebar-section">
+                <h3>Navigation</h3>
+                <button id="btnHome" style="width: 100%; padding: 10px; background-color: #334155; color: white; border: none; border-radius: 6px; cursor: pointer;">Home</button>
+                <button id="btnLeaderboard">Leaderboard</button>
+            </div>
+        </div>
 
-      <iframe id="gameFrame" src="pacman_xmas.html" title="Pacman Game"></iframe>
-      <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
+        <div class="content-area">
+            <div id="loading-overlay"></div>
+            <div id="logoPlaceholder">
+                SOMNIA CHRISTMAS CARNIVAL! Main & menangkan Jackpot Natal
+            </div>
+            <iframe id="gameFrame" src="about:blank" title="Pacman Game"></iframe>
+            <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
+        </div>
 
     </div>
-
-    <div class="footer">created by: ifunkkalem | @Ifunkkalem91</div>
-  </div>
-</div>
 
 <script>
-const btnConnect = document.getElementById('btnConnect');
-const btnLeaderboard = document.getElementById('btnLeaderboard');
-const btnHome = document.getElementById('btnHome'); 
-const walletAddrEl = document.getElementById('walletAddr');
-const walletBalEl = document.getElementById('walletBal');
-const gameFrame = document.getElementById('gameFrame');
-const leaderFrame = document.getElementById('leaderFrame');
-const logoPlaceholder = document.getElementById('logoPlaceholder');
-const posterImg = document.getElementById('posterImg');
-
-// SAFER showMain: only show if element exists
-function showMain(id){
-  try{
-    // Cek apakah mode buttons harus ditampilkan
-    const showModeButtons = (id === 'logoPlaceholder');
-    const modeSidebar = document.getElementById('modeButtonsSidebar');
-    const modeMain = document.getElementById('modeButtonsMain');
+    const $ = (id) => document.getElementById(id);
+    const gameFrame = $('gameFrame');
+    const leaderFrame = $('leaderFrame');
+    const logoPlaceholder = $('logoPlaceholder');
+    const loadingOverlay = $('loading-overlay');
     
-    if (modeSidebar) modeSidebar.style.display = showModeButtons && window.innerWidth > 768 ? 'flex' : 'none';
-    if (modeMain) modeMain.style.display = showModeButtons && window.innerWidth <= 768 ? 'flex' : 'none';
+    // Fungsi untuk menampilkan konten utama
+    function showMain(contentId) {
+        gameFrame.style.display = 'none';
+        leaderFrame.style.display = 'none';
+        logoPlaceholder.style.display = 'none';
 
-    logoPlaceholder.style.display='none';
-    gameFrame.style.display='none';
-    leaderFrame.style.display='none';
-    const el = document.getElementById(id);
-    if(el) el.style.display = 'block';
-  }catch(e){
-    console.warn('showMain error', e);
-  }
-}
+        if (contentId === 'gameFrame') {
+            gameFrame.style.display = 'block';
+        } else if (contentId === 'leaderFrame') {
+            leaderFrame.style.display = 'block';
+        } else {
+            logoPlaceholder.style.display = 'flex';
+        }
+    }
 
-// Hook up UI controls 
-btnHome.addEventListener('click', ()=>{
-  showMain('logoPlaceholder'); 
-});
+    // Tampilkan Home saat startup
+    showMain('logoPlaceholder'); 
 
-// Leaderboard shows iframe
-btnLeaderboard.addEventListener('click', ()=>{
-  leaderFrame.src = "leaderboard.html?" + Date.now(); 
-  showMain('leaderFrame');
-});
-
-// Connect wallet button should be implemented in app.js; we only forward an event request
-btnConnect.addEventListener('click', ()=>{
-  try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
-  catch(e){ console.warn('postMessage connect failed', e); }
-});
-
-
-// Listener untuk semua tombol mode (Sidebar dan Main Area)
-document.querySelectorAll('.mode-button').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const mode = btn.getAttribute('data-mode');
-        const fee = btn.getAttribute('data-fee');
-        
-        if (!mode || !fee) return;
-        
-        // Kirim sinyal ke app.js untuk memproses transaksi dan memulai game
-        window.parent.postMessage({ 
-            type: 'requestStartTx', 
-            modeName: mode, 
-            feeEth: fee 
-        }, '*');
+    // Event Listener untuk tombol navigasi
+    $('btnHome').addEventListener('click', () => showMain('logoPlaceholder'));
+    $('btnLeaderboard').addEventListener('click', () => {
+        showMain('leaderFrame');
+        // Kirim sinyal ke app.js untuk meminta data leaderboard
+        window.parent.postMessage({ type: 'requestLeaderboardData' }, '*');
     });
-});
+    $('btnConnectWallet').addEventListener('click', () => {
+        window.parent.postMessage({ type: 'requestConnectWallet' }, '*');
+    });
+    
 
+    // Listener untuk semua tombol mode
+    document.querySelectorAll('.mode-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const mode = btn.getAttribute('data-mode');
+            const fee = btn.getAttribute('data-fee');
+            const gameFile = btn.getAttribute('data-game-file'); 
+            
+            if (!mode || !fee || !gameFile) return;
 
-// Listen for messages from parent (app.js)
-window.addEventListener('message', (ev)=>{
-  const d = ev.data || {};
-  if(!d || typeof d !== 'object') return;
+            // Tampilkan overlay loading/waiting
+            loadingOverlay.textContent = `Preparing transaction for ${mode} Mode...`;
+            loadingOverlay.style.display = 'flex';
+            
+            // Kirim sinyal ke app.js untuk memproses transaksi dan memulai game
+            window.parent.postMessage({ 
+                type: 'requestStartTx', 
+                modeName: mode, 
+                feeEth: fee,
+                gameFile: gameFile
+            }, '*');
+        });
+    });
 
-  if(d.type === 'paySuccess'){
-    // parent confirmed payment / start — show game
-    showMain('gameFrame');
-    // remove any waiting UI if still present
-    const w = document.getElementById('__waiting_req'); if(w) w.remove();
-  }
+    // Listen for messages from parent (app.js)
+    window.addEventListener('message', (ev)=>{
+        const d = ev.data || {};
 
-  if(d.type === 'walletInfo'){
-    if(d.address){
-      walletAddrEl.textContent = 'Wallet: ' + (d.address.length>12 ? d.address.substring(0,6)+'...'+d.address.slice(-4) : d.address);
-      walletAddrEl.title = d.address;
-    }
-    if(typeof d.balance !== 'undefined'){
-      walletBalEl.textContent = Number(d.balance).toFixed(6) + ' SOMI';
-      walletBalEl.title = d.balance + ' SOMI';
-    }
-  }
+        if(d.type === 'walletInfo'){
+            // Update UI Wallet
+            $('wallet-address').textContent = `Wallet: ${d.address ? d.address.substring(0, 6) + '...' + d.address.substring(d.address.length - 4) : 'Disconnected'}`;
+            $('wallet-balance').textContent = `Balance: ${d.balance} SOMI`;
+            $('btnConnectWallet').textContent = d.address ? 'Connected' : 'Connect Wallet';
+            $('btnConnectWallet').disabled = !!d.address;
+        }
+        
+        if(d.type === 'updateSummary'){
+            $('jackpot-display').textContent = d.jackpotEth;
+            $('top-score-display').textContent = d.topScore;
+        }
 
-  // Listener untuk data Jackpot/Top Score dari app.js
-  if(d.type === 'updateSummary'){
-      const poolEl = document.getElementById('poolValue');
-      const scoreEl = document.getElementById('topScoreValue');
-      
-      if (d.jackpot && poolEl) poolEl.textContent = parseFloat(d.jackpot).toFixed(6) + ' SOMI';
-      if (d.topScore && scoreEl) scoreEl.textContent = d.topScore;
-  }
-  
-  // Listener untuk navigasi otomatis ke Leaderboard setelah submit skor
-  if(d.type === 'showLeaderboard'){
-      leaderFrame.src = "leaderboard.html?" + Date.now(); 
-      showMain('leaderFrame');
-  }
-  
-  // Listener dari app.js untuk menampilkan logo/home
-  if(d.type === 'forceShowLogo'){
-    showMain('logoPlaceholder');
-  }
-});
+        if(d.type === 'waitingForTx'){
+            loadingOverlay.textContent = d.message || "Transaction sent. Waiting for confirmation...";
+            loadingOverlay.style.display = 'flex';
+        }
 
-// Resizing logic for mode buttons visibility
-window.addEventListener('resize', () => showMain(document.querySelector('.content-area > div[style*="block"]') ? 'gameFrame' : 'logoPlaceholder'));
+        if(d.type === 'paySuccess'){
+            loadingOverlay.style.display = 'none';
+            
+            const targetSrc = d.gameFile; 
+            
+            // 1. Muat file game yang sesuai jika belum dimuat
+            if (gameFrame.src.indexOf(targetSrc) === -1) {
+                gameFrame.src = targetSrc;
+            }
 
+            // 2. Tampilkan iframe dan kirim sinyal start
+            showMain('gameFrame');
+            
+            // Logika untuk memastikan sinyal terkirim setelah iframe dimuat
+            const sendStartSignal = () => {
+                gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+                gameFrame.removeEventListener('load', sendStartSignal); // Hapus listener setelah dipakai
+            };
+            
+            if (gameFrame.src.indexOf(targetSrc) !== -1 && gameFrame.contentWindow) {
+                // Jika sudah dimuat (atau src sudah benar), kirim langsung
+                sendStartSignal();
+            } else {
+                // Jika baru diubah src, tunggu event load
+                gameFrame.addEventListener('load', sendStartSignal);
+            }
+        }
+        
+        if(d.type === 'payFailed'){
+            loadingOverlay.style.display = 'none';
+            alert(`Payment failed: ${d.error || 'Check console for details.'}`);
+            showMain('logoPlaceholder'); // Kembali ke home
+        }
+        
+        if (d.type === "returnHome") {
+            showMain('logoPlaceholder');
+        }
 
-// ensure poster image fallback (so it won't appear blank)
-posterImg.addEventListener('error', ()=>{
-  posterImg.src = 'assets/logo.png';
-});
+        if (d.type === "waitingForScoreTx") {
+            // Tampilkan status pengiriman skor di overlay yang sama
+            loadingOverlay.textContent = d.message || "Submitting score to blockchain...";
+            loadingOverlay.style.display = 'flex';
+        }
 
-// initial state: show poster
-showMain('logoPlaceholder');
-
+        if (d.type === "scoreSubmissionComplete" || d.type === "scoreSubmissionFailed") {
+            loadingOverlay.style.display = 'none';
+            // Alert hasil submission
+            alert(d.type === "scoreSubmissionComplete" ? "Score submitted successfully!" : "Score submission failed!");
+        }
+        
+    });
 </script>
-<script src="app.js"></script>
-  
 </body>
 </html>
 
