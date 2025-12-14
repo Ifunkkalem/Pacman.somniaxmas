@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pacman XMAS - Classic Mode</title>
+<style>
+/* CSS LENGKAP UNTUK IFRAME GAME */
+  html,body{
+    margin:0; background:#000; height:100%; min-height:100vh;
+    display:flex; justify-content:center; align-items:flex-start;
+    font-family:Arial, Helvetica, sans-serif; padding:12px; box-sizing:border-box;
+  }
+  #gameWrapper{
+    width: calc(20 * 20px + 40px); max-width: 92vw; display:flex;
+    flex-direction:column; align-items:center; gap:12px; position: relative;
+  }
+  canvas{
+    background:#020617; border-radius:10px; display:block;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6); image-rendering: optimizeSpeed;
+  }
+  #ui{
+    position:relative; color:#fff; z-index:2; align-self:flex-start;
+    display:flex; justify-content:space-between; width:100%; margin-bottom: -10px;
+  }
+  #time-display-wrapper { font-weight: bold; color: #00ffae; text-shadow: 0 0 3px black; }
+  #game-message{
+    color:white; background:rgba(0,0,0,.8); padding:10px 15px; border-radius:8px;
+    display:none; z-index:12; position:absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); text-align: center;
+  }
+  #mobileControls{
+    position:relative; margin-top:6px; display:flex; flex-direction:column;
+    align-items:center; gap:8px; user-select:none; -webkit-tap-highlight-color: transparent;
+  }
+  #mobileControls button{
+    width: 70px; height: 70px; border-radius:10px;border:0;
+    background:linear-gradient(90deg,#cc0000,#16a34a);color:#fff;font-size:22px;
+    display:inline-flex;align-items:center;justify-content:center;
+    box-shadow:0 4px rgba(0,0,0,0.4); touch-action: manipulation;
+  }
+  .dpad-row{display:flex;align-items:center;gap:8px}
+  .center-filler{width: 70px; height: 70px;}
+  @media(min-width:900px){
+    body{align-items:center}
+    #gameWrapper{max-width:760px}
+    #mobileControls{display:none}
+  }
+  @media(max-width:480px){
+    #gameWrapper{ width: 90vw; }
+  }
+</style>
+</head>
+
+<body>
+  <div id="gameWrapper">
+    <div id="ui">
+        <div>Score: <span id="current-score-display">0</span></div>
+        <div id="game-info">
+            <span id="time-display-wrapper" style="margin-right: 15px; display: none;">Time: <span id="time-display">0</span>s</span>
+            <span>Lives: <span id="lives-display">1</span></span>
+        </div>
+    </div>
+    <div id="game-message"></div>
+
+    <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
+
+    <div id="mobileControls" aria-hidden="false">
+      <button data-dir="up" id="btn-up">↑</button>
+      <div class="dpad-row">
+        <button data-dir="left" id="btn-left">←</button>
+        <div class="center-filler" aria-hidden="true"></div>
+        <button data-dir="right" id="btn-right">→</button>
+      </div>
+      <button data-dir="down" id="btn-down">↓</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+// ... (Deklarasi canvas, ctx, TILE, $) ...
+
+/* ================== KONFIGURASI MODE INI ================== */
+const GAME_MODE = 'Hardcore';
+const SCORE_MULTIPLIER = 4; // Pengali Skor Tertinggi
+const TIME_LIMIT = null; 
+const PLAYER_LIVES_INITIAL = 1; 
+
+// MAP HARDCORE (Sulit: Banyak jalan buntu dan area sempit)
+const GAME_MAP_DATA = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,2,1,2,2,2,1,2,2,2,2,2,2,2,1,2,2,2,2,1],
+  [1,2,1,1,1,2,1,2,1,1,1,1,1,2,1,2,1,1,1,1],
+  [1,2,2,2,2,2,1,2,2,2,2,2,1,2,1,2,2,2,2,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
+  [0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
+  [1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+  [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+  [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+
+/* ================== LOGIKA GAME INTI LENGKAP ================== */
+// Catatan: Anda HARUS menyalin seluruh kode game Pacman Anda (variabel state, 
+// fungsi helper, fungsi pergerakan, game loop) di sini. 
+// Saya hanya menyediakan struktur dan beberapa fungsi penting.
+
+let mapData, pacman, ghosts, score = 0, playerLives;
+let MAP_W, MAP_H; 
+let gameRunning = false;
+let ghostActive = false;
+const MOVE_INTERVAL = 240; // Kecepatan pergerakan
+let gameTimer = null; 
+let gameTimeRemaining = null; 
+let isSubmissionSent = false;
+let lastMove = 0;
+
+
+// Fungsi utilitas (Contoh: isMoveValid, getOppositeDirection)
+function isMoveValid(x, y, dir, map) {
+    let nextX = x, nextY = y;
+    if (dir === 'up') nextY--;
+    else if (dir === 'down') nextY++;
+    else if (dir === 'left') nextX--;
+    else if (dir === 'right') nextX++;
+    
+    // Teleportation logic (If needed)
+    if (nextX < 0) nextX = map[0].length - 1;
+    if (nextX >= map[0].length) nextX = 0;
+
+    return map[nextY] && map[nextY][nextX] !== 1; // 1 adalah dinding
+}
+function getOppositeDirection(dir) {
+    if (dir === 'up') return 'down';
+    if (dir === 'down') return 'up';
+    if (dir === 'left') return 'right';
+    if (dir === 'right') return 'left';
+    return '';
+}
+
+// UI Updaters
+function updateScoreDisplay() {
+    $("#current-score-display").textContent = score;
+}
+function updateLivesDisplay() {
+    $("#lives-display").textContent = playerLives;
+}
+function updateTimerDisplay(time) {
+    if (TIME_LIMIT) {
+        $("#time-display-wrapper").style.display = "inline";
+        $("#time-display").textContent = time;
+    } else {
+        $("#time-display-wrapper").style.display = "none";
+    }
+}
+function clearGameTimer() {
+    if (gameTimer) {
+        clearInterval(gameTimer);
+        gameTimer = null;
+    }
+}
+function startGameTimer(seconds) {
+    gameTimeRemaining = seconds;
+    updateTimerDisplay(gameTimeRemaining);
+    clearGameTimer();
+    gameTimer = setInterval(() => {
+        gameTimeRemaining--;
+        updateTimerDisplay(gameTimeRemaining);
+        if (gameTimeRemaining <= 0) {
+            clearGameTimer();
+            // Jika waktu habis, anggap seperti game over
+            playerLives = 0; 
+            gameOver(); 
+        }
+    }, 1000);
+}
+
+
+// Init Game State
+function resetGame(){
+    mapData = GAME_MAP_DATA.map(r=>[...r]); // Clone map
+    MAP_H = mapData.length;
+    MAP_W = mapData[0].length;
+    canvas.width = MAP_W * TILE;
+    canvas.height = MAP_H * TILE;
+    
+    playerLives = PLAYER_LIVES_INITIAL;
+    score = 0;
+    isSubmissionSent = false; 
+    
+    pacman = {x:1,y:1,dir:"right",next:"right"};
+    ghosts = [
+      {x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000", ai: getGhostAi(0)},
+      {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F", ai: getGhostAi(1)},
+      {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA", ai: getGhostAi(2)}
+    ];
+    
+    $("#game-message").style.display = "none";
+    gameRunning = false;
+    ghostActive = false;
+    
+    updateScoreDisplay();
+    updateLivesDisplay();
+    updateTimerDisplay(0);
+}
+
+
+// Logic AI Ghost
+function determineGhostDirection(ghost, pacman, mapData) {
+    const aiType = ghost.ai;
+    
+    // AI LOGIC (RANDOM_SIMPLE)
+    if (aiType === 'RANDOM_SIMPLE') {
+        const possibleMoves = ['up', 'down', 'left', 'right'].filter(d => isMoveValid(ghost.x, ghost.y, d, mapData));
+        const oppositeDir = getOppositeDirection(ghost.dir);
+        // Hantu mudah: Hindari balik arah langsung
+        const nonReverseMoves = possibleMoves.filter(d => d !== oppositeDir);
+        
+        if (nonReverseMoves.length > 0) {
+            return nonReverseMoves[Math.floor(Math.random() * nonReverseMoves.length)];
+        }
+        return possibleMoves[0]; 
+    } 
+    
+    // AI LOGIC (Anda harus mendefinisikan CHASE_PREDICTIVE, CHASE_OPTIMAL, dll. di sini)
+    // Karena ini Classic, kita hanya butuh RANDOM_SIMPLE di file ini.
+    
+    return 'up'; // Fallback
+}
+
+
+// Game Flow
+function moveGhosts(){
+    ghosts.forEach(ghost => {
+        // Cek apakah sudah waktunya bergerak (Jika ada logika kecepatan yang berbeda)
+        
+        const newDir = determineGhostDirection(ghost, pacman, mapData);
+        ghost.dir = newDir;
+        
+        if(isMoveValid(ghost.x, ghost.y, ghost.dir, mapData)){
+            // Update posisi ghost
+            if (ghost.dir === 'up') ghost.y--;
+            else if (ghost.dir === 'down') ghost.y++;
+            else if (ghost.dir === 'left') ghost.x--;
+            else if (ghost.dir === 'right') ghost.x++;
+        }
+    });
+}
+
+function checkCollision(){
+    ghosts.forEach(ghost => {
+        if (pacman.x === ghost.x && pacman.y === ghost.y) {
+            playerLives--;
+            updateLivesDisplay();
+            
+            if (playerLives <= 0) {
+                gameOver();
+            } else {
+                // Reset posisi setelah ditabrak
+                pacman = {x:1,y:1,dir:"right",next:"right"};
+                ghosts.forEach(g => { g.x = (g.x > MAP_W / 2 ? 10 : 9); g.y = 9; });
+            }
+        }
+    });
+}
+
+function movePacman(){
+    // Logic untuk memproses move
+    // ...
+    // Logic untuk memakan dot dan Power Pellet
+    // ...
+    // Cek kemenangan
+    // ...
+}
+
+function gameOver(){
+    gameRunning = false;
+    clearGameTimer();
+    if (isSubmissionSent) return; 
+
+    const finalScore = score * SCORE_MULTIPLIER; // Gunakan multiplier
+    const gm = $("#game-message");
+    gm.textContent = `GAME OVER! Final Score: ${finalScore} (x${SCORE_MULTIPLIER} - ${GAME_MODE} Mode)`;
+    gm.style.display = "block";
+    
+    if (!isSubmissionSent) {
+        // Kirim sinyal submitScore ke app.js
+        parent.postMessage({ type: "submitScore", score: finalScore, modeName: GAME_MODE }, "*");
+        isSubmissionSent = true;
+    }
+    
+    // KIRIM SINYAL UNTUK KEMBALI KE HOME SETELAH SUBMIT
+    setTimeout(() => {
+        parent.postMessage({ type: "returnHome" }, "*");
+    }, 4000);
+}
+
+
+function startCountdownAndPlay(){
+    const gm = $("#game-message");
+    let count = 3;
+    gm.style.display = "block";
+    gm.textContent = `READY! Mode: ${GAME_MODE}`;
+    const t = setInterval(()=>{
+        count--;
+        if(count >= 0) gm.textContent = "READY " + count;
+        if(count < 0){
+            clearInterval(t);
+            gm.style.display = "none";
+            ghostActive = true;
+            gameRunning = true;
+            if (TIME_LIMIT) {
+                startGameTimer(TIME_LIMIT);
+            }
+        }
+    }, 1000);
+}
+
+
+/* ========== MESSAGE HANDLER (DARI APP.JS) ========== */
+window.addEventListener("message", (e) => {
+  const d = e.data || {};
+
+  // Sinyal dari app.js saat transaksi sukses
+  if(d.type === "paySuccess"){
+    resetGame(); 
+    startCountdownAndPlay();
+    return;
+  }
+  
+  // Tambahkan handling pesan lain jika diperlukan (e.g., waitingForTx)
+});
+
+
+/* ========== STARTUP & GAME LOOP ========== */
+// ... (Logic input handler, game loop, dll.) ...
+
+// PANGGIL INI SAAT FILE DIMUAT
+resetGame();
+// requestAnimationFrame(loop); // Panggil loop game Anda
+
+})();
+</script>
+</body>
+</html>
+
