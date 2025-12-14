@@ -9,8 +9,6 @@
 
 <style>
 /* --- STYLING UTAMA --- */
-/* (CSS Anda yang sudah ada di sini, SAYA TIDAK MENGUBAHNYA) */
-/* ... (Potongan CSS Anda di sini) ... */
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS, sans-serif}
 body{
     min-height: 100vh;
@@ -23,11 +21,46 @@ body{
 
 #wrap{display:flex;min-height:100vh;width:100%}
 
+/* --- HEADER BARU UNTUK MOBILE/DESKTOP --- */
+#header-bar {
+    width: 100%;
+    background: #cc0000; /* Merah Natal Solid */
+    padding: 8px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    z-index: 10;
+}
+#header-bar .wallet-info-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8em;
+}
+#header-bar button {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #16a34a; /* Hijau Natal */
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+}
+/* Info Wallet di Header */
+#walletAddrHeader, #walletBalHeader {
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+
 #sidebar{width:160px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px}
 #main{flex:1;padding:10px;position:relative;display:flex;flex-direction:column;align-items:center;background:linear-gradient(to bottom,#ff0000,#800000)}
 button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff;cursor:pointer;font-weight:bold}
 #title{color:#00ffae;font-size:26px;text-shadow:0 0 0px #ff0;margin-bottom:12px}
-.footer{position:absolute;bottom:8px;color:#0ff;text-shadow:0 0 8px #0ff}
+.footer{position:absolute;bottom:8px;color:#0ff;text-shadow:0 0 8px #0ff; z-index: 10;}
 
 /* --- Area Tampilan Utama (Image/Iframe) --- */
 .content-area{
@@ -39,6 +72,7 @@ button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90d
     background: rgba(0,0,0,0.2);
     border-radius: 8px;
     max-height: 100%;
+    overflow: hidden; /* Penting untuk mengontrol konten */
 }
 
 iframe{
@@ -104,21 +138,60 @@ iframe{
     pointer-events: auto;
 }
 
+/* Tombol Mode Baru */
+.mode-button, #btnHome {
+    background: linear-gradient(90deg, #ff4d4d, #cc0000); 
+    margin-top: 5px;
+    font-size: 0.85em; 
+}
+#btnHome {
+    background: linear-gradient(90deg, #16a34a, #0c5c2d); /* Hijau untuk Home */
+}
+
+/* Loading Overlay */
+#loading-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: center;
+    padding: 20px;
+    z-index: 20;
+}
+
+
 /* --- MEDIA QUERY untuk Ponsel (Perbaikan Mobile Layout) --- */
 @media (max-width: 768px) {
     #wrap {
         flex-direction: column; 
         min-height: 100%;
     }
-
+    
+    /* HIDE WALLET INFO di Header saat mobile */
+    #walletAddrHeader, #walletBalHeader {
+        display: none; 
+    }
+    
+    #header-bar .wallet-info-group {
+        gap: 5px;
+    }
+    
     /* Sidebar menjadi baris horizontal di atas */
     #sidebar {
         width: 100%;
         flex-direction: row; 
-        flex-wrap: wrap; 
+        flex-wrap: nowrap; /* Jangan wrap agar tetap horizontal */
         justify-content: space-around;
-        padding: 8px;
+        padding: 8px 5px;
         order: -1; 
+        overflow-x: auto; /* Scroll jika terlalu banyak */
+        gap: 5px;
     }
     
     /* Sembunyikan Info Wallet di sidebar untuk menghemat ruang */
@@ -126,6 +199,14 @@ iframe{
         display: none;
     }
 
+    /* Semua tombol di sidebar mobile harus kecil */
+    #sidebar button {
+        flex-shrink: 0;
+        padding: 8px 10px;
+        font-size: 0.7em;
+        margin-top: 0;
+    }
+    
     #main {
         padding-top: 5px; 
         padding-bottom: 5px;
@@ -139,7 +220,6 @@ iframe{
         margin-bottom: 50px; 
     }
 
-    /* FIX: Gunakan vw untuk memastikan iframe kotak dan Pad terlihat */
     iframe#gameFrame {
          width: 90vw; 
          height: 90vw; 
@@ -155,30 +235,34 @@ iframe{
         font-size: 1em;
     }
 }
-
-/* Tombol Mode Baru */
-.mode-button {
-    background: linear-gradient(90deg, #ff4d4d, #cc0000); /* Nuansa merah Natal */
-    margin-top: 5px;
-    font-size: 0.85em; /* Lebih kecil agar muat di sidebar */
-}
 </style>
 <base href="/Pacman.somniaxmas/"> 
 </head>
 <body>
+    
+<div id="header-bar">
+    <div style="font-size: 1.2em; font-weight: bold;">SOMNIA XMAS</div>
+    <div class="wallet-info-group">
+        <span id="walletAddrHeader">Wallet: Disconnected</span>
+        <span id="walletBalHeader">SOMI: 0.00</span>
+        <button id="btnConnect">Connect Wallet</button>
+    </div>
+</div>
+
 <div id="wrap">
   <div id="sidebar">
-    <button id="btnConnect">Connect Wallet</button>
     <div id="walletAddr">Wallet: -</div>
     <div id="walletBal">SOMI: -</div>
     
+    <button id="btnHome">Home</button>
+    <button id="btnLeaderboard">Leaderboard</button>
+
     <div style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
         <button class="mode-button" data-mode="Classic" data-fee="0.001" data-game-file="pacman_classic.html">Classic (x1, 0.001)</button>
         <button class="mode-button" data-mode="TimeAttack" data-fee="0.001" data-game-file="pacman_time.html">Time Attack (x2, 0.001)</button>
         <button class="mode-button" data-mode="Hardcore" data-fee="0.001" data-game-file="pacman_hardcore.html">Hardcore (x4, 0.001)</button>
     </div>
     
-    <button id="btnLeaderboard">Leaderboard</button>
   </div>
 
   <div id="main">
@@ -189,8 +273,9 @@ iframe{
     </div>
 
     <div class="content-area">
+        <div id="loading-overlay"></div>
         <div id="logoPlaceholder">
-            <img src="assets/logo1.png?v=3" alt="Somnia Christmas Logo" class="poster-image"> 
+            <img src="assets/logo1.png" alt="Somnia Christmas Logo" class="poster-image"> 
             
             <div id="poster-overlay">
                 <h2>SOMNIA CHRISTMAS CARNIVAL!</h2>
@@ -225,25 +310,28 @@ const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"_treasury","t
 
 // ========== ELEMENTS ==========
 const btnConnect = document.getElementById('btnConnect');
+const btnHome = document.getElementById('btnHome');
 const btnLeaderboard = document.getElementById('btnLeaderboard');
 const walletAddrEl = document.getElementById('walletAddr');
 const walletBalEl = document.getElementById('walletBal');
+const walletAddrHeaderEl = document.getElementById('walletAddrHeader');
+const walletBalHeaderEl = document.getElementById('walletBalHeader');
 const gameFrame = document.getElementById('gameFrame');
 const leaderFrame = document.getElementById('leaderFrame');
 const logoPlaceholder = document.getElementById('logoPlaceholder'); 
+const loadingOverlay = document.getElementById('loading-overlay');
 
 let provider, signer, userAddress, gameContract, startFeeWei;
-let currentModeData = null; // Menyimpan data mode yang sedang dicoba
+let currentModeData = null; 
 
-// Utility: show minimal alert
 function info(msg){ console.log(msg); /* alert(msg); */ }
 
 function showMainContent(contentId) {
+    loadingOverlay.style.display = 'none';
     logoPlaceholder.style.display = 'none';
     gameFrame.style.display = 'none';
     leaderFrame.style.display = 'none';
 
-    // FIX: logoPlaceholder adalah div, bukan iframe
     if (contentId === 'logoPlaceholder') {
         document.getElementById(contentId).style.display = 'flex';
     } else {
@@ -251,55 +339,49 @@ function showMainContent(contentId) {
     }
 }
 
-async function updateSummaryData() {
-    // ... (Fungsi updateSummaryData Anda yang sudah ada, tidak diubah) ...
-    try {
-        // Coba buat provider read-only jika belum ada
-        const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/"); 
-        gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
-        
-        const [topPlayers, scores] = await gameContract.getTop10();
-        if (scores.length > 0) {
-            document.getElementById('topScoreValue').innerText = scores[0].toString();
-        } else {
-             document.getElementById('topScoreValue').innerText = 'N/A';
-        }
-    } catch (e) {
-        console.warn("Gagal mengambil Top Score:", e);
-        document.getElementById('topScoreValue').innerText = '0 (Error)';
-    }
-    
-    try {
-        if (provider) {
-             const poolWei = await provider.getBalance(CONTRACT_ADDRESS);
-             const poolEth = ethers.utils.formatEther(poolWei);
-             document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; 
-        } else {
-            // Coba dengan provider read-only jika wallet belum connect
-             const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/"); 
-             const poolWei = await readProvider.getBalance(CONTRACT_ADDRESS);
-             const poolEth = ethers.utils.formatEther(poolWei);
-             document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; 
-        }
-    } catch (e) {
-        console.warn("Gagal mengambil Pool Value:", e);
-        document.getElementById('poolValue').innerText = '0.00 SOMI';
-    }
+async function updateWalletUI(address = null, balance = '0.00') {
+    // Update Sidebar
+    const displayAddr = address ? address.substring(0, 6) + '...' + address.substring(address.length - 4) : '-';
+    walletAddrEl.innerText = "Wallet: " + displayAddr;
+    walletBalEl.innerText = `SOMI: ${balance}`; 
 
+    // Update Header
+    walletAddrHeaderEl.innerText = "Wallet: " + displayAddr;
+    walletBalHeaderEl.innerText = `SOMI: ${balance}`;
+    btnConnect.textContent = address ? 'Connected' : 'Connect Wallet';
+    btnConnect.disabled = !!address;
+}
+
+async function updateSummaryData() {
     try {
-      if(!startFeeWei) {
-          const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/");
-          const feeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
-          startFeeWei = await feeContract.startFeeWei();
-      }
-      const feeDisplay = ethers.utils.formatEther(startFeeWei);
-      document.getElementById('feeDisplay').textContent = `${feeDisplay.substring(0, 6)} SOMI`;
-    } catch(e) {
-        document.getElementById('feeDisplay').textContent = `0.01 SOMI`;
+        const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/"); 
+        const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+        
+        // 1. Top Score
+        const [topPlayers, scores] = await readContract.getTop10();
+        const topScore = scores.length > 0 ? scores[0].toString() : '0';
+        document.getElementById('topScoreValue').innerText = topScore;
+        
+        // 2. Pool Value
+        const poolWei = await readProvider.getBalance(CONTRACT_ADDRESS);
+        const poolEth = ethers.utils.formatEther(poolWei);
+        document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; 
+        
+        // 3. Start Fee
+        startFeeWei = await readContract.startFeeWei();
+        const feeDisplay = ethers.utils.formatEther(startFeeWei);
+        document.getElementById('feeDisplay').textContent = `${feeDisplay.substring(0, 6)} SOMI`;
+        
+    } catch (e) {
+        console.warn("Gagal mengambil data summary:", e);
+        document.getElementById('topScoreValue').innerText = '0 (Error)';
+        document.getElementById('poolValue').innerText = '0.00 SOMI (Error)';
+        document.getElementById('feeDisplay').textContent = `0.01 SOMI (Default)`;
+        if (!startFeeWei) startFeeWei = ethers.utils.parseEther("0.01"); 
     }
 }
 
-// ========== CONNECT WALLET (Tidak diubah) ==========
+// ========== CONNECT WALLET (Diperbarui untuk UI Header) ==========
 btnConnect.addEventListener('click', async () => {
   if(typeof ethers === 'undefined'){ alert("Eror: Library Ethers.js tidak terdefinisi."); return; }
   if(!window.ethereum){ alert("No wallet found."); return; }
@@ -308,64 +390,65 @@ btnConnect.addEventListener('click', async () => {
     await provider.send("eth_requestAccounts", []);
     signer = provider.getSigner();
     userAddress = await signer.getAddress();
-    walletAddrEl.innerText = "Wallet: " + userAddress.substring(0, 6) + '...' + userAddress.substring(userAddress.length - 4);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
     const balWei = await provider.getBalance(userAddress);
-    walletBalEl.innerText = `${ethers.utils.formatEther(balWei).substring(0, 8)} SOMI`; 
+    const balance = ethers.utils.formatEther(balWei).substring(0, 8);
+    
+    updateWalletUI(userAddress, balance);
+    info(`Wallet connected. User: ${userAddress}`);
 
-    try {
-      startFeeWei = await gameContract.startFeeWei();
-      const feeDisplay = ethers.utils.formatEther(startFeeWei);
-      info(`Wallet connected. Fee: ${feeDisplay} SOMI`);
-    } catch(e){
-      startFeeWei = ethers.utils.parseEther("0.01"); 
-      info("Wallet connected. Fee fallback to 0.01 SOMI");
-    }
+    // Fetch fee setelah koneksi
     await updateSummaryData(); 
   }catch(err){
     console.error(err);
+    updateWalletUI(); // Reset UI
     alert("Connect failed: " + (err && err.message ? err.message : String(err)));
   }
 });
 
-// ========== PLAY MODE (Modifikasi untuk 3 tombol) ==========
+// ========== PLAY MODE (Perbaikan Transaksi) ==========
 document.querySelectorAll('.mode-button').forEach(btn => {
     btn.addEventListener('click', async () => {
-        if(!signer || !userAddress){ alert("Please connect wallet first."); return; }
+        if(!signer || !userAddress){ 
+            alert("Please connect wallet first."); 
+            return; 
+        }
         
         const modeName = btn.getAttribute('data-mode');
         const gameFile = btn.getAttribute('data-game-file');
-        const feeEth = btn.getAttribute('data-fee');
         
-        // Simpan data mode yang sedang dimainkan
-        currentModeData = { modeName, gameFile, feeEth }; 
+        currentModeData = { modeName, gameFile }; 
         
+        if (!startFeeWei) {
+             alert("Tunggu sebentar, fee game belum terdeteksi. Coba sambungkan ulang.");
+             await updateSummaryData();
+             return;
+        }
+
         try{
-            // Ambil fee terbaru dari Contract atau gunakan hardcoded 0.001
-            // Kita akan menggunakan startFeeWei dari Contract jika sudah terdeteksi di init/connect,
-            // atau menggunakan nilai dari tombol (0.001 SOMI)
-            let feeWei;
-            if (startFeeWei) {
-                feeWei = startFeeWei;
-            } else {
-                feeWei = ethers.utils.parseEther(feeEth); // Default 0.001 SOMI
+            const balWei = await provider.getBalance(userAddress);
+            if(balWei.lt(startFeeWei)){ 
+                alert(`Insufficient SOMI native balance. Required: ${ethers.utils.formatEther(startFeeWei).substring(0, 6)} SOMI.`); 
+                return; 
             }
             
-            const balWei = await provider.getBalance(userAddress);
-            if(balWei.lt(feeWei)){ alert("Insufficient SOMI native balance to pay start fee."); return; }
-            
             // --- TRANSACTION START ---
-            // Menggunakan fungsi startGame() yang sudah ada di contract
-            const tx = await gameContract.startGame({ value: feeWei });
+            loadingOverlay.textContent = `Awaiting signature for ${modeName} Mode...`;
+            loadingOverlay.style.display = 'flex';
+            
+            // Kontrak hanya punya startGame() tanpa modeName parameter
+            const tx = await gameContract.startGame({ value: startFeeWei });
             info("Transaction sent: " + tx.hash);
             
-            // Tampilkan pesan loading/waiting di sini jika Anda punya overlay
+            loadingOverlay.textContent = `Transaction sent. Waiting for confirmation...`;
             
             await tx.wait();
             info("Payment confirmed — game started on-chain.");
 
             // --- GAME START (IFRAME LOGIC) ---
+            loadingOverlay.style.display = 'none';
+            
             // 1. Ubah SRC iframe ke file game yang sesuai
             if (gameFrame.src.indexOf(gameFile) === -1) {
                 gameFrame.src = gameFile; 
@@ -374,35 +457,49 @@ document.querySelectorAll('.mode-button').forEach(btn => {
             // 2. Tampilkan iframe
             showMainContent('gameFrame'); 
             
-            // 3. Kirim sinyal start ke iframe yang sudah dimuat/baru
+            // 3. Kirim sinyal start ke iframe 
             const sendStartSignal = () => {
-                 gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+                 // Kirim modeName ke dalam iframe agar game tahu konfigurasi apa yang digunakan
+                 gameFrame.contentWindow.postMessage({ type: "paySuccess", modeName: modeName }, "*");
                  gameFrame.removeEventListener('load', sendStartSignal); 
             };
             
-            if (gameFrame.src.indexOf(gameFile) !== -1 && gameFrame.contentWindow) {
-                 sendStartSignal(); // Kirim langsung jika src sudah benar dan sudah dimuat
+            if (gameFrame.contentWindow && gameFrame.contentWindow.document.readyState === 'complete' && gameFrame.src.includes(gameFile)) {
+                 sendStartSignal(); 
             } else {
-                 gameFrame.addEventListener('load', sendStartSignal); // Tunggu load jika src baru diubah
+                 gameFrame.addEventListener('load', sendStartSignal); 
             }
             
             await updateSummaryData(); 
 
         }catch(err){
+            loadingOverlay.style.display = 'none';
             console.error("startGame error", err);
-            if(err.code === 4001) { alert("User rejected the transaction"); } 
-            else { alert("Payment failed: " + (err && err.message ? err.message : String(err))); }
+            
+            let errMsg = (err && err.message ? err.message : String(err));
+            
+            // Jika error disebabkan oleh Smart Contract revert
+            if(errMsg.includes('execution reverted') || err.code === 'UNPREDICTABLE_GAS_LIMIT') {
+                 errMsg = "Transaction failed! The fee (0.001 SOMI) might be too low, or the contract reverted.";
+            } else if (err.code === 4001) { 
+                 errMsg = "User rejected the transaction."; 
+            }
+            
+            alert("Payment failed: " + errMsg);
+            showMainContent('logoPlaceholder'); // Kembali ke tampilan awal
         }
     });
 });
 
-// ========== LEADERBOARD BUTTON (Tidak diubah) ==========
+// ========== NAVIGASI ==========
+btnHome.addEventListener('click', () => showMainContent('logoPlaceholder'));
+
 btnLeaderboard.addEventListener('click', () => {
   leaderFrame.src = "leaderboard.html";
   showMainContent('leaderFrame'); 
 });
 
-// ========== MESSAGE FROM IFRAME (submitScore & requestStartFee) ==========
+// ========== MESSAGE FROM IFRAME ==========
 window.addEventListener("message", async (event) => {
   const data = event.data;
   if(!data || typeof data !== 'object') return;
@@ -410,38 +507,46 @@ window.addEventListener("message", async (event) => {
   if(data.type === "submitScore") {
     if(!signer || !userAddress) { alert("Please connect wallet before submitting score."); return; }
     try{
-      // PENTING: score yang dikirim dari iframe sudah dikalikan dengan multiplier mode!
       const score = Number(data.score || 0); 
       if(isNaN(score)) { alert("Invalid score"); return; }
+      
+      // Tampilkan Loading Overlay saat submit score
+      loadingOverlay.textContent = "Submitting score to blockchain...";
+      loadingOverlay.style.display = 'flex';
 
       if(!gameContract) gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
-      // Catatan: Jika contract Anda memiliki submitScore(uint256 score, string memory modeName), 
-      // Anda perlu mengubah ABI dan pemanggilan di sini.
-      // Berdasarkan ABI yang Anda berikan, fungsi hanya mengambil score (uint256)
       const tx = await gameContract.submitScore(score); 
       console.log("submitScore tx:", tx.hash);
       await tx.wait();
+      
+      loadingOverlay.style.display = 'none';
       alert("Score submitted on-chain. Thank you!");
       updateSummaryData(); 
+      
     }catch(err){
+      loadingOverlay.style.display = 'none';
       console.error("submitScore error", err);
       alert("Failed to submit score: " + (err && err.message ? err.message : String(err)));
     }
   }
-  
-  // Hapus requestStartFee karena Parent sekarang mengelola fee
-  /*
-  if(data.type === "requestStartFee") {
-    // ... (logic lama dihapus) ...
+
+  // Sinyal kembali ke home dari Iframe Game setelah game over
+  if (data.type === "returnHome") {
+    showMainContent('logoPlaceholder');
   }
-  */
 });
 
-// ========== INISIALISASI SAAT LOAD (Tidak diubah) ==========
+// ========== INISIALISASI SAAT LOAD ==========
 document.addEventListener('DOMContentLoaded', () => {
     showMainContent('logoPlaceholder');
     updateSummaryData(); 
+    // Init wallet UI
+    if (window.ethereum && window.ethereum.selectedAddress) {
+        btnConnect.click(); // Coba auto-connect
+    } else {
+        updateWalletUI(); 
+    }
 });
 </script>
 </body>
