@@ -107,6 +107,9 @@
 
 <script>
 (() => {
+/* ================= SECURITY ================= */
+const TRUSTED_ORIGIN = "https://pac-man-halloween.vercel.app";
+
 const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas.getContext("2d");
 const TILE = 20;
@@ -430,18 +433,16 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 
-/* ========== MESSAGES & CONTROLS ========== */
-/* PENTING: Message Listener yang Paling Bersih */
-window.addEventListener("message", (e) => {
-  const d = e.data || {};
-  if(d.type === "paySuccess"){
-    // FIX PENTING: HANYA set allowLocalPlay ke true di sini.
-    allowLocalPlay = true;
+/* ================= MESSAGE ================= */
+window.addEventListener("message",(e)=>{
+  if(e.origin!==TRUSTED_ORIGIN) return;
+  if(e.data?.type==="paySuccess"){
+    if(sessionActive) return;
+    sessionActive=true;
+    allowLocalPlay=true;
     resetGame();
-    startCountdownAndPlay();
-  }
-  if(d.type === "forceReset"){
-    resetGame();
+    gameRunning=true;
+    ghostActive=true;
   }
 });
 
