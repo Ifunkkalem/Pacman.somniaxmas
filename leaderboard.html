@@ -105,64 +105,41 @@ tr:nth-child(even) { background: rgba(255,255,255,.05); }
 </table>
 
 <script>
-// ================= CONFIG =================
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
 const RPC_URL = "https://somnia-rpc.publicnode.com";
 
 const ABI = [
-  "function getTop10() view returns (address[], uint256[])",
-  "function jackpotBalance() view returns (uint256)",
-  "function topScore() view returns (uint256)"
+  "function getTop10() view returns (address[], uint256[])"
 ];
 
-// ================= CORE =================
 let provider, contract;
 
 async function init() {
   try {
     provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    const net = await provider.getNetwork();
-
-    document.getElementById("connectionStatus").innerText =
-      "Connected • Chain ID " + net.chainId;
-
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-    await loadHeader();
+    await loadJackpot();
     await loadLeaderboard();
 
   } catch (e) {
     console.error(e);
-    document.getElementById("connectionStatus").innerText =
-      "Failed to connect to blockchain";
+    document.getElementById("jackpot").innerText = "Jackpot: Error";
   }
 }
 
-// ================= HEADER =================
-async function loadHeader() {
+// ================= JACKPOT =================
+async function loadJackpot() {
   try {
-    const jackpotWei = await contract.jackpotBalance();
-    const top = await contract.topScore();
-
-    const jackpot = ethers.utils.formatEther(jackpotWei);
+    const balanceWei = await provider.getBalance(CONTRACT_ADDRESS);
+    const jackpot = ethers.utils.formatEther(balanceWei);
 
     document.getElementById("jackpot").innerText =
       "Jackpot: " + Number(jackpot).toFixed(6) + " SOMI";
 
-    document.getElementById("topScore").innerText =
-      "Top Score: " + top.toString();
-
-    // kirim ke parent (app.js)
-    window.parent.postMessage({
-      type: "leaderboardData",
-      jackpot: jackpot,
-      topScore: top.toString()
-    }, "*");
-
   } catch (e) {
-    console.error("Header error:", e);
+    console.error("Jackpot error:", e);
     document.getElementById("jackpot").innerText = "Jackpot: 0 SOMI";
-    document.getElementById("topScore").innerText = "Top Score: 0";
   }
 }
 
@@ -180,25 +157,34 @@ async function loadLeaderboard() {
       return;
     }
 
-    // 🔒 ANTI DUPLICATE WALLET
-    const bestScoreByWallet = {};
-
+    // DEDUPE WALLET (ambil skor tertinggi per wallet)
+    const best = {};
     players.forEach((addr, i) => {
       const s = Number(scores[i]);
-      if (!bestScoreByWallet[addr] || s > bestScoreByWallet[addr]) {
-        bestScoreByWallet[addr] = s;
-      }
+      if (!best[addr] || s > best[addr]) best[addr] = s;
     });
 
-    const finalList = Object.entries(bestScoreByWallet)
+    const finalList = Object.entries(best)
       .map(([addr, score]) => ({ addr, score }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 10);
 
-    finalList.forEach((item, idx) => {
+    // TOP SCORE GLOBAL
+    const topScore = finalList.length ? finalList[0].score : 0;
+    document.getElementById("topScore").innerText =
+      "Top Score: " + topScore;
+
+    // Kirim ke parent (index/app.js)
+    window.parent.postMessage({
+      type: "updateSummary",
+      jackpot: document.getElementById("jackpot").innerText.replace("Jackpot: ","").replace(" SOMI",""),
+      topScore: topScore
+    }, "*");
+
+    finalList.forEach((item, i) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="rank">${idx + 1}</td>
+        <td class="rank">${i + 1}</td>
         <td>${item.addr.slice(0,6)}...${item.addr.slice(-4)}</td>
         <td class="score">${item.score}</td>
       `;
@@ -212,9 +198,7 @@ async function loadLeaderboard() {
   }
 }
 
-// ================= INIT =================
 document.addEventListener("DOMContentLoaded", init);
 </script>
-
 </body>
 </html>
