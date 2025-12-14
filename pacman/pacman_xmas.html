@@ -162,9 +162,13 @@ let gameRunning = false;
 let ghostActive = false;
 const MOVE_INTERVAL = 240;
 
-/* SECURITY: require parent paySuccess before allowing local start */
-let allowLocalPlay = false; // Kunci utama: hanya set true di postMessage
+/* 🔒 SECURITY FLAGS (PATCH) */
+let allowLocalPlay = false;
+let sessionActive = false;      // ⬅️ FIX BUG
+let scoreSubmitted = false;     // ⬅️ PREVENT MULTI SUBMIT
+let sessionStartTime = 0;       // ⬅️ BASIC ANTI-SPAM
 
+ 
 /* ========== INIT ========== */
 function resetGame(){
   mapData = GAME_MAP.map(r=>[...r]);
@@ -175,6 +179,8 @@ function resetGame(){
     {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"}
   ];
   score = 0;
+  scoreSubmitted = false;          // ⬅️ PATCH
+  sessionStartTime = Date.now();   // ⬅️ PATCH
   document.getElementById("current-score-display").textContent = score;
   document.getElementById("game-message").style.display = "none";
   gameRunning = false;
@@ -385,8 +391,13 @@ function checkCollision(){
     const gm = document.getElementById("game-message");
     gm.textContent = "YOU WIN! Score: " + score;
     gm.style.display = "block";
-    parent.postMessage({ type: "submitScore", score }, "*");
-  }
+    if(scoreSubmitted) return;
+scoreSubmitted = true;
+
+const playDuration = (Date.now() - sessionStartTime) / 1000;
+if(playDuration < 5) return; // anti instant fake play
+
+parent.postMessage({ type: "submitScore", score }, "*");
 }
 
 function gameOver(){
@@ -394,7 +405,13 @@ function gameOver(){
   const gm = document.getElementById("game-message");
   gm.textContent = "GAME OVER! Score: " + score;
   gm.style.display = "block";
-  parent.postMessage({ type: "submitScore", score }, "*");
+  if(scoreSubmitted) return;
+scoreSubmitted = true;
+
+const playDuration = (Date.now() - sessionStartTime) / 1000;
+if(playDuration < 5) return; // anti instant fake play
+
+parent.postMessage({ type: "submitScore", score }, "*");
 }
 
 /* ========== COUNTDOWN helper ========== */
