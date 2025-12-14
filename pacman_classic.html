@@ -29,6 +29,20 @@
     display:none; z-index:12; position:absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%); text-align: center;
   }
+  /* STYLE UNTUK TOMBOL KONTROL TAMBAHAN */
+  #control-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 5px; box-sizing: border-box;
+  }
+  #escape-button, #reset-button {
+    background: #ff0033; color: white; border: none; padding: 5px 10px;
+    border-radius: 5px; cursor: pointer; font-size: 14px;
+    z-index: 10;
+  }
+  #escape-button { display: none; } /* Default hidden */
+
+
   #mobileControls{
     position:relative; margin-top:6px; display:flex; flex-direction:column;
     align-items:center; gap:8px; user-select:none; -webkit-tap-highlight-color: transparent;
@@ -60,6 +74,12 @@
             <span>Lives: <span id="lives-display">1</span></span>
         </div>
     </div>
+    
+    <div id="control-overlay">
+        <button id="escape-button">Kembali ke Menu</button>
+        <button id="reset-button">Restart Game</button>
+    </div>
+    
     <div id="game-message"></div>
 
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
@@ -76,8 +96,6 @@
   </div>
 
 <script>
-// Logic dari V13-Simple, tetapi di wrapping yang benar (V19)
-
 (function(){
   const canvas = document.getElementById('pacman-canvas');
   const ctx = canvas ? canvas.getContext('2d') : null;
@@ -120,15 +138,13 @@
   
   // Variabel untuk Game Loop
   let lastTime = 0;
-  const GAME_UPDATE_INTERVAL = 200; // Ditingkatkan ke 200ms untuk kecepatan Classic
+  const GAME_UPDATE_INTERVAL = 200; // Kecepatan Classic
   let gameUpdateTimer = 0;
 
 
   function updateScoreDisplay() {
     const scoreEl = $("#current-score-display");
     if(scoreEl) scoreEl.textContent = score;
-    // PENTING: Jika skor tetap 0, ini harusnya log di console untuk debug
-    // console.log("Score updated to:", score); 
   }
   function updateLivesDisplay() {
     const livesEl = $("#lives-display");
@@ -147,7 +163,10 @@
   }
 
   function resetGame() {
-      if(!canvas || !ctx) return;
+      if(!canvas || !ctx) {
+          console.error("Canvas or Context not available, cannot reset game.");
+          return;
+      }
       canvas.width = MAP_WIDTH * TILE_SIZE;
       canvas.height = MAP_HEIGHT * TILE_SIZE;
       console.log(`[DEBUG] Canvas dimensions set: ${canvas.width}x${canvas.height}`); 
@@ -159,6 +178,9 @@
       
       const gm = $('#game-message');
       if(gm) gm.style.display = 'none';
+      const eb = $('#escape-button');
+      if(eb) eb.style.display = 'none'; // Sembunyikan tombol kembali saat game reset
+      
       gameRunning = false;
       drawMap(); 
   }
@@ -300,7 +322,6 @@
       if (mapData[pacman.y][pacman.x] === 2) {
           mapData[pacman.y][pacman.x] = 0;
           score += 10;
-          // Perbarui score display (Harusnya berfungsi dengan baik di sini)
           updateScoreDisplay(); 
       }
 
@@ -339,7 +360,6 @@
       const deltaTime = timestamp - lastTime;
       lastTime = timestamp;
       
-      // Panggil semua drawing untuk update saat game aktif
       drawMap();
       drawPacman();
       drawGhosts();
@@ -355,21 +375,36 @@
       animationFrameId = requestAnimationFrame(gameLoop);
   }
 
+  function handleReturnHome() {
+    window.parent.postMessage({ type: 'returnHome' }, '*');
+  }
+  
+  function handleGameRestart() {
+    if (gameRunning) return; // Jangan restart jika sedang berjalan
+    resetGame();
+    // Jika gameRunning false (mode statis) saat ini, kita harus mensimulasikan 'paySuccess'
+    // untuk memulai loop aktif.
+    gameRunning = true;
+    lastTime = performance.now();
+  }
+
   function endGame(isWin) {
       if (!gameRunning) return;
       gameRunning = false;
       cancelAnimationFrame(animationFrameId);
       const msg = isWin ? "SELAMAT! Anda menang!" : "GAME OVER!";
       const gm = $('#game-message');
+      const eb = $('#escape-button');
+      
       gm.textContent = msg + " Skor Akhir: " + score;
       gm.style.display = 'block';
-
-      // Selalu kirimkan skor, bahkan jika 0, untuk memastikan parent app menerima sinyal
+      if(eb) eb.style.display = 'block'; // Tampilkan tombol kembali manual
+      
       window.parent.postMessage({ type: 'submitScore', score: score, modeName: 'Classic' }, '*');
       
       setTimeout(()=>{
         gm.style.display = 'none';
-        window.parent.postMessage({ type: 'returnHome' }, '*');
+        handleReturnHome();
       }, 4000);
   }
 
@@ -382,40 +417,58 @@
       else if (e.key === 'ArrowRight' || e.key === 'd') dir = 'right';
       if(dir) pacman.nextDir = dir;
   };
+  
+  // LOGIC INPUT MOBILE BARU: Menggunakan mousedown/touchstart untuk trigger pergerakan
+  const handleMobileInput = (e) => {
+    // Pastikan ini adalah event sentuhan/mouse yang valid
+    if (e.type !== 'touchstart' && e.type !== 'mousedown') return;
+    
+    // Mencegah browser default action (seperti scrolling)
+    e.preventDefault(); 
+    
+    const btn = e.target.closest('button');
+    if (btn && btn.dataset.dir) {
+        pacman.nextDir = btn.dataset.dir;
+    }
+  };
 
   // receive messages from parent
   window.addEventListener('message', (ev)=>{
     const d = ev.data || {};
     if (d.type === 'paySuccess') {
-      // Sinyal dari app.js saat transaksi sukses
       resetGame();
       gameRunning = true;
       lastTime = performance.now();
-      // Loop sudah berjalan, tidak perlu memanggil requestAnimationFrame lagi di sini
     }
   });
 
 /* ========== STARTUP SAAT DOM DIMUAT ========== */
 document.addEventListener('DOMContentLoaded', () => {
+    // Tambahkan listener ke tombol escape/kembali dan reset
+    const escapeButton = $("#escape-button");
+    const resetButton = $("#reset-button");
+    if (escapeButton) {
+        escapeButton.addEventListener('click', handleReturnHome);
+    }
+    if (resetButton) {
+        resetButton.addEventListener('click', handleGameRestart);
+    }
+    
     // 1. Inisialisasi Game State
     resetGame();
     
-    // 2. Tambahkan Listener Input
+    // 2. Tambahkan Listener Input Keyboard
     document.addEventListener('keydown', handleGlobalKeydown); 
     
-    // Mobile Controls: Menggunakan touchstart untuk responsivitas yang lebih baik
+    // Mobile Controls: Menggunakan MOUSE DOWN & TOUCH START
     const mobileControls = $("#mobileControls");
     if(mobileControls){
-        mobileControls.addEventListener('touchstart', (e) => {
-            const btn = e.target.closest('button');
-            if (btn && btn.dataset.dir) {
-                e.preventDefault(); 
-                pacman.nextDir = btn.dataset.dir;
-            }
-        });
+        // Tambahkan listener ke seluruh wrapper kontrol mobile
+        mobileControls.addEventListener('touchstart', handleMobileInput);
+        mobileControls.addEventListener('mousedown', handleMobileInput);
     }
 
-    // 3. MULAI LOOP UTAMA (Dimulai sekali saat halaman dimuat)
+    // 3. MULAI LOOP UTAMA
     requestAnimationFrame(gameLoop); 
  
 });
