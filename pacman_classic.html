@@ -113,22 +113,18 @@ function getGhostAi(ghostIndex) {
 }
 
 /* ================== LOGIKA GAME INTI LENGKAP ================== */
-// Catatan: Anda HARUS menyalin seluruh kode game Pacman Anda (variabel state, 
-// fungsi helper, fungsi pergerakan, game loop) di sini. 
-// Saya hanya menyediakan struktur dan beberapa fungsi penting.
 
 let mapData, pacman, ghosts, score = 0, playerLives;
 let MAP_W, MAP_H; 
 let gameRunning = false;
 let ghostActive = false;
-const MOVE_INTERVAL = 240; // Kecepatan pergerakan
+const MOVE_INTERVAL = 240; // Kecepatan pergerakan (ms)
 let gameTimer = null; 
 let gameTimeRemaining = null; 
 let isSubmissionSent = false;
 let lastMove = 0;
 
-
-// Fungsi utilitas (Contoh: isMoveValid, getOppositeDirection)
+// Fungsi utilitas
 function isMoveValid(x, y, dir, map) {
     let nextX = x, nextY = y;
     if (dir === 'up') nextY--;
@@ -136,11 +132,14 @@ function isMoveValid(x, y, dir, map) {
     else if (dir === 'left') nextX--;
     else if (dir === 'right') nextX++;
     
-    // Teleportation logic (If needed)
+    // Teleportation logic
     if (nextX < 0) nextX = map[0].length - 1;
     if (nextX >= map[0].length) nextX = 0;
 
-    return map[nextY] && map[nextY][nextX] !== 1; // 1 adalah dinding
+    // Pastikan batas array tidak dilanggar
+    if (!map[nextY]) return false;
+
+    return map[nextY][nextX] !== 1; // 1 adalah dinding
 }
 function getOppositeDirection(dir) {
     if (dir === 'up') return 'down';
@@ -180,7 +179,6 @@ function startGameTimer(seconds) {
         updateTimerDisplay(gameTimeRemaining);
         if (gameTimeRemaining <= 0) {
             clearGameTimer();
-            // Jika waktu habis, anggap seperti game over
             playerLives = 0; 
             gameOver(); 
         }
@@ -200,11 +198,13 @@ function resetGame(){
     score = 0;
     isSubmissionSent = false; 
     
+    // Start di (1,1)
     pacman = {x:1,y:1,dir:"right",next:"right"};
+    // Ghost start di tengah peta
     ghosts = [
-      {x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000", ai: getGhostAi(0)},
-      {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F", ai: getGhostAi(1)},
-      {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA", ai: getGhostAi(2)}
+      {x:9,y:9,dir:"up",color:"#ff0033", ai: getGhostAi(0)},
+      {x:10,y:9,dir:"down",color:"#00b300", ai: getGhostAi(1)},
+      {x:8,y:9,dir:"left",color:"#1e90ff", ai: getGhostAi(2)}
     ];
     
     $("#game-message").style.display = "none";
@@ -221,11 +221,9 @@ function resetGame(){
 function determineGhostDirection(ghost, pacman, mapData) {
     const aiType = ghost.ai;
     
-    // AI LOGIC (RANDOM_SIMPLE)
     if (aiType === 'RANDOM_SIMPLE') {
         const possibleMoves = ['up', 'down', 'left', 'right'].filter(d => isMoveValid(ghost.x, ghost.y, d, mapData));
         const oppositeDir = getOppositeDirection(ghost.dir);
-        // Hantu mudah: Hindari balik arah langsung
         const nonReverseMoves = possibleMoves.filter(d => d !== oppositeDir);
         
         if (nonReverseMoves.length > 0) {
@@ -233,24 +231,71 @@ function determineGhostDirection(ghost, pacman, mapData) {
         }
         return possibleMoves[0]; 
     } 
-    
-    // AI LOGIC (Anda harus mendefinisikan CHASE_PREDICTIVE, CHASE_OPTIMAL, dll. di sini)
-    // Karena ini Classic, kita hanya butuh RANDOM_SIMPLE di file ini.
-    
-    return 'up'; // Fallback
+    return 'up';
 }
 
 
-// Game Flow
+// FUNGSI BARU: MENGGAMBAR SEMUA ELEMEN GAME
+function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 1. Gambar Peta dan Dots
+    for (let y = 0; y < MAP_H; y++) {
+        for (let x = 0; x < MAP_W; x++) {
+            const val = mapData[y][x];
+            const px = x * TILE;
+            const py = y * TILE;
+
+            if (val === 1) { // Dinding (Wall)
+                ctx.fillStyle = '#1e90ff';
+                ctx.fillRect(px, py, TILE, TILE);
+            } else if (val === 2) { // Dot (Makanan)
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(px + TILE / 2, py + TILE / 2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (val === 3) { // Power Pellet (Power Pellet belum diimplementasi di map ini, tapi jaga-jaga)
+                ctx.fillStyle = '#ffcc00';
+                ctx.beginPath();
+                ctx.arc(px + TILE / 2, py + TILE / 2, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // 2. Gambar Pacman (Simpel)
+    if(pacman){
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(pacman.x * TILE + TILE / 2, pacman.y * TILE + TILE / 2, TILE / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // 3. Gambar Hantu (Simpel)
+    ghosts.forEach(ghost => {
+        const px = ghost.x * TILE + TILE / 2;
+        const py = ghost.y * TILE + TILE / 2;
+        
+        ctx.fillStyle = ghost.color;
+        ctx.beginPath();
+        ctx.arc(px, py, TILE / 2 - 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Mata
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(px - 5, py - 5, 2, 0, Math.PI * 2);
+        ctx.arc(px + 5, py - 5, 2, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
 function moveGhosts(){
     ghosts.forEach(ghost => {
-        // Cek apakah sudah waktunya bergerak (Jika ada logika kecepatan yang berbeda)
-        
         const newDir = determineGhostDirection(ghost, pacman, mapData);
         ghost.dir = newDir;
         
         if(isMoveValid(ghost.x, ghost.y, ghost.dir, mapData)){
-            // Update posisi ghost
             if (ghost.dir === 'up') ghost.y--;
             else if (ghost.dir === 'down') ghost.y++;
             else if (ghost.dir === 'left') ghost.x--;
@@ -276,32 +321,56 @@ function checkCollision(){
     });
 }
 
+// FUNGSI BARU: PERGERAKAN PACMAN DAN MAKAN DOTS
 function movePacman(){
-    // Logic untuk memproses move
-    // ...
-    // Logic untuk memakan dot dan Power Pellet
-    // ...
-    // Cek kemenangan
-    // ...
+    if (!gameRunning) return;
+    
+    // 1. Cek pergerakan selanjutnya (next)
+    if(pacman.next && isMoveValid(pacman.x, pacman.y, pacman.next, mapData)){
+        pacman.dir = pacman.next;
+        pacman.next = null;
+    }
+    
+    // 2. Cek pergerakan saat ini (dir)
+    if(isMoveValid(pacman.x, pacman.y, pacman.dir, mapData)){
+        if (pacman.dir === 'up') pacman.y--;
+        else if (pacman.dir === 'down') pacman.y++;
+        else if (pacman.dir === 'left') pacman.x--;
+        else if (pacman.dir === 'right') pacman.x++;
+        
+        // 3. Cek Makanan (Dots) di posisi baru
+        if(mapData[pacman.y][pacman.x] === 2){
+            mapData[pacman.y][pacman.x] = 0; // Hilangkan dot
+            score += 10;
+            updateScoreDisplay();
+        }
+        
+        // 4. Cek Kemenangan (Semua dot hilang?)
+        if (!mapData.flat().includes(2)) {
+            score += 500; 
+            gameOver(); 
+        }
+    } else {
+        // Berhenti jika menabrak dinding
+    }
 }
+
 
 function gameOver(){
     gameRunning = false;
     clearGameTimer();
     if (isSubmissionSent) return; 
 
-    const finalScore = score * SCORE_MULTIPLIER; // Gunakan multiplier
+    const finalScore = score * SCORE_MULTIPLIER; 
     const gm = $("#game-message");
     gm.textContent = `GAME OVER! Final Score: ${finalScore} (x${SCORE_MULTIPLIER} - ${GAME_MODE} Mode)`;
     gm.style.display = "block";
     
     if (!isSubmissionSent) {
-        // Kirim sinyal submitScore ke app.js
         parent.postMessage({ type: "submitScore", score: finalScore, modeName: GAME_MODE }, "*");
         isSubmissionSent = true;
     }
     
-    // KIRIM SINYAL UNTUK KEMBALI KE HOME SETELAH SUBMIT
     setTimeout(() => {
         parent.postMessage({ type: "returnHome" }, "*");
     }, 4000);
@@ -329,6 +398,48 @@ function startCountdownAndPlay(){
 }
 
 
+// GAME LOOP UTAMA
+let requestedAnimationFrameId; 
+function loop(timestamp) {
+    if (gameRunning) {
+        if (timestamp - lastMove > MOVE_INTERVAL) {
+            movePacman();
+            if(ghostActive){
+                moveGhosts();
+                checkCollision(); 
+            }
+            lastMove = timestamp;
+        }
+    }
+    drawGame();
+    requestedAnimationFrameId = requestAnimationFrame(loop);
+}
+
+// HANDLER INPUT KEYBOARD/MOBILE
+function handleInput(dir) {
+    if (!gameRunning) return;
+    pacman.next = dir;
+}
+
+// Input Keyboard (Desktop)
+document.addEventListener('keydown', (e) => {
+    let dir = null;
+    if (e.key === 'ArrowUp' || e.key === 'w') dir = 'up';
+    else if (e.key === 'ArrowDown' || e.key === 's') dir = 'down';
+    else if (e.key === 'ArrowLeft' || e.key === 'a') dir = 'left';
+    else if (e.key === 'ArrowRight' || e.key === 'd') dir = 'right';
+    if(dir) handleInput(dir);
+});
+
+// Input Tombol Mobile (Sentuh)
+document.getElementById('mobileControls').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (btn && btn.dataset.dir) {
+        handleInput(btn.dataset.dir);
+    }
+});
+
+
 /* ========== MESSAGE HANDLER (DARI APP.JS) ========== */
 window.addEventListener("message", (e) => {
   const d = e.data || {};
@@ -339,17 +450,15 @@ window.addEventListener("message", (e) => {
     startCountdownAndPlay();
     return;
   }
-  
-  // Tambahkan handling pesan lain jika diperlukan (e.g., waitingForTx)
 });
 
 
 /* ========== STARTUP & GAME LOOP ========== */
-// ... (Logic input handler, game loop, dll.) ...
-
-// PANGGIL INI SAAT FILE DIMUAT
-resetGame();
-// requestAnimationFrame(loop); // Panggil loop game Anda
+document.addEventListener('DOMContentLoaded', () => {
+    // Pastikan game loop dimulai saat DOM siap
+    resetGame();
+    requestedAnimationFrameId = requestAnimationFrame(loop); 
+});
 
 })();
 </script>
