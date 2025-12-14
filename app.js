@@ -1,5 +1,5 @@
-// app.js (FINAL & FIXED VERSION)
-// Integrasi: Koneksi Wallet, Tx Game Start/Submit, Hardcore/Time Attack Mode Selector
+// app.js (FINAL & FIXED VERSION - LOGIC TRANSACTION DIPINDAHKAN KE IFRAME)
+// Integrasi: Koneksi Wallet, Tx Game Start/Submit, Hardcore/Time Attack Mode Selector (dipicu dari iframe)
 // Requires ethers v5 UMD loaded in index.html
 
 // ---------------- CONFIG ----------------
@@ -50,115 +50,57 @@ function initAudio() {
 }
 
 async function loadBackgroundMusic() {
+    // Logic loading music
     return new Promise((resolve) => {
         if (backgroundMusic && backgroundMusic.readyState >= 3) return resolve();
-        
         try {
             backgroundMusic = new Audio(BGM_SRC);
             backgroundMusic.loop = true;
             backgroundMusic.volume = 0.35;
-            
-            backgroundMusic.addEventListener('canplaythrough', () => {
-                console.log("BGM file loaded and ready to play (1MB).");
-                resolve();
-            }, { once: true });
-            
-            setTimeout(() => {
-                if (!backgroundMusic || backgroundMusic.readyState < 3) {
-                    console.warn("BGM loading timeout (10s). Proceeding without BGM.");
-                    resolve();
-                }
-            }, 10000); 
-            
+            backgroundMusic.addEventListener('canplaythrough', () => { resolve(); }, { once: true });
+            setTimeout(() => { if (!backgroundMusic || backgroundMusic.readyState < 3) { resolve(); } }, 10000); 
         } catch (e) { 
             backgroundMusic = null;
-            console.error("Failed to initialize Audio object for BGM:", e);
             resolve();
         }
     });
 }
 
 function unlockAudioOnGesture() {
+  // Logic unlocking audio
   if (audioUnlocked) return;
   initAudio();
-  
   const tryPlay = () => {
     if (sfxStart) {
         sfxStart.volume = 0; 
-        sfxStart.play().then(() => {
-            sfxStart.volume = 0.95; 
-            audioUnlocked = true;
-            window.removeEventListener('pointerdown', tryPlay);
-        }).catch(() => {
-             audioUnlocked = true;
-             window.removeEventListener('pointerdown', tryPlay);
-        });
-    } else {
-        audioUnlocked = true;
-        window.removeEventListener('pointerdown', tryPlay);
-    }
+        sfxStart.play().then(() => { sfxStart.volume = 0.95; audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); }).catch(() => { audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); });
+    } else { audioUnlocked = true; window.removeEventListener('pointerdown', tryPlay); }
   };
   window.addEventListener('pointerdown', tryPlay, { once: true });
 }
 
-function playDotSound() {
-  try {
-    if (!audioUnlocked) initAudio();
-    if (sfxDot) {
-      const inst = sfxDot.cloneNode();
-      inst.volume = sfxDot.volume;
-      inst.play().catch(()=>{});
-    }
-  } catch (e) { console.warn("dot sound failed", e); }
-}
-
-function startBackgroundMusic() {
-  try {
-    if (backgroundMusic) {
-      backgroundMusic.currentTime = 0; 
-      backgroundMusic.volume = 0.35; 
-      backgroundMusic.play().catch((e)=>{ console.error("Final BGM play failed:", e); }); 
-    }
-  } catch (e) { console.warn("bgm start failed", e); }
-}
-
-function playStartSfx() {
-  try {
-    if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); }
-  } catch (e) { console.warn("start sfx failed", e); }
-}
+function playDotSound() { try { if (!audioUnlocked) initAudio(); if (sfxDot) { const inst = sfxDot.cloneNode(); inst.volume = sfxDot.volume; inst.play().catch(()=>{}); } } catch (e) { console.warn("dot sound failed", e); } }
+function startBackgroundMusic() { try { if (backgroundMusic) { backgroundMusic.currentTime = 0; backgroundMusic.volume = 0.35; backgroundMusic.play().catch((e)=>{ console.error("Final BGM play failed:", e); }); } } catch (e) { console.warn("bgm start failed", e); } }
+function playStartSfx() { try { if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); } } catch (e) { console.warn("start sfx failed", e); } }
 
 
 // ---------------- WALLET & CONTRACT ----------------
 async function switchNetwork(provider) {
+    // Logic switch network
     const { chainId } = await provider.getNetwork();
     if (chainId.toString() !== '5031') {
         try {
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: SOMNIA_CHAIN_ID }],
-            });
+            await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: SOMNIA_CHAIN_ID }] });
             await new Promise(resolve => setTimeout(resolve, 500));
             return true;
         } catch (switchError) {
             if (switchError.code === 4902) { 
                 try {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [SOMNIA_NETWORK_CONFIG],
-                    });
+                    await window.ethereum.request({ method: 'wallet_addEthereumChain', params: [SOMNIA_NETWORK_CONFIG] });
                     await new Promise(resolve => setTimeout(resolve, 500));
                     return true;
-                } catch (addError) {
-                    console.error("Failed to add Somnia network", addError);
-                    alert("Failed to add Somnia network. Please add it manually.");
-                    return false;
-                }
-            } else {
-                 console.error("Failed to switch network", switchError);
-                 alert("Failed to switch to Somnia network. Please switch manually.");
-                 return false;
-            }
+                } catch (addError) { alert("Failed to add Somnia network. Please add it manually."); return false; }
+            } else { alert("Failed to switch to Somnia network. Please switch manually."); return false; }
         }
     }
     return true;
@@ -201,6 +143,7 @@ async function connectWallet() {
       console.warn("failed read startFeeWei:", e);
     }
     
+    // Kirim info wallet ke iframe setelah koneksi sukses
     try { 
         window.postMessage({ 
             type: "walletInfo", 
@@ -220,8 +163,8 @@ async function connectWallet() {
   }
 }
 
-// FIX: payToPlay diubah menjadi mode selector
-async function payToPlay() {
+// BARU: Fungsi Transaksi Khusus, dipanggil oleh Iframe Game
+async function txStartGame(modeName, feeWei, multiplier, timeLimit) {
   initAudio();
   unlockAudioOnGesture();
 
@@ -233,14 +176,7 @@ async function payToPlay() {
   const networkOk = await switchNetwork(provider);
   if (!networkOk) return false;
   
-  // Ambil biaya standar atau fallback
-  if (!startFeeWei) {
-    try { startFeeWei = await readContract.startFeeWei(); } catch(e){ startFeeWei = ethers.utils.parseEther("0.01"); }
-  }
-
-    
-  
-  const feeToSend = selectedMode.fee;
+  const feeToSend = ethers.BigNumber.from(feeWei);
   
   console.log("Starting BGM loading (expect 1MB) and waiting...");
   await loadBackgroundMusic(); 
@@ -254,15 +190,15 @@ async function payToPlay() {
 
     const tx = await gameContract.startGame({ value: feeToSend });
     console.log("startGame tx:", tx.hash);
-    try { window.postMessage({ type: "startTxSent", txHash: tx.hash }, "*"); } catch(e){}
-
-    alert(`Transaction sent for ${selectedMode.name} Mode. Waiting for confirmation...`);
     
     const gameFrame = $("gameFrame");
     if (gameFrame && gameFrame.contentWindow) {
+      // Kirim sinyal "waitingForTx" ke iframe agar pesan di gameFrame muncul
       gameFrame.contentWindow.postMessage({ type: "waitingForTx" }, "*");
     }
 
+    alert(`Transaction sent for ${modeName} Mode. Waiting for confirmation...`);
+    
     await tx.wait();
 
     isGameActive = true;
@@ -270,22 +206,18 @@ async function payToPlay() {
     playStartSfx(); 
     startBackgroundMusic();
     
-    // 1. TAMPILKAN IFRAME GAME & HILANGKAN LOGO
-    const logoPlaceholder = $("logoPlaceholder"); 
-
-    if (logoPlaceholder) logoPlaceholder.style.display = "none";
-    if (gameFrame) gameFrame.style.display = "block"; 
-
+    // 1. TAMPILKAN IFRAME GAME (sudah pasti terlihat)
+    
     // 2. KIRIM SINYAL START KE GAME DENGAN PARAMETER MODE
     try { 
       if (gameFrame && gameFrame.contentWindow) {
          gameFrame.contentWindow.postMessage({ 
              type: "paySuccess",
-             gameMode: selectedMode.name,
-             scoreMultiplier: selectedMode.multiplier,
-             timeLimit: selectedMode.timeLimit 
+             gameMode: modeName,
+             scoreMultiplier: multiplier,
+             timeLimit: timeLimit 
          }, "*");
-         console.log(`Sent 'paySuccess' with Mode: ${selectedMode.name}, Multiplier: x${selectedMode.multiplier}, Time Limit: ${selectedMode.timeLimit || 'None'}.`);
+         console.log(`Sent 'paySuccess' with Mode: ${modeName}, Multiplier: x${multiplier}, Time Limit: ${timeLimit || 'None'}.`);
       }
     } catch(e){ console.warn("postMessage paySuccess failed", e); }
 
@@ -293,7 +225,14 @@ async function payToPlay() {
 
     return true;
   } catch (err) {
-    console.error("payToPlay failed", err);
+    console.error("txStartGame failed", err);
+    
+    const gameFrame = $("gameFrame");
+    if (gameFrame && gameFrame.contentWindow) {
+      // Kirim sinyal bahwa Tx gagal
+      gameFrame.contentWindow.postMessage({ type: "payFailed" }, "*");
+    }
+    
     if (err.code !== 4001) {
         alert("Payment failed: " + (err && err.message ? err.message : String(err)));
     }
@@ -320,7 +259,6 @@ async function submitScoreTx(score) {
     await tx.wait();
     alert("Score submitted on-chain ✅");
     
-    // Kirim sinyal ke index (wrapper) untuk update UI/Leaderboard
     try { window.postMessage({ type: "scoreSubmitted" }, "*"); } catch(e){} 
     
     const gameFrame = $("gameFrame");
@@ -350,18 +288,23 @@ window.addEventListener("message", async (ev) => {
     await submitScoreTx(data.score);
     return;
   }
-
-  if (data.type === "requestConnectWallet") {
-    await connectWallet();
-    return;
+  
+  // BARU: Iframe Game meminta transaksi
+  if (data.type === "requestStartTx") {
+      const { modeName, feeWei, multiplier, timeLimit } = data;
+      await txStartGame(modeName, feeWei, multiplier, timeLimit);
+      return;
   }
 
-  if (data.type === "requestStartGame") {
-    if (!signer) {
-      const ok = await connectWallet();
-      if (!ok) return;
+  if (data.type === "requestConnectWallet") {
+    const ok = await connectWallet();
+    // Kirim feedback status koneksi ke iframe
+    if(ok) {
+        const gameFrame = $("gameFrame");
+        if (gameFrame && gameFrame.contentWindow) {
+            gameFrame.contentWindow.postMessage({ type: "walletConnected" }, "*");
+        }
     }
-    await payToPlay();
     return;
   }
   
@@ -370,22 +313,20 @@ window.addEventListener("message", async (ev) => {
       if (gameFrame && gameFrame.contentWindow) {
           gameFrame.contentWindow.postMessage({ 
               type: 'gameStatusResponse', 
-              allowLocalPlay: !!signer 
+              allowLocalPlay: !!signer // Ganti logika ini, harusnya selalu false jika Tx di game
           }, ev.origin);
       }
       return;
   }
   
-  // FIX FINAL: Menerima Jackpot/Top Score dari Leaderboard.html
+  // Menerima Jackpot/Top Score dari Leaderboard.html
   if (data.type === "leaderboardData") {
     const jackpotDisplay = $("poolValue"); 
     const topScoreDisplay = $("topScoreValue"); 
     
-    // FIXED: Hanya masukkan nilai, TANPA label teks "Jackpot: "
     if (jackpotDisplay) {
         jackpotDisplay.textContent = parseFloat(data.jackpot).toFixed(6) + " SOMI";
     }
-    // FIXED: Hanya masukkan nilai, TANPA label teks "Top: "
     if (topScoreDisplay) {
         topScoreDisplay.textContent = data.topScore;
     }
@@ -408,13 +349,24 @@ document.addEventListener("DOMContentLoaded", () => {
     await connectWallet();
   });
 
+  // Tombol Play hanya mengalihkan tampilan (View Switcher)
   if (btnPlay) btnPlay.addEventListener("click", async () => {
-    if (!signer) {
-      const ok = await connectWallet();
-      if (!ok) return;
+    const logoPlaceholder = $("logoPlaceholder");
+    const gameFrame = $("gameFrame");
+    const leaderboardFrame = $("leaderboardFrame");
+
+    // Sembunyikan semua kecuali Game Iframe
+    if (logoPlaceholder) logoPlaceholder.style.display = "none";
+    if (leaderboardFrame) leaderboardFrame.style.display = "none";
+    
+    if (gameFrame) {
+        gameFrame.style.display = "block"; 
+        
+        // Kirim sinyal ke iframe untuk menampilkan menu mode game
+        if (gameFrame.contentWindow) {
+            gameFrame.contentWindow.postMessage({ type: "showGameMenu" }, "*");
+        }
     }
-    // Sekarang memanggil fungsi pemilihan mode
-    await payToPlay(); 
   });
 
   if (btnLeaderboard) btnLeaderboard.addEventListener("click", async () => {
@@ -426,7 +378,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (gf) gf.style.display = "none";
     
     if (lf) {
-      // Reload iframe leaderboard untuk fetch data baru
       lf.src = "leaderboard.html?ts=" + Date.now();
       lf.style.display = "block";
     }
