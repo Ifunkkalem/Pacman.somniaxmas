@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +9,6 @@
     <script src="libs/ethers.min.js"></script>
     
     <style>
-        /* ... (CSS Anda) ... */
         body {
             font-family: Trebuchet MS, sans-serif;
             background: #800000;
@@ -94,32 +94,32 @@
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3"; 
 const FALLBACK_RPC_URL = "https://somnia-rpc.publicnode.com"; 
 
-// FIX 1: ABI hanya butuh getTop10()
+// FIX: ABI hanya butuh getTop10()
 const CONTRACT_ABI = [
     "function getTop10() view returns (address[] topPlayers, uint256[] scores)"
 ];
 
 // ========== CORE LOGIC ==========
 
-// FIX 2: Fungsi untuk fetching Jackpot dan Top Score dari sumber yang benar
+// FIX: Fungsi untuk fetching Jackpot (Saldo Kontrak) dan Top Score (Top 1 Leaderboard)
 async function fetchHeaderData(provider, contract) {
     let jackpotSomi = "0.000000";
     let topScoreValue = "0";
     
     try {
-        // --- JACKPOT: Ambil saldo native token dari alamat kontrak ---
+        // --- JACKPOT: Ambil saldo native token dari alamat kontrak (BUKAN FUNGSI ABI) ---
         const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
         jackpotSomi = ethers.utils.formatEther(jackpotWei);
         
         // --- TOP SCORE: Ambil dari Top 1 Leaderboard ---
         const [topPlayers, scores] = await contract.getTop10();
         
+        // Pastikan ada skor sebelum mengambil skor pertama
         if (scores.length > 0) {
-            // Top Score adalah skor pertama dari array yang diurutkan
             topScoreValue = scores[0].toString();
         }
         
-        // 3. Kirim data ke parent (app.js)
+        // Kirim data ke parent (app.js)
         window.parent.postMessage({ 
             type: "leaderboardData", 
             jackpot: jackpotSomi, 
@@ -131,7 +131,7 @@ async function fetchHeaderData(provider, contract) {
         // Kirim nilai default jika gagal
         window.parent.postMessage({ 
             type: "leaderboardData", 
-            jackpot: jackpotSomi, // Menggunakan nilai yang sudah difetch (mungkin 0 jika gagal sebelum fetch)
+            jackpot: jackpotSomi, 
             topScore: topScoreValue 
         }, "*");
     }
@@ -149,7 +149,6 @@ async function initializeWeb3() {
 
         const gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
         
-        // Panggil fungsi fetching Header BARU
         await fetchHeaderData(provider, gameContract); 
         
         await fetchLeaderboard(gameContract);
@@ -217,4 +216,3 @@ document.addEventListener('DOMContentLoaded', initializeWeb3);
 </script>
 </body>
 </html>
-
