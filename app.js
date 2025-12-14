@@ -238,36 +238,7 @@ async function payToPlay() {
     try { startFeeWei = await readContract.startFeeWei(); } catch(e){ startFeeWei = ethers.utils.parseEther("0.01"); }
   }
 
-  // --- DEFINISI MODE BARU & BIAYA ---
-  const MODES = {
-      'Classic': { fee: startFeeWei, multiplier: 1, timeLimit: null, lives: 3 },
-      'Hardcore': { fee: ethers.utils.parseEther("0.05"), multiplier: 4, timeLimit: null, lives: 1 }, // Biaya lebih tinggi, reward x4, 1 nyawa
-      'TimeAttack': { fee: ethers.utils.parseEther("0.03"), multiplier: 2, timeLimit: 90, lives: 3 } // Biaya sedang, timer 90 detik, reward x2
-  };
-  
-  // --- POP-UP PEMILIHAN MODE ---
-  let choice = prompt(
-    "Pilih Mode Permainan:\n\n" +
-    `1. Classic Mode (Skor x1): Bayar ${ethers.utils.formatEther(MODES.Classic.fee)} SOMI\n` +
-    `2. Hardcore Mode (1 Nyawa, Skor x4): Bayar ${ethers.utils.formatEther(MODES.Hardcore.fee)} SOMI\n` +
-    `3. Time Attack (90 Detik, Skor x2): Bayar ${ethers.utils.formatEther(MODES.TimeAttack.fee)} SOMI\n\n` +
-    "Masukkan nomor mode (1, 2, atau 3):"
-  );
-  
-  let selectedMode = null;
-  
-  // Parsing pilihan
-  if (choice) {
-      choice = choice.trim();
-      if (choice === '1') { selectedMode = MODES.Classic; selectedMode.name = 'Classic'; }
-      else if (choice === '2') { selectedMode = MODES.Hardcore; selectedMode.name = 'Hardcore'; }
-      else if (choice === '3') { selectedMode = MODES.TimeAttack; selectedMode.name = 'TimeAttack'; }
-  }
-  
-  if (!selectedMode) {
-      alert("Pilihan mode tidak valid. Permainan dibatalkan.");
-      return false;
-  }
+    
   
   const feeToSend = selectedMode.fee;
   
