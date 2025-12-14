@@ -278,7 +278,7 @@ iframe{
         <div class="content-area">
             <div id="loading-overlay"></div>
             <div id="logoPlaceholder">
-                <img src="assets/logo.png" alt="Somnia Christmas Logo" class="poster-image"> 
+                <img src="assets/logo1.png" alt="Somnia Christmas Logo" class="poster-image"> 
                 
                 <div id="poster-overlay">
                     <div class="text-container">
@@ -318,8 +318,8 @@ const logoPlaceholder = document.getElementById('logoPlaceholder');
 const loadingOverlay = document.getElementById('loading-overlay');
 
 let provider, signer, userAddress, gameContract;
-let startFeeWei = ethers.utils.parseEther("0.01"); 
-const HARDCODED_FEE_ETH = "0.01";
+let startFeeWei = ethers.utils.parseEther("0.001"); 
+const HARDCODED_FEE_ETH = "0.001";
 
 function info(msg){ console.log(msg); }
 
