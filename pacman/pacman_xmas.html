@@ -36,7 +36,24 @@
     image-rendering: optimizeSpeed;
   }
 
-  #ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
+  #ui{
+    position:relative;
+    color:#fff;
+    z-index:2;
+    align-self:flex-start;
+    display:flex;
+    justify-content:space-between; /* Menambahkan space between */
+    width:100%;
+    margin-bottom: -10px; /* Merapatkan ke canvas */
+  }
+
+  /* FIX: Timer Display */
+  #time-display-wrapper {
+      font-weight: bold;
+      color: #00ffae;
+      text-shadow: 0 0 3px black;
+  }
+  
   #game-message{
     color:white;
     background:rgba(0,0,0,.6);
@@ -89,7 +106,13 @@
 
 <body>
   <div id="gameWrapper">
-    <div id="ui">Score: <span id="current-score-display">0</span></div>
+    <div id="ui">
+        <div>Score: <span id="current-score-display">0</span></div>
+        <div id="game-info">
+            <span id="time-display-wrapper" style="margin-right: 15px; display: none;">Time: <span id="time-display">0</span>s</span>
+            <span>Lives: <span id="lives-display">3</span></span>
+        </div>
+    </div>
     <div id="game-message"></div>
 
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
@@ -110,6 +133,7 @@
 const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas.getContext("2d");
 const TILE = 20;
+const $ = (id) => document.getElementById(id);
 
 /* ================== MAP ================== */
 const GAME_MAP = [
@@ -153,14 +177,40 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 /* ========== STATE ========== */
-let mapData, pacman, ghosts, score = 0;
+let mapData, pacman, ghosts, score = 0, playerLives = 3;
 let lastMove = 0;
 let gameRunning = false;
 let ghostActive = false;
 const MOVE_INTERVAL = 240;
 
+// TAMBAHAN: State untuk Mode Game
+let gameMode = 'Classic';
+let scoreMultiplier = 1;
+let timeLimit = null; // in seconds
+let gameTimer = null; // Interval timer ID
+let gameTimeRemaining = null; 
+
 /* SECURITY: require parent paySuccess before allowing local start */
-let allowLocalPlay = false; // Kunci utama: hanya set true di postMessage
+let allowLocalPlay = false; 
+let isSubmissionSent = false;
+
+
+/* ========== UI UPDATERS ========== */
+function updateScoreDisplay() {
+    $("#current-score-display").textContent = score;
+}
+function updateLivesDisplay() {
+    $("#lives-display").textContent = playerLives;
+}
+function updateTimerDisplay(time) {
+    if ($("#time-display-wrapper")) {
+        $("#time-display-wrapper").style.display = timeLimit ? 'inline' : 'none';
+    }
+    if ($("#time-display")) {
+        $("#time-display").textContent = time;
+    }
+}
+
 
 /* ========== INIT ========== */
 function resetGame(){
@@ -171,15 +221,29 @@ function resetGame(){
     {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F"},
     {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"}
   ];
+  
+  // RESET STATE MODE
+  gameMode = 'Classic';
+  scoreMultiplier = 1;
+  timeLimit = null;
+  playerLives = 3;
+  clearGameTimer();
+  
   score = 0;
-  document.getElementById("current-score-display").textContent = score;
-  document.getElementById("game-message").style.display = "none";
+  isSubmissionSent = false; // Reset status submission
+  updateScoreDisplay();
+  updateLivesDisplay();
+  updateTimerDisplay(0);
+  
+  $("#game-message").style.display = "none";
   gameRunning = false;
   ghostActive = false;
-  // JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
+  
+  // allowLocalPlay JANGAN di reset di sini.
 }
 
 /* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== */
+// (fungsi drawMap, drawPacman, drawGhosts tidak diubah, dilewati untuk ringkasan)
 function drawMap(){
   for(let y=0;y<MAP_H;y++){
     for(let x=0;x<MAP_W;x++){
@@ -278,13 +342,13 @@ function drawGhosts(){
     ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
   });
 }
+/* ========== END DRAWING ========== */
 
-/* ========== MOVEMENT ========== */
+
+/* ========== MOVEMENT & COLLISIONS ========== */
 function canMove(x,y){ 
-    // Handle Teleport (misalnya di row 8/9, kolom 0 atau 19)
-    if (y >= 8 && y <= 9 && x === -1) return true; // move left past wall
-    if (y >= 8 && y <= 9 && x === MAP_W) return true; // move right past wall
-    
+    if (y >= 8 && y <= 9 && x === -1) return true; 
+    if (y >= 8 && y <= 9 && x === MAP_W) return true; 
     return mapData[y] && mapData[y][x] !== 1; 
 }
 
@@ -292,29 +356,25 @@ function movePacman(){
   let nx = pacman.x, ny = pacman.y;
   const d = pacman.next;
   
-  // Try to move in next direction
   nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
   ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
   
-  // Handle Teleport logic
-  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { // Left edge
+  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { 
       pacman.x = MAP_W - 1; 
       pacman.dir = d;
       return;
   }
-  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { // Right edge
+  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { 
       pacman.x = 0;
       pacman.dir = d;
       return;
   }
 
-  // If new tile is movable
   if(canMove(nx,ny)){
     pacman.x = nx;
     pacman.y = ny;
     pacman.dir = d;
   } else {
-    // If next move is blocked, try current direction
     const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
     const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
     if(canMove(cx,cy)){
@@ -327,12 +387,10 @@ function movePacman(){
 function moveGhosts(){
   if(!ghostActive) return;
   ghosts.forEach(g=>{
-    // Sederhana: Kejar Pacman atau Random
     const dx = pacman.x - g.x;
     const dy = pacman.y - g.y;
     let newX = g.x, newY = g.y;
     
-    // 70% chance to chase, 30% chance to random
     if (Math.random() < 0.7) {
         if (Math.abs(dx) > Math.abs(dy)) {
             newX = g.x + (dx > 0 ? 1 : -1);
@@ -351,21 +409,52 @@ function moveGhosts(){
   });
 }
 
-/* ========== COLLISIONS & MESSAGES ========== */
+// TAMBAHAN: Fungsi untuk me-reset posisi pacman & hantu saat ditangkap, tanpa Game Over langsung
+function resetPositions() {
+    pacman.x = 1; pacman.y = 1; pacman.dir = "right"; pacman.next = "right";
+    ghosts[0] = {x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000"};
+    ghosts[1] = {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F"};
+    ghosts[2] = {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"};
+    
+    // Tampilkan pesan "LIFE LOST"
+    const gm = $("#game-message");
+    gm.textContent = `LIFE LOST! Remaining: ${playerLives}`;
+    gm.style.display = "block";
+    setTimeout(() => gm.style.display = "none", 1500);
+    
+    ghostActive = true;
+    gameRunning = true;
+    lastMove = performance.now();
+}
+
+
 function checkCollision(){
   // Check Dot Eaten
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
-    document.getElementById("current-score-display").textContent = score;
+    updateScoreDisplay();
     parent.postMessage({ type: "dotEaten" }, "*");
   }
 
   // Check Ghost Collision
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
-      gameOver();
-      return;
+        
+        // --- HARDCORE/LIVES LOGIC ---
+        playerLives--;
+        updateLivesDisplay();
+        
+        if (playerLives <= 0) {
+            gameOver();
+            return;
+        } else {
+            // Jika nyawa masih ada, reset posisi, bukan Game Over
+            ghostActive = false;
+            gameRunning = false;
+            setTimeout(resetPositions, 1000); // Tunggu 1 detik sebelum reset
+            return;
+        }
     }
   }
 
@@ -379,28 +468,75 @@ function checkCollision(){
   }
   if(win){
     gameRunning = false;
-    const gm = document.getElementById("game-message");
-    gm.textContent = "YOU WIN! Score: " + score;
+    clearGameTimer();
+    const finalScore = score * scoreMultiplier;
+    const gm = $("#game-message");
+    gm.textContent = `YOU WIN! Final Score: ${finalScore} (x${scoreMultiplier})`;
     gm.style.display = "block";
-    parent.postMessage({ type: "submitScore", score }, "*");
+    
+    // Hanya submit jika belum pernah disubmit
+    if (!isSubmissionSent) {
+        parent.postMessage({ type: "submitScore", score: finalScore }, "*");
+        isSubmissionSent = true;
+    }
   }
 }
 
 function gameOver(){
   gameRunning = false;
-  const gm = document.getElementById("game-message");
-  gm.textContent = "GAME OVER! Score: " + score;
+  clearGameTimer();
+  
+  if (isSubmissionSent) return; // Mencegah duplikasi submit jika timer & ghost trigger hampir bersamaan
+
+  const finalScore = score * scoreMultiplier;
+  const gm = $("#game-message");
+  gm.textContent = `GAME OVER! Final Score: ${finalScore} (x${scoreMultiplier})`;
   gm.style.display = "block";
-  parent.postMessage({ type: "submitScore", score }, "*");
+  
+  if (!isSubmissionSent) {
+    parent.postMessage({ type: "submitScore", score: finalScore }, "*");
+    isSubmissionSent = true;
+  }
 }
+
+/* ========== TIMER LOGIC (Time Attack) ========== */
+function startGameTimer(seconds) {
+    gameTimeRemaining = seconds;
+    updateTimerDisplay(gameTimeRemaining);
+    
+    gameTimer = setInterval(() => {
+        gameTimeRemaining--;
+        updateTimerDisplay(gameTimeRemaining); 
+        
+        if (gameTimeRemaining <= 0) {
+            clearInterval(gameTimer);
+            // Time Attack Game Over
+            $("#game-message").textContent = "TIME UP! GAME OVER!";
+            $("#game-message").style.display = "block";
+            
+            // Panggil Game Over untuk submit skor
+            gameOver();
+        }
+    }, 1000);
+}
+
+function clearGameTimer() {
+    if (gameTimer) {
+        clearInterval(gameTimer);
+        gameTimer = null;
+    }
+    gameTimeRemaining = null;
+    updateTimerDisplay(0);
+}
+
 
 /* ========== COUNTDOWN helper ========== */
 function startCountdownAndPlay(){
   // show countdown -> after that ghostActive=true and gameRunning=true
-  const gm = document.getElementById("game-message");
+  const gm = $("#game-message");
   let count = 3;
   gm.style.display = "block";
-  gm.textContent = "READY " + count;
+  gm.textContent = `READY! Mode: ${gameMode}`;
   const t = setInterval(()=>{
     count--;
     if(count >= 0) gm.textContent = "READY " + count;
@@ -410,9 +546,15 @@ function startCountdownAndPlay(){
       ghostActive = true;
       gameRunning = true;
       lastMove = performance.now();
+      
+      // MULAI TIMER jika Time Attack
+      if (gameMode === 'TimeAttack' && timeLimit) {
+          startGameTimer(timeLimit);
+      }
     }
   }, 1000);
 }
+
 
 /* ========== LOOP ========== */
 function loop(ts){
@@ -435,11 +577,37 @@ function loop(ts){
 window.addEventListener("message", (e) => {
   const d = e.data || {};
   if(d.type === "paySuccess"){
-    // FIX PENTING: HANYA set allowLocalPlay ke true di sini.
     allowLocalPlay = true;
-    resetGame();
+    
+    // --- TERAPKAN PARAMETER MODE BARU ---
+    gameMode = d.gameMode || 'Classic';
+    scoreMultiplier = d.scoreMultiplier || 1;
+    timeLimit = d.timeLimit || null;
+    
+    if (gameMode === 'Hardcore') {
+        playerLives = 1;
+    } else {
+        playerLives = 3;
+    }
+    updateLivesDisplay();
+
+    resetGame(); // Reset setelah setting mode
     startCountdownAndPlay();
   }
+  
+  if(d.type === "scoreSubmissionComplete"){
+    // Setelah app.js selesai submit score
+    isSubmissionSent = true; 
+  }
+  
+  if(d.type === "waitingForTx"){
+      const gm = $("#game-message");
+      gm.textContent = "Waiting for Blockchain Transaction...";
+      gm.style.display = "block";
+      gameRunning = false;
+      ghostActive = false;
+  }
+  
   if(d.type === "forceReset"){
     resetGame();
   }
@@ -459,23 +627,20 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
     ev.preventDefault();
     btn.style.transform = "translateY(2px)";
     
-    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
     if(!allowLocalPlay){
-      const gm = document.getElementById("game-message");
+      const gm = $("#game-message");
       gm.textContent = "Please connect / pay to start the game.";
       gm.style.display = "block";
       setTimeout(()=> gm.style.display = "none", 1200);
       return;
     }
     
-    // Jika ada izin, segera proses input
     handleGameInput(dir); 
   };
   const end = (ev) => {
     ev.preventDefault();
     btn.style.transform = "";
   };
-  // Menggunakan passive:false sangat penting untuk preventDefault pada touch
   btn.addEventListener("touchstart", start, {passive:false});
   btn.addEventListener("mousedown", start);
   btn.addEventListener("touchend", end);
@@ -487,16 +652,14 @@ window.addEventListener("keydown", (e)=>{
   if(e.key.includes("Arrow")){
     const dir = e.key.replace("Arrow","").toLowerCase();
     
-    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
     if(!allowLocalPlay){
-      const gm = document.getElementById("game-message");
+      const gm = $("#game-message");
       gm.textContent = "Please connect / pay to start the game.";
       gm.style.display = "block";
       setTimeout(()=> gm.style.display = "none", 1200);
       return;
     }
     
-    // Jika ada izin, segera proses input
     handleGameInput(dir);
   }
 });
@@ -509,5 +672,4 @@ requestAnimationFrame(loop);
 </script>
 </body>
 </html>
-
 
