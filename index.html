@@ -1,368 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SOMNIA CHRISTMAS CARNIVAL</title>
-    <style>
-        /* CSS LENGKAP (Memastikan layout responsif) */
-        :root {
-            --red: #cc0000;
-            --green: #16a34a;
-            --dark: #0f172a;
-            --white: #f1f5f9;
-        }
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: var(--dark);
-            color: var(--white);
-            display: flex;
-            min-height: 100vh;
-            flex-direction: column;
-        }
-        #header {
-            background-color: var(--red);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            z-index: 10;
-        }
-        #header button {
-            background-color: var(--green);
-            color: var(--white);
-            border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        #wallet-info {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            font-size: 14px;
-        }
-        #wallet-address, #wallet-balance {
-            padding: 5px 10px;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }
-        #main-container {
-            display: flex;
-            flex: 1;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            box-sizing: border-box;
-            gap: 20px;
-        }
-        #sidebar {
-            width: 250px;
-            padding: 20px;
-            background-color: #1e293b;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            min-height: 500px;
-        }
-        .sidebar-section h3 {
-            margin-top: 0;
-            color: var(--green);
-            border-bottom: 2px solid var(--red);
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-        }
-        .mode-button, #btnLeaderboard {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            margin-bottom: 8px;
-        }
-        .mode-button {
-            background-color: var(--red);
-            color: var(--white);
-        }
-        .mode-button:hover {
-            background-color: #e03333;
-        }
-        #btnLeaderboard {
-            background-color: var(--green);
-            color: var(--white);
-        }
-        #btnLeaderboard:hover {
-            background-color: #27d057;
-        }
-        #logoPlaceholder {
-            background-image: url('https://via.placeholder.com/800x450/cc0000/ffffff?text=SOMNIA+CHRISTMAS+CARNIVAL+POSTER');
-            background-size: cover;
-            background-position: center;
-            height: 450px;
-            width: 100%;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            text-shadow: 2px 2px 4px #000;
-        }
-        #gameFrame, #leaderFrame {
-            border: none;
-            width: 100%;
-            height: 600px;
-            background-color: #0f172a;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-            display: none; /* Default hidden */
-        }
-        .content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            position: relative;
-        }
-        
-        /* Loading/Waiting Overlay */
-        #loading-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            text-align: center;
-            padding: 20px;
-            z-index: 20;
-            display: none;
-        }
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+<title>Somnia Christmas — Pacman (Parent)</title>
 
-        /* Mobile Adjustments */
-        @media (max-width: 768px) {
-            #main-container {
-                flex-direction: column;
-                padding: 10px;
-            }
-            #sidebar {
-                width: 100%;
-                min-height: auto;
-            }
-            #wallet-info {
-                display: none; /* Sembunyikan di HP, bisa diganti dengan menu */
-            }
-            #gameFrame, #leaderFrame {
-                height: 500px;
-            }
-        }
-        
-        #jackpot-info {
-            background: linear-gradient(90deg, #1e293b, #334155);
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-        #jackpot-info span {
-            color: gold;
-            font-weight: bold;
-        }
+<script src="libs/ethers.min.js"></script>
 
-    </style>
-</head>
-<body>
+<style>
+/* --- STYLING UTAMA --- */
+/* (CSS Anda yang sudah ada di sini, SAYA TIDAK MENGUBAHNYA) */
+/* ... (Potongan CSS Anda di sini) ... */
+*{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS, sans-serif}
+body{
+    min-height: 100vh;
+    height: 100%;
+    background:linear-gradient(to right,#fff,#ff0000);
+    color:#fff;
+    overflow-y: auto; 
+    overflow-x: hidden;
+}
 
-    <div id="header">
-        <span style="font-size: 20px; font-weight: bold;">SOMNIA CHRISTMAS CARNIVAL</span>
-        <div id="wallet-info">
-            <span id="wallet-address">Wallet: Disconnected</span>
-            <span id="wallet-balance">Balance: 0 SOMI</span>
-            <button id="btnConnectWallet">Connect Wallet</button>
-        </div>
-    </div>
+#wrap{display:flex;min-height:100vh;width:100%}
 
-    <div id="main-container">
-        
-        <div id="sidebar">
-            <div id="jackpot-info">
-                Jackpot: <span id="jackpot-display">0.0000 SOMI</span> | Top: <span id="top-score-display">0</span>
-            </div>
-            
-            <div class="sidebar-section">
-                <h3>Select Mode</h3>
-                <div id="modeButtonsSidebar" style="display:flex; flex-direction:column; gap:8px; width:100%;">
-                    <button class="mode-button" data-mode="Classic" data-fee="0.001" data-game-file="pacman_classic.html">Classic (x1, 0.001 SOMI)</button>
-                    <button class="mode-button" data-mode="TimeAttack" data-fee="0.001" data-game-file="pacman_time.html">Time Attack (x2, 0.001 SOMI)</button>
-                    <button class="mode-button" data-mode="Hardcore" data-fee="0.001" data-game-file="pacman_hardcore.html">Hardcore (x4, 0.001 SOMI)</button>
-                </div>
-            </div>
+#sidebar{width:160px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px}
+#main{flex:1;padding:10px;position:relative;display:flex;flex-direction:column;align-items:center;background:linear-gradient(to bottom,#ff0000,#800000)}
+button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff;cursor:pointer;font-weight:bold}
+#title{color:#00ffae;font-size:26px;text-shadow:0 0 0px #ff0;margin-bottom:12px}
+.footer{position:absolute;bottom:8px;color:#0ff;text-shadow:0 0 8px #0ff}
 
-            <div class="sidebar-section">
-                <h3>Navigation</h3>
-                <button id="btnHome" style="width: 100%; padding: 10px; background-color: #334155; color: white; border: none; border-radius: 6px; cursor: pointer;">Home</button>
-                <button id="btnLeaderboard">Leaderboard</button>
-            </div>
-        </div>
+/* --- Area Tampilan Utama (Image/Iframe) --- */
+.content-area{
+    width: 100%;
+    flex: 1; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.2);
+    border-radius: 8px;
+    max-height: 100%;
+}
 
-        <div class="content-area">
-            <div id="loading-overlay"></div>
-            <div id="logoPlaceholder">
-                SOMNIA CHRISTMAS CARNIVAL! Main & menangkan Jackpot Natal
-            </div>
-            <iframe id="gameFrame" src="about:blank" title="Pacman Game"></iframe>
-            <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
-        </div>
+iframe{
+    width:100%;
+    height:100%; 
+    border-radius:8px;
+    border:0;
+    display:none;
+}
 
-    </div>
+/* --- CSS untuk Poster Overlay --- */
+#logoPlaceholder {
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    position: relative; 
+    border-radius: 8px; 
+    overflow: hidden; 
+}
 
-<script>
-    const $ = (id) => document.getElementById(id);
-    const gameFrame = $('gameFrame');
-    const leaderFrame = $('leaderFrame');
-    const logoPlaceholder = $('logoPlaceholder');
-    const loadingOverlay = $('loading-overlay');
-    
-    // Fungsi untuk menampilkan konten utama
-    function showMain(contentId) {
-        gameFrame.style.display = 'none';
-        leaderFrame.style.display = 'none';
-        logoPlaceholder.style.display = 'none';
+#logoPlaceholder .poster-image {
+    width: 100%; 
+    height: 100%;
+    object-fit: cover; 
+    object-position: center; 
+}
 
-        if (contentId === 'gameFrame') {
-            gameFrame.style.display = 'block';
-        } else if (contentId === 'leaderFrame') {
-            leaderFrame.style.display = 'block';
-        } else {
-            logoPlaceholder.style.display = 'flex';
-        }
+#poster-overlay {
+    position: absolute; 
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; 
+    align-items: center;
+    text-align: center;
+    color: white;
+    text-shadow: 0 0 5px black, 0 0 10px red; 
+    padding: 20px; 
+    pointer-events: none; 
+}
+
+#poster-overlay h2 {
+    font-size: 2.2em;
+    color: #facc15; 
+    pointer-events: auto;
+}
+
+#poster-overlay p {
+    font-size: 1.1em;
+    pointer-events: auto;
+}
+
+.overlay-cta {
+    padding: 12px 30px;
+    font-size: 1.2em;
+    font-weight: bold;
+    border-radius: 8px;
+    pointer-events: auto;
+}
+
+/* --- MEDIA QUERY untuk Ponsel (Perbaikan Mobile Layout) --- */
+@media (max-width: 768px) {
+    #wrap {
+        flex-direction: column; 
+        min-height: 100%;
     }
 
-    // Tampilkan Home saat startup
-    showMain('logoPlaceholder'); 
-
-    // Event Listener untuk tombol navigasi
-    $('btnHome').addEventListener('click', () => showMain('logoPlaceholder'));
-    $('btnLeaderboard').addEventListener('click', () => {
-        showMain('leaderFrame');
-        // Kirim sinyal ke app.js untuk meminta data leaderboard
-        window.parent.postMessage({ type: 'requestLeaderboardData' }, '*');
-    });
-    $('btnConnectWallet').addEventListener('click', () => {
-        window.parent.postMessage({ type: 'requestConnectWallet' }, '*');
-    });
+    /* Sidebar menjadi baris horizontal di atas */
+    #sidebar {
+        width: 100%;
+        flex-direction: row; 
+        flex-wrap: wrap; 
+        justify-content: space-around;
+        padding: 8px;
+        order: -1; 
+    }
     
+    /* Sembunyikan Info Wallet di sidebar untuk menghemat ruang */
+    #walletAddr, #walletBal {
+        display: none;
+    }
 
-    // Listener untuk semua tombol mode
-    document.querySelectorAll('.mode-button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const mode = btn.getAttribute('data-mode');
-            const fee = btn.getAttribute('data-fee');
-            const gameFile = btn.getAttribute('data-game-file'); 
+    #main {
+        padding-top: 5px; 
+        padding-bottom: 5px;
+        flex: 1; 
+        overflow-y: auto; 
+    }
+
+    .content-area {
+        height: auto; 
+        max-height: none;
+        margin-bottom: 50px; 
+    }
+
+    /* FIX: Gunakan vw untuk memastikan iframe kotak dan Pad terlihat */
+    iframe#gameFrame {
+         width: 90vw; 
+         height: 90vw; 
+         max-height: 450px; 
+         display: none;
+    }
+    
+    #poster-overlay h2 {
+        font-size: 1.6em;
+    }
+
+    #poster-overlay p {
+        font-size: 1em;
+    }
+}
+
+/* Tombol Mode Baru */
+.mode-button {
+    background: linear-gradient(90deg, #ff4d4d, #cc0000); /* Nuansa merah Natal */
+    margin-top: 5px;
+    font-size: 0.85em; /* Lebih kecil agar muat di sidebar */
+}
+</style>
+<base href="/Pacman.somniaxmas/"> 
+</head>
+<body>
+<div id="wrap">
+  <div id="sidebar">
+    <button id="btnConnect">Connect Wallet</button>
+    <div id="walletAddr">Wallet: -</div>
+    <div id="walletBal">SOMI: -</div>
+    
+    <div style="display: flex; flex-direction: column; gap: 5px; width: 100%;">
+        <button class="mode-button" data-mode="Classic" data-fee="0.001" data-game-file="pacman_classic.html">Classic (x1, 0.001)</button>
+        <button class="mode-button" data-mode="TimeAttack" data-fee="0.001" data-game-file="pacman_time.html">Time Attack (x2, 0.001)</button>
+        <button class="mode-button" data-mode="Hardcore" data-fee="0.001" data-game-file="pacman_hardcore.html">Hardcore (x4, 0.001)</button>
+    </div>
+    
+    <button id="btnLeaderboard">Leaderboard</button>
+  </div>
+
+  <div id="main">
+    <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
+    
+    <div id="topScoreSummary" style="color: #fff; padding: 10px; margin-bottom: 15px; border-radius: 6px; background: rgba(0, 0, 0, 0.4); width: 80%; text-align: center;">
+        💰 **Jackpot Pool Saat Ini:** <span id="poolValue">0.00 SOMI</span> | 🏆 **High Score Global:** <span id="topScoreValue">0</span>
+    </div>
+
+    <div class="content-area">
+        <div id="logoPlaceholder">
+            <img src="assets/logo1.png?v=3" alt="Somnia Christmas Logo" class="poster-image"> 
             
-            if (!mode || !fee || !gameFile) return;
+            <div id="poster-overlay">
+                <h2>SOMNIA CHRISTMAS CARNIVAL!</h2>
+                <p>Hanya dengan <span id="feeDisplay">0.01 SOMI</span> per permainan, raih Jackpot Natal terbesar di Metaverse!</p>
+                <button class="overlay-cta" onclick="document.querySelector('.mode-button').click()">Mulai Classic Mode!</button>
+            </div>
+        </div>
+        <iframe id="gameFrame" src="about:blank" title="Pacman Game"></iframe>
+        <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
+    </div>
 
-            // Tampilkan overlay loading/waiting
-            loadingOverlay.textContent = `Preparing transaction for ${mode} Mode...`;
-            loadingOverlay.style.display = 'flex';
-            
-            // Kirim sinyal ke app.js untuk memproses transaksi dan memulai game
-            window.parent.postMessage({ 
-                type: 'requestStartTx', 
-                modeName: mode, 
-                feeEth: fee,
-                gameFile: gameFile
-            }, '*');
-        });
-    });
+    <div class="footer">created by: ifunkkalem | @Ifunkkalem91</div>
+  </div>
+</div>
 
-    // Listen for messages from parent (app.js)
-    window.addEventListener('message', (ev)=>{
-        const d = ev.data || {};
+<script>
+// Snowfall script
+for(let i=0;i<40;i++){
+  const s=document.createElement('div');
+  s.className='snow';
+  s.style.left = Math.random()*100+'vw';
+  s.style.animationDuration = (Math.random()*6+4)+'s';
+  s.style.opacity = Math.random();
+  document.body.appendChild(s);
+}
+</script>
 
-        if(d.type === 'walletInfo'){
-            // Update UI Wallet
-            $('wallet-address').textContent = `Wallet: ${d.address ? d.address.substring(0, 6) + '...' + d.address.substring(d.address.length - 4) : 'Disconnected'}`;
-            $('wallet-balance').textContent = `Balance: ${d.balance} SOMI`;
-            $('btnConnectWallet').textContent = d.address ? 'Connected' : 'Connect Wallet';
-            $('btnConnectWallet').disabled = !!d.address;
-        }
+<script>
+// ========== CONFIG (Web3) ==========
+const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3"; 
+const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"}],"name":"GameStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"score","type":"uint256"}],"name":"ScoreSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdraw","type":"event"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"allPlayers","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxScorePerSubmit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"players","outputs":[{"internalType":"uint256","name":"totalScore","type":"uint256"},{"internalType":"uint256","name":"lastPlayed","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startFeeWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startGame","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"score","type":"uint256"}],"name":"submitScore","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+
+// ========== ELEMENTS ==========
+const btnConnect = document.getElementById('btnConnect');
+const btnLeaderboard = document.getElementById('btnLeaderboard');
+const walletAddrEl = document.getElementById('walletAddr');
+const walletBalEl = document.getElementById('walletBal');
+const gameFrame = document.getElementById('gameFrame');
+const leaderFrame = document.getElementById('leaderFrame');
+const logoPlaceholder = document.getElementById('logoPlaceholder'); 
+
+let provider, signer, userAddress, gameContract, startFeeWei;
+let currentModeData = null; // Menyimpan data mode yang sedang dicoba
+
+// Utility: show minimal alert
+function info(msg){ console.log(msg); /* alert(msg); */ }
+
+function showMainContent(contentId) {
+    logoPlaceholder.style.display = 'none';
+    gameFrame.style.display = 'none';
+    leaderFrame.style.display = 'none';
+
+    // FIX: logoPlaceholder adalah div, bukan iframe
+    if (contentId === 'logoPlaceholder') {
+        document.getElementById(contentId).style.display = 'flex';
+    } else {
+        document.getElementById(contentId).style.display = 'block';
+    }
+}
+
+async function updateSummaryData() {
+    // ... (Fungsi updateSummaryData Anda yang sudah ada, tidak diubah) ...
+    try {
+        // Coba buat provider read-only jika belum ada
+        const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/"); 
+        gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
         
-        if(d.type === 'updateSummary'){
-            $('jackpot-display').textContent = d.jackpotEth;
-            $('top-score-display').textContent = d.topScore;
+        const [topPlayers, scores] = await gameContract.getTop10();
+        if (scores.length > 0) {
+            document.getElementById('topScoreValue').innerText = scores[0].toString();
+        } else {
+             document.getElementById('topScoreValue').innerText = 'N/A';
         }
-
-        if(d.type === 'waitingForTx'){
-            loadingOverlay.textContent = d.message || "Transaction sent. Waiting for confirmation...";
-            loadingOverlay.style.display = 'flex';
+    } catch (e) {
+        console.warn("Gagal mengambil Top Score:", e);
+        document.getElementById('topScoreValue').innerText = '0 (Error)';
+    }
+    
+    try {
+        if (provider) {
+             const poolWei = await provider.getBalance(CONTRACT_ADDRESS);
+             const poolEth = ethers.utils.formatEther(poolWei);
+             document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; 
+        } else {
+            // Coba dengan provider read-only jika wallet belum connect
+             const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/"); 
+             const poolWei = await readProvider.getBalance(CONTRACT_ADDRESS);
+             const poolEth = ethers.utils.formatEther(poolWei);
+             document.getElementById('poolValue').innerText = poolEth.substring(0, 6) + ' SOMI'; 
         }
+    } catch (e) {
+        console.warn("Gagal mengambil Pool Value:", e);
+        document.getElementById('poolValue').innerText = '0.00 SOMI';
+    }
 
-        if(d.type === 'paySuccess'){
-            loadingOverlay.style.display = 'none';
-            
-            const targetSrc = d.gameFile; 
-            
-            // 1. Muat file game yang sesuai jika belum dimuat
-            if (gameFrame.src.indexOf(targetSrc) === -1) {
-                gameFrame.src = targetSrc;
+    try {
+      if(!startFeeWei) {
+          const readProvider = new ethers.providers.JsonRpcProvider("https://dream-rpc.somnia.network/");
+          const feeContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+          startFeeWei = await feeContract.startFeeWei();
+      }
+      const feeDisplay = ethers.utils.formatEther(startFeeWei);
+      document.getElementById('feeDisplay').textContent = `${feeDisplay.substring(0, 6)} SOMI`;
+    } catch(e) {
+        document.getElementById('feeDisplay').textContent = `0.01 SOMI`;
+    }
+}
+
+// ========== CONNECT WALLET (Tidak diubah) ==========
+btnConnect.addEventListener('click', async () => {
+  if(typeof ethers === 'undefined'){ alert("Eror: Library Ethers.js tidak terdefinisi."); return; }
+  if(!window.ethereum){ alert("No wallet found."); return; }
+  try{
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+    walletAddrEl.innerText = "Wallet: " + userAddress.substring(0, 6) + '...' + userAddress.substring(userAddress.length - 4);
+    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    const balWei = await provider.getBalance(userAddress);
+    walletBalEl.innerText = `${ethers.utils.formatEther(balWei).substring(0, 8)} SOMI`; 
+
+    try {
+      startFeeWei = await gameContract.startFeeWei();
+      const feeDisplay = ethers.utils.formatEther(startFeeWei);
+      info(`Wallet connected. Fee: ${feeDisplay} SOMI`);
+    } catch(e){
+      startFeeWei = ethers.utils.parseEther("0.01"); 
+      info("Wallet connected. Fee fallback to 0.01 SOMI");
+    }
+    await updateSummaryData(); 
+  }catch(err){
+    console.error(err);
+    alert("Connect failed: " + (err && err.message ? err.message : String(err)));
+  }
+});
+
+// ========== PLAY MODE (Modifikasi untuk 3 tombol) ==========
+document.querySelectorAll('.mode-button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+        if(!signer || !userAddress){ alert("Please connect wallet first."); return; }
+        
+        const modeName = btn.getAttribute('data-mode');
+        const gameFile = btn.getAttribute('data-game-file');
+        const feeEth = btn.getAttribute('data-fee');
+        
+        // Simpan data mode yang sedang dimainkan
+        currentModeData = { modeName, gameFile, feeEth }; 
+        
+        try{
+            // Ambil fee terbaru dari Contract atau gunakan hardcoded 0.001
+            // Kita akan menggunakan startFeeWei dari Contract jika sudah terdeteksi di init/connect,
+            // atau menggunakan nilai dari tombol (0.001 SOMI)
+            let feeWei;
+            if (startFeeWei) {
+                feeWei = startFeeWei;
+            } else {
+                feeWei = ethers.utils.parseEther(feeEth); // Default 0.001 SOMI
             }
-
-            // 2. Tampilkan iframe dan kirim sinyal start
-            showMain('gameFrame');
             
-            // Logika untuk memastikan sinyal terkirim setelah iframe dimuat
+            const balWei = await provider.getBalance(userAddress);
+            if(balWei.lt(feeWei)){ alert("Insufficient SOMI native balance to pay start fee."); return; }
+            
+            // --- TRANSACTION START ---
+            // Menggunakan fungsi startGame() yang sudah ada di contract
+            const tx = await gameContract.startGame({ value: feeWei });
+            info("Transaction sent: " + tx.hash);
+            
+            // Tampilkan pesan loading/waiting di sini jika Anda punya overlay
+            
+            await tx.wait();
+            info("Payment confirmed — game started on-chain.");
+
+            // --- GAME START (IFRAME LOGIC) ---
+            // 1. Ubah SRC iframe ke file game yang sesuai
+            if (gameFrame.src.indexOf(gameFile) === -1) {
+                gameFrame.src = gameFile; 
+            }
+            
+            // 2. Tampilkan iframe
+            showMainContent('gameFrame'); 
+            
+            // 3. Kirim sinyal start ke iframe yang sudah dimuat/baru
             const sendStartSignal = () => {
-                gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
-                gameFrame.removeEventListener('load', sendStartSignal); // Hapus listener setelah dipakai
+                 gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
+                 gameFrame.removeEventListener('load', sendStartSignal); 
             };
             
-            if (gameFrame.src.indexOf(targetSrc) !== -1 && gameFrame.contentWindow) {
-                // Jika sudah dimuat (atau src sudah benar), kirim langsung
-                sendStartSignal();
+            if (gameFrame.src.indexOf(gameFile) !== -1 && gameFrame.contentWindow) {
+                 sendStartSignal(); // Kirim langsung jika src sudah benar dan sudah dimuat
             } else {
-                // Jika baru diubah src, tunggu event load
-                gameFrame.addEventListener('load', sendStartSignal);
+                 gameFrame.addEventListener('load', sendStartSignal); // Tunggu load jika src baru diubah
             }
-        }
-        
-        if(d.type === 'payFailed'){
-            loadingOverlay.style.display = 'none';
-            alert(`Payment failed: ${d.error || 'Check console for details.'}`);
-            showMain('logoPlaceholder'); // Kembali ke home
-        }
-        
-        if (d.type === "returnHome") {
-            showMain('logoPlaceholder');
-        }
+            
+            await updateSummaryData(); 
 
-        if (d.type === "waitingForScoreTx") {
-            // Tampilkan status pengiriman skor di overlay yang sama
-            loadingOverlay.textContent = d.message || "Submitting score to blockchain...";
-            loadingOverlay.style.display = 'flex';
+        }catch(err){
+            console.error("startGame error", err);
+            if(err.code === 4001) { alert("User rejected the transaction"); } 
+            else { alert("Payment failed: " + (err && err.message ? err.message : String(err))); }
         }
-
-        if (d.type === "scoreSubmissionComplete" || d.type === "scoreSubmissionFailed") {
-            loadingOverlay.style.display = 'none';
-            // Alert hasil submission
-            alert(d.type === "scoreSubmissionComplete" ? "Score submitted successfully!" : "Score submission failed!");
-        }
-        
     });
+});
+
+// ========== LEADERBOARD BUTTON (Tidak diubah) ==========
+btnLeaderboard.addEventListener('click', () => {
+  leaderFrame.src = "leaderboard.html";
+  showMainContent('leaderFrame'); 
+});
+
+// ========== MESSAGE FROM IFRAME (submitScore & requestStartFee) ==========
+window.addEventListener("message", async (event) => {
+  const data = event.data;
+  if(!data || typeof data !== 'object') return;
+
+  if(data.type === "submitScore") {
+    if(!signer || !userAddress) { alert("Please connect wallet before submitting score."); return; }
+    try{
+      // PENTING: score yang dikirim dari iframe sudah dikalikan dengan multiplier mode!
+      const score = Number(data.score || 0); 
+      if(isNaN(score)) { alert("Invalid score"); return; }
+
+      if(!gameContract) gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      
+      // Catatan: Jika contract Anda memiliki submitScore(uint256 score, string memory modeName), 
+      // Anda perlu mengubah ABI dan pemanggilan di sini.
+      // Berdasarkan ABI yang Anda berikan, fungsi hanya mengambil score (uint256)
+      const tx = await gameContract.submitScore(score); 
+      console.log("submitScore tx:", tx.hash);
+      await tx.wait();
+      alert("Score submitted on-chain. Thank you!");
+      updateSummaryData(); 
+    }catch(err){
+      console.error("submitScore error", err);
+      alert("Failed to submit score: " + (err && err.message ? err.message : String(err)));
+    }
+  }
+  
+  // Hapus requestStartFee karena Parent sekarang mengelola fee
+  /*
+  if(data.type === "requestStartFee") {
+    // ... (logic lama dihapus) ...
+  }
+  */
+});
+
+// ========== INISIALISASI SAAT LOAD (Tidak diubah) ==========
+document.addEventListener('DOMContentLoaded', () => {
+    showMainContent('logoPlaceholder');
+    updateSummaryData(); 
+});
 </script>
 </body>
 </html>
