@@ -367,9 +367,10 @@ function checkCollision(){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
-    parent.postMessage({ type: "dotEaten" }, "*");
-  }
-
+    parent.postMessage(
+  { type: "dotEaten" },
+  TRUSTED_ORIGIN
+);
   // Check Ghost Collision
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
@@ -397,7 +398,10 @@ scoreSubmitted = true;
 const playDuration = (Date.now() - sessionStartTime) / 1000;
 if(playDuration < 5) return; // anti instant fake play
 
-parent.postMessage({ type: "submitScore", score }, "*");
+parent.postMessage(
+  { type: "submitScore", score },
+  TRUSTED_ORIGIN
+);
 }
 
 function gameOver(){
@@ -414,8 +418,6 @@ if(playDuration < 5) return; // anti instant fake play
 parent.postMessage({ type: "submitScore", score }, "*");
 }
 
-/* ========== COUNTDOWN helper ========== */
-function startCountdownAndPlay(){
   // show countdown -> after that ghostActive=true and gameRunning=true
   const gm = document.getElementById("game-message");
   let count = 3;
