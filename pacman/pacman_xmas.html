@@ -1,116 +1,100 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Pacman XMAS - Santa vs Reindeer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  /* Layout: canvas + pad dalam flow kolom supaya pad tidak meng-overlay di mobile */
-  html,body{
-    margin:0;
-    background:#000;
-    height:100%;
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-    font-family:Arial, Helvetica, sans-serif;
-    padding:12px;
-    box-sizing:border-box;
-  }
+<!DOCTYPE html>  <html lang="en">    <head>    
+<meta charset="UTF-8">    
+<title>Pacman XMAS - Santa vs Reindeer</title>    
+<meta name="viewport" content="width=device-width, initial-scale=1.0">    
+<style>    
+  /* Layout: canvas + pad dalam flow kolom supaya pad tidak meng-overlay di mobile */    
+  html,body{    
+    margin:0;    
+    background:#000;    
+    height:100%;    
+    min-height:100vh;    
+    display:flex;    
+    justify-content:center;    
+    align-items:flex-start;    
+    font-family:Arial, Helvetica, sans-serif;    
+    padding:12px;    
+    box-sizing:border-box;    
+  }  #gameWrapper{  
+width: calc(20 * 20px + 40px); /* fallback */  
+max-width: 92vw;  
+display:flex;  
+flex-direction:column;  
+align-items:center;  
+gap:12px;  
+}  canvas{
+background:#020617;
+border-radius:10px;
+display:block;
+box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+image-rendering: optimizeSpeed;
+}
 
-  #gameWrapper{
-    width: calc(20 * 20px + 40px); /* fallback */
-    max-width: 92vw;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:12px;
-  }
+#ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
+#game-message{
+color:white;
+background:rgba(0,0,0,.6);
+padding:6px 10px;
+border-radius:8px;
+display:none;
+z-index:12;
+}
 
-  canvas{
-    background:#020617;
-    border-radius:10px;
-    display:block;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-    image-rendering: optimizeSpeed;
-  }
+/* Mobile D-PAD: placed under canvas (not fixed) */
+#mobileControls{
+position:relative;
+margin-top:6px;
+display:flex;
+flex-direction:column;
+align-items:center;
+gap:8px;
+user-select:none;
+-webkit-tap-highlight-color: transparent;
+}
 
-  #ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
-  #game-message{
-    color:white;
-    background:rgba(0,0,0,.6);
-    padding:6px 10px;
-    border-radius:8px;
-    display:none;
-    z-index:12;
-  }
+/* FIX: Tombol lebih besar untuk touch yang lebih baik /
+#mobileControls button{
+width: 70px; / Dulu 64px /
+height: 70px; / Dulu 64px */
+border-radius:10px;border:0;
+background:linear-gradient(90deg,#cc0000,#16a34a);color:#fff;font-size:22px;
+display:inline-flex;align-items:center;justify-content:center;
+box-shadow:0 4px rgba(0,0,0,0.4);
+touch-action: manipulation;
+}
+.dpad-row{display:flex;align-items:center;gap:8px}
 
-  /* Mobile D-PAD: placed under canvas (not fixed) */
-  #mobileControls{
-    position:relative;
-    margin-top:6px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:8px;
-    user-select:none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  
-  /* FIX: Tombol lebih besar untuk touch yang lebih baik */
-  #mobileControls button{
-    width: 70px; /* Dulu 64px */
-    height: 70px; /* Dulu 64px */
-    border-radius:10px;border:0;
-    background:linear-gradient(90deg,#cc0000,#16a34a);color:#fff;font-size:22px;
-    display:inline-flex;align-items:center;justify-content:center;
-    box-shadow:0 4px rgba(0,0,0,0.4);
-    touch-action: manipulation;
-  }
-  .dpad-row{display:flex;align-items:center;gap:8px}
-  
-  /* FIX: Sesuaikan pengisi tengah dengan ukuran tombol yang baru */
-  .center-filler{width: 70px; height: 70px;}
+/* FIX: Sesuaikan pengisi tengah dengan ukuran tombol yang baru */
+.center-filler{width: 70px; height: 70px;}
 
-  /* Desktop: hide mobile pad, allow centering large canvas */
-  @media(min-width:900px){
-    body{align-items:center}
-    #gameWrapper{max-width:760px}
-    #mobileControls{display:none}
-  }
+/* Desktop: hide mobile pad, allow centering large canvas */
+@media(min-width:900px){
+body{align-items:center}
+#gameWrapper{max-width:760px}
+#mobileControls{display:none}
+}
 
-  /* ensure small screens canvas fits and leaves room for pad */
-  @media(max-width:480px){
-    #gameWrapper{ width: 90vw; }
-  }
+/* ensure small screens canvas fits and leaves room for pad */
+@media(max-width:480px){
+#gameWrapper{ width: 90vw; }
+}
 </style>
-</head>
 
-<body>
-  <div id="gameWrapper">
-    <div id="ui">Score: <span id="current-score-display">0</span></div>
-    <div id="game-message"></div>
-
-    <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
-
-    <div id="mobileControls" aria-hidden="false">
-      <button data-dir="up" id="btn-up">↑</button>
-      <div class="dpad-row">
-        <button data-dir="left" id="btn-left">←</button>
-        <div class="center-filler" aria-hidden="true"></div>
-        <button data-dir="right" id="btn-right">→</button>
-      </div>
-      <button data-dir="down" id="btn-down">↓</button>
-    </div>
-  </div>
-
-<script>
-(() => {
-/* ================= SECURITY ================= */
-const TRUSTED_ORIGIN = "https://pac-man-halloween.vercel.app";
-
-const canvas = document.getElementById("pacman-canvas");
+</head>  <body>    
+  <div id="gameWrapper">    
+    <div id="ui">Score: <span id="current-score-display">0</span></div>    
+    <div id="game-message"></div>  <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>    <div id="mobileControls" aria-hidden="false">    
+  <button data-dir="up" id="btn-up">↑</button>    
+  <div class="dpad-row">    
+    <button data-dir="left" id="btn-left">←</button>    
+    <div class="center-filler" aria-hidden="true"></div>    
+    <button data-dir="right" id="btn-right">→</button>    
+  </div>    
+  <button data-dir="down" id="btn-down">↓</button>    
+</div>    </div>  <script>    
+(() => {    
+/* ================= SECURITY ================= */    
+const TRUSTED_ORIGIN = "https://pac-man-halloween.vercel.app";    const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas.getContext("2d");
 const TILE = 20;
 
@@ -145,14 +129,14 @@ canvas.height = MAP_H * TILE;
 
 /* utility rounded rect */
 function roundRect(ctx, x, y, w, h, r) {
-  if (r === undefined) r = 6;
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
+if (r === undefined) r = 6;
+ctx.beginPath();
+ctx.moveTo(x + r, y);
+ctx.arcTo(x + w, y, x + w, y + h, r);
+ctx.arcTo(x + w, y + h, x, y + h, r);
+ctx.arcTo(x, y + h, x, y, r);
+ctx.arcTo(x, y, x + w, y, r);
+ctx.closePath();
 }
 
 /* ========== STATE ========== */
@@ -168,247 +152,250 @@ let sessionActive = false;      // ⬅️ FIX BUG
 let scoreSubmitted = false;     // ⬅️ PREVENT MULTI SUBMIT
 let sessionStartTime = 0;       // ⬅️ BASIC ANTI-SPAM
 
- 
 /* ========== INIT ========== */
 function resetGame(){
-  mapData = GAME_MAP.map(r=>[...r]);
-  pacman = {x:1,y:1,dir:"right",next:"right"};
-  ghosts = [
-    {x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000"},
-    {x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F"},
-    {x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"}
-  ];
-  score = 0;
-  scoreSubmitted = false;          // ⬅️ PATCH
-  sessionStartTime = Date.now();   // ⬅️ PATCH
-  document.getElementById("current-score-display").textContent = score;
-  document.getElementById("game-message").style.display = "none";
-  gameRunning = false;
-  ghostActive = false;
-  // JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
+mapData = GAME_MAP.map(r=>[...r]);
+pacman = {x:1,y:1,dir:"right",next:"right"};
+ghosts = [
+{x:9,y:9,color:"#ff0033", antlerColor:"#964B00", noseColor:"#cc0000"},
+{x:10,y:9,color:"#00b300", antlerColor:"#964B00", noseColor:"#556B2F"},
+{x:8,y:9,color:"#1e90ff", antlerColor:"#964B00", noseColor:"#87CEFA"}
+];
+score = 0;
+scoreSubmitted = false;          // ⬅️ PATCH
+sessionStartTime = Date.now();   // ⬅️ PATCH
+document.getElementById("current-score-display").textContent = score;
+document.getElementById("game-message").style.display = "none";
+gameRunning = false;
+ghostActive = false;
+// JANGAN reset allowLocalPlay di sini. allowLocalPlay hanya diset true sekali oleh parent.
 }
 
-/* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== */
+/* ========== DRAWING (keeps your Santa & Reindeer visuals) ========== /
 function drawMap(){
-  for(let y=0;y<MAP_H;y++){
-    for(let x=0;x<MAP_W;x++){
-      const t = mapData[y][x];
-      if(t===1){
-        ctx.fillStyle="#b91c1c";
-        ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-        ctx.strokeStyle="rgba(249,250,251,0.6)";
-        ctx.lineWidth=1;
-        ctx.strokeRect(x*TILE+0.5,y*TILE+0.5,TILE-1,TILE-1);
-      } else {
-        ctx.fillStyle="#020617";
-        ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-        if(t===2){
-          ctx.fillStyle="#ffd700";
-          ctx.beginPath();
-          ctx.arc(x*TILE+TILE/2,y*TILE+TILE/2,3,0,Math.PI*2);
-          ctx.fill();
-        }
-      }
-    }
-  }
+for(let y=0;y<MAP_H;y++){
+for(let x=0;x<MAP_W;x++){
+const t = mapData[y][x];
+if(t===1){
+ctx.fillStyle="#b91c1c";
+ctx.fillRect(xTILE,yTILE,TILE,TILE);
+ctx.strokeStyle="rgba(249,250,251,0.6)";
+ctx.lineWidth=1;
+ctx.strokeRect(xTILE+0.5,yTILE+0.5,TILE-1,TILE-1);
+} else {
+ctx.fillStyle="#020617";
+ctx.fillRect(xTILE,yTILE,TILE,TILE);
+if(t===2){
+ctx.fillStyle="#ffd700";
+ctx.beginPath();
+ctx.arc(xTILE+TILE/2,yTILE+TILE/2,3,0,Math.PI2);
+ctx.fill();
+}
+}
+}
+}
 }
 
 function drawPacman(){
-  const wobbleY = Math.sin(Date.now() / 150) * 1.5;
-  const x = pacman.x*TILE + TILE/2;
-  const y = pacman.y*TILE + TILE/2 + wobbleY;
-  const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
-  const angle = {right:0,left:Math.PI,up:-Math.PI/2,down:Math.PI/2}[pacman.dir];
+const wobbleY = Math.sin(Date.now() / 150) * 1.5;
+const x = pacman.xTILE + TILE/2;
+const y = pacman.yTILE + TILE/2 + wobbleY;
+const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
+const angle = {right:0,left:Math.PI,up:-Math.PI/2,down:Math.PI/2}[pacman.dir];
 
-  ctx.fillStyle="#facc15";
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.arc(x,y,TILE/2-2,angle+mouth*0.6,angle-mouth*0.6+Math.PI*2);
-  ctx.fill();
+ctx.fillStyle="#facc15";
+ctx.beginPath();
+ctx.moveTo(x,y);
+ctx.arc(x,y,TILE/2-2,angle+mouth0.6,angle-mouth0.6+Math.PI*2);
+ctx.fill();
 
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(x, y + TILE/8, TILE/3.5, 0, Math.PI * 2);
-  ctx.fill();
+ctx.fillStyle="white";
+ctx.beginPath();
+ctx.arc(x, y + TILE/8, TILE/3.5, 0, Math.PI * 2);
+ctx.fill();
 
-  ctx.fillStyle="#cc0000";
-  ctx.beginPath();
-  ctx.moveTo(x - TILE*0.35, y - TILE*0.3);
-  ctx.lineTo(x + TILE*0.35, y - TILE*0.3);
-  ctx.lineTo(x, y - TILE*0.8);
-  ctx.closePath();
-  ctx.fill();
+ctx.fillStyle="#cc0000";
+ctx.beginPath();
+ctx.moveTo(x - TILE0.35, y - TILE0.3);
+ctx.lineTo(x + TILE0.35, y - TILE0.3);
+ctx.lineTo(x, y - TILE*0.8);
+ctx.closePath();
+ctx.fill();
 
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(x, y - TILE*0.8, 3.5, 0, Math.PI*2);
-  ctx.fill();
+ctx.fillStyle="white";
+ctx.beginPath();
+ctx.arc(x, y - TILE0.8, 3.5, 0, Math.PI2);
+ctx.fill();
 
-  ctx.fillStyle="white";
-  ctx.fillRect(x - TILE*0.35, y - TILE*0.3, TILE*0.7, 3);
+ctx.fillStyle="white";
+ctx.fillRect(x - TILE0.35, y - TILE0.3, TILE*0.7, 3);
 }
 
 function drawGhosts(){
-  ghosts.forEach(g=>{
-    const wobbleY = Math.sin(Date.now() / 150 + g.x * 0.5) * 1.5;
-    const x = g.x*TILE + TILE/2;
-    const y = g.y*TILE + TILE/2 + wobbleY;
-    const size = TILE * 0.45;
-    const headWobble = Math.sin(Date.now() / 200) * 1;
+ghosts.forEach(g=>{
+const wobbleY = Math.sin(Date.now() / 150 + g.x * 0.5) * 1.5;
+const x = g.xTILE + TILE/2;
+const y = g.yTILE + TILE/2 + wobbleY;
+const size = TILE * 0.45;
+const headWobble = Math.sin(Date.now() / 200) * 1;
 
-    ctx.save();
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = g.color;
-    ctx.fillStyle = g.color;
-    roundRect(ctx, x - size, y - size, size * 2, size * 2, 6);
-    ctx.fill();
-    ctx.restore();
+ctx.save();    
+ctx.shadowBlur = 8;    
+ctx.shadowColor = g.color;    
+ctx.fillStyle = g.color;    
+roundRect(ctx, x - size, y - size, size * 2, size * 2, 6);    
+ctx.fill();    
+ctx.restore();    
 
-    ctx.fillStyle="white";
-    ctx.beginPath();
-    ctx.arc(x - TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);
-    ctx.arc(x + TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle="black";
-    ctx.beginPath();
-    ctx.arc(x - TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);
-    ctx.arc(x + TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);
-    ctx.fill();
+ctx.fillStyle="white";    
+ctx.beginPath();    
+ctx.arc(x - TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);    
+ctx.arc(x + TILE*0.15, y - TILE*0.15, 2, 0, Math.PI*2);    
+ctx.fill();    
+ctx.fillStyle="black";    
+ctx.beginPath();    
+ctx.arc(x - TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);    
+ctx.arc(x + TILE*0.15 + headWobble, y - TILE*0.15, 1, 0, Math.PI*2);    
+ctx.fill();    
 
-    ctx.fillStyle=g.noseColor;
-    ctx.beginPath();
-    ctx.arc(x, y + TILE*0.25, 3, 0, Math.PI*2);
-    ctx.fill();
+ctx.fillStyle=g.noseColor;    
+ctx.beginPath();    
+ctx.arc(x, y + TILE*0.25, 3, 0, Math.PI*2);    
+ctx.fill();    
 
-    ctx.fillStyle=g.antlerColor;
-    ctx.fillRect(x - TILE*0.35, y - TILE*0.4, 2, 5);
-    ctx.fillRect(x - TILE*0.35 + 2, y - TILE*0.4 - 2, 5, 2);
-    ctx.fillRect(x + TILE*0.35 - 2, y - TILE*0.4, 2, 5);
-    ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
-  });
+ctx.fillStyle=g.antlerColor;    
+ctx.fillRect(x - TILE*0.35, y - TILE*0.4, 2, 5);    
+ctx.fillRect(x - TILE*0.35 + 2, y - TILE*0.4 - 2, 5, 2);    
+ctx.fillRect(x + TILE*0.35 - 2, y - TILE*0.4, 2, 5);    
+ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
+
+});
 }
 
 /* ========== MOVEMENT ========== */
-function canMove(x,y){ 
-    // Handle Teleport (misalnya di row 8/9, kolom 0 atau 19)
-    if (y >= 8 && y <= 9 && x === -1) return true; // move left past wall
-    if (y >= 8 && y <= 9 && x === MAP_W) return true; // move right past wall
-    
-    return mapData[y] && mapData[y][x] !== 1; 
+function canMove(x,y){
+// Handle Teleport (misalnya di row 8/9, kolom 0 atau 19)
+if (y >= 8 && y <= 9 && x === -1) return true; // move left past wall
+if (y >= 8 && y <= 9 && x === MAP_W) return true; // move right past wall
+
+return mapData[y] && mapData[y][x] !== 1;
+
 }
 
 function movePacman(){
-  let nx = pacman.x, ny = pacman.y;
-  const d = pacman.next;
-  
-  // Try to move in next direction
-  nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
-  ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
-  
-  // Handle Teleport logic
-  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { // Left edge
-      pacman.x = MAP_W - 1; 
-      pacman.dir = d;
-      return;
-  }
-  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { // Right edge
-      pacman.x = 0;
-      pacman.dir = d;
-      return;
-  }
+let nx = pacman.x, ny = pacman.y;
+const d = pacman.next;
 
-  // If new tile is movable
-  if(canMove(nx,ny)){
-    pacman.x = nx;
-    pacman.y = ny;
-    pacman.dir = d;
-  } else {
-    // If next move is blocked, try current direction
-    const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
-    const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
-    if(canMove(cx,cy)){
-        pacman.x = cx;
-        pacman.y = cy;
-    }
-  }
+// Try to move in next direction
+nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
+ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
+
+// Handle Teleport logic
+if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { // Left edge
+pacman.x = MAP_W - 1;
+pacman.dir = d;
+return;
+}
+if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { // Right edge
+pacman.x = 0;
+pacman.dir = d;
+return;
+}
+
+// If new tile is movable
+if(canMove(nx,ny)){
+pacman.x = nx;
+pacman.y = ny;
+pacman.dir = d;
+} else {
+// If next move is blocked, try current direction
+const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
+const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
+if(canMove(cx,cy)){
+pacman.x = cx;
+pacman.y = cy;
+}
+}
 }
 
 function moveGhosts(){
-  if(!ghostActive) return;
-  ghosts.forEach(g=>{
-    // Sederhana: Kejar Pacman atau Random
-    const dx = pacman.x - g.x;
-    const dy = pacman.y - g.y;
-    let newX = g.x, newY = g.y;
-    
-    // 70% chance to chase, 30% chance to random
-    if (Math.random() < 0.7) {
-        if (Math.abs(dx) > Math.abs(dy)) {
-            newX = g.x + (dx > 0 ? 1 : -1);
-        } else {
-            newY = g.y + (dy > 0 ? 1 : -1);
-        }
-    } else {
-        const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
-        newX = g.x + d[0];
-        newY = g.y + d[1];
-    }
+if(!ghostActive) return;
+ghosts.forEach(g=>{
+// Sederhana: Kejar Pacman atau Random
+const dx = pacman.x - g.x;
+const dy = pacman.y - g.y;
+let newX = g.x, newY = g.y;
 
-    if(canMove(newX, newY)){ 
-        g.x = newX; g.y = newY; 
-    }
-  });
+// 70% chance to chase, 30% chance to random    
+if (Math.random() < 0.7) {    
+    if (Math.abs(dx) > Math.abs(dy)) {    
+        newX = g.x + (dx > 0 ? 1 : -1);    
+    } else {    
+        newY = g.y + (dy > 0 ? 1 : -1);    
+    }    
+} else {    
+    const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];    
+    newX = g.x + d[0];    
+    newY = g.y + d[1];    
+}    
+
+if(canMove(newX, newY)){     
+    g.x = newX; g.y = newY;     
+}
+
+});
 }
 
 /* ========== COLLISIONS & MESSAGES ========== */
 function checkCollision(){
-  // Check Dot Eaten
-  if(mapData[pacman.y][pacman.x] === 2){
-    mapData[pacman.y][pacman.x] = 0;
-    score += 10;
-    document.getElementById("current-score-display").textContent = score;
-    parent.postMessage(
-  { type: "dotEaten" }, TRUSTED_ORIGIN );
- }
-  // Check Ghost Collision
-  for(const g of ghosts){
-    if(g.x === pacman.x && g.y === pacman.y){
-      gameOver();
-      return;
-    }
-  }
+// Check Dot Eaten
+if(mapData[pacman.y][pacman.x] === 2){
+mapData[pacman.y][pacman.x] = 0;
+score += 10;
+document.getElementById("current-score-display").textContent = score;
+parent.postMessage(
+{ type: "dotEaten" },
+TRUSTED_ORIGIN
+);
+// Check Ghost Collision
+for(const g of ghosts){
+if(g.x === pacman.x && g.y === pacman.y){
+gameOver();
+return;
+}
+}
 
-  // Check Win Condition
-  let win = true;
-  for(let y=0;y<mapData.length;y++){
-    for(let x=0;x<mapData[y].length;x++){
-      if(mapData[y][x] === 2) { win = false; break; }
-    }
-    if(!win) break;
-  }
-  if(win){
-    gameRunning = false;
-    const gm = document.getElementById("game-message");
-    gm.textContent = "YOU WIN! Score: " + score;
-    gm.style.display = "block";
-    if(scoreSubmitted) return;
+// Check Win Condition
+let win = true;
+for(let y=0;y<mapData.length;y++){
+for(let x=0;x<mapData[y].length;x++){
+if(mapData[y][x] === 2) { win = false; break; }
+}
+if(!win) break;
+}
+if(win){
+gameRunning = false;
+const gm = document.getElementById("game-message");
+gm.textContent = "YOU WIN! Score: " + score;
+gm.style.display = "block";
+if(scoreSubmitted) return;
 scoreSubmitted = true;
 
 const playDuration = (Date.now() - sessionStartTime) / 1000;
 if(playDuration < 5) return; // anti instant fake play
 
 parent.postMessage(
-  { type: "submitScore", score },
-  TRUSTED_ORIGIN
+{ type: "submitScore", score },
+TRUSTED_ORIGIN
 );
 }
 
 function gameOver(){
-  gameRunning = false;
-  const gm = document.getElementById("game-message");
-  gm.textContent = "GAME OVER! Score: " + score;
-  gm.style.display = "block";
-  if(scoreSubmitted) return;
+gameRunning = false;
+const gm = document.getElementById("game-message");
+gm.textContent = "GAME OVER! Score: " + score;
+gm.style.display = "block";
+if(scoreSubmitted) return;
 scoreSubmitted = true;
 
 const playDuration = (Date.now() - sessionStartTime) / 1000;
@@ -417,107 +404,109 @@ if(playDuration < 5) return; // anti instant fake play
 parent.postMessage({ type: "submitScore", score }, "*");
 }
 
-  // show countdown -> after that ghostActive=true and gameRunning=true
-  const gm = document.getElementById("game-message");
-  let count = 3;
-  gm.style.display = "block";
-  gm.textContent = "READY " + count;
-  const t = setInterval(()=>{
-    count--;
-    if(count >= 0) gm.textContent = "READY " + count;
-    if(count < 0){
-      clearInterval(t);
-      gm.style.display = "none";
-      ghostActive = true;
-      gameRunning = true;
-      lastMove = performance.now();
-    }
-  }, 1000);
+// show countdown -> after that ghostActive=true and gameRunning=true
+const gm = document.getElementById("game-message");
+let count = 3;
+gm.style.display = "block";
+gm.textContent = "READY " + count;
+const t = setInterval(()=>{
+count--;
+if(count >= 0) gm.textContent = "READY " + count;
+if(count < 0){
+clearInterval(t);
+gm.style.display = "none";
+ghostActive = true;
+gameRunning = true;
+lastMove = performance.now();
+}
+}, 1000);
 }
 
 /* ========== LOOP ========== */
 function loop(ts){
-  if(gameRunning && ts - lastMove > MOVE_INTERVAL){
-    movePacman();
-    moveGhosts();
-    checkCollision();
-    lastMove = ts;
-  }
+if(gameRunning && ts - lastMove > MOVE_INTERVAL){
+movePacman();
+moveGhosts();
+checkCollision();
+lastMove = ts;
+}
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawMap();
-  drawPacman();
-  drawGhosts();
-  requestAnimationFrame(loop);
+ctx.clearRect(0,0,canvas.width,canvas.height);
+drawMap();
+drawPacman();
+drawGhosts();
+requestAnimationFrame(loop);
 }
 
 /* ================= MESSAGE ================= */
 window.addEventListener("message",(e)=>{
-  if(e.origin!==TRUSTED_ORIGIN) return;
-  if(e.data?.type==="paySuccess"){
-    if(sessionActive) return;
-    sessionActive=true;
-    allowLocalPlay=true;
-    resetGame();
-    gameRunning=true;
-    ghostActive=true;
-  }
+if(e.origin!==TRUSTED_ORIGIN) return;
+if(e.data?.type==="paySuccess"){
+if(sessionActive) return;
+sessionActive=true;
+allowLocalPlay=true;
+resetGame();
+gameRunning=true;
+ghostActive=true;
+}
 });
 
 /* FIX: Fungsi untuk mengatur input internal D-Pad/Keyboard */
 function handleGameInput(direction){
-  if(direction && typeof direction === "string"){
-    pacman.next = direction.toLowerCase();
-  }
+if(direction && typeof direction === "string"){
+pacman.next = direction.toLowerCase();
+}
 }
 
 /* INPUT HANDLERS - gated by allowLocalPlay */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
-  const dir = btn.getAttribute("data-dir");
-  const start = (ev) => {
-    ev.preventDefault();
-    btn.style.transform = "translateY(2px)";
+const dir = btn.getAttribute("data-dir");
+const start = (ev) => {
+ev.preventDefault();
+btn.style.transform = "translateY(2px)";
+
+// Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.    
+if(!allowLocalPlay){    
+  const gm = document.getElementById("game-message");    
+  gm.textContent = "Please connect / pay to start the game.";    
+  gm.style.display = "block";    
+  setTimeout(()=> gm.style.display = "none", 1200);    
+  return;    
+}    
     
-    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
-    if(!allowLocalPlay){
-      const gm = document.getElementById("game-message");
-      gm.textContent = "Please connect / pay to start the game.";
-      gm.style.display = "block";
-      setTimeout(()=> gm.style.display = "none", 1200);
-      return;
-    }
-    
-    // Jika ada izin, segera proses input
-    handleGameInput(dir); 
-  };
-  const end = (ev) => {
-    ev.preventDefault();
-    btn.style.transform = "";
-  };
-  // Menggunakan passive:false sangat penting untuk preventDefault pada touch
-  btn.addEventListener("touchstart", start, {passive:false});
-  btn.addEventListener("mousedown", start);
-  btn.addEventListener("touchend", end);
-  btn.addEventListener("mouseup", end);
+// Jika ada izin, segera proses input    
+handleGameInput(dir);
+
+};
+const end = (ev) => {
+ev.preventDefault();
+btn.style.transform = "";
+};
+// Menggunakan passive:false sangat penting untuk preventDefault pada touch
+btn.addEventListener("touchstart", start, {passive:false});
+btn.addEventListener("mousedown", start);
+btn.addEventListener("touchend", end);
+btn.addEventListener("mouseup", end);
 });
 
 /* keyboard arrows: same gating */
 window.addEventListener("keydown", (e)=>{
-  if(e.key.includes("Arrow")){
-    const dir = e.key.replace("Arrow","").toLowerCase();
+if(e.key.includes("Arrow")){
+const dir = e.key.replace("Arrow","").toLowerCase();
+
+// Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.    
+if(!allowLocalPlay){    
+  const gm = document.getElementById("game-message");    
+  gm.textContent = "Please connect / pay to start the game.";    
+  gm.style.display = "block";    
+  setTimeout(()=> gm.style.display = "none", 1200);    
+  return;    
+}    
     
-    // Cek GATING KERAS: Jika belum ada izin, tampilkan pesan.
-    if(!allowLocalPlay){
-      const gm = document.getElementById("game-message");
-      gm.textContent = "Please connect / pay to start the game.";
-      gm.style.display = "block";
-      setTimeout(()=> gm.style.display = "none", 1200);
-      return;
-    }
-    
-    // Jika ada izin, segera proses input
-    handleGameInput(dir);
-  }
+// Jika ada izin, segera proses input    
+handleGameInput(dir);
+
+}
 });
 
 /* ========== STARTUP ========== */
@@ -527,6 +516,4 @@ requestAnimationFrame(loop);
 })();
 </script>
 </body>
-</html>
-
-
+</html>  
