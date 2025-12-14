@@ -39,14 +39,14 @@ body {
 
 /* Sidebar diubah menjadi header horizontal di mobile */
 #sidebar {
-  width: 160px;
+  width: 180px; /* Lebarkan sedikit untuk tombol mode */
   background: #fff;
   color: #000;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex-shrink: 0; /* Pastikan sidebar tidak menyusut */
+  flex-shrink: 0; 
 }
 
 #main {
@@ -57,17 +57,24 @@ body {
   align-items: center;
   background: linear-gradient(to bottom, #ff0000, #800000);
   position: relative;
-  min-height: 0; /* Penting untuk Flexbox agar tidak overflow */
+  min-height: 0; 
+  z-index: 1; /* Pastikan di atas iframe saat dibutuhkan */
 }
 
 button {
   padding: 10px;
   border-radius: 8px;
   border: none;
-  background: linear-gradient(90deg, red, green);
+  background: linear-gradient(90deg, #b91c1c, #16a34a); /* Merah dan Hijau */
   color: #fff;
   cursor: pointer;
   font-weight: bold;
+}
+
+.mode-button {
+  padding: 8px;
+  font-size: 13px;
+  background: linear-gradient(90deg, #ff0000, #00ffae); /* Merah ke Neon Hijau */
 }
 
 #title {
@@ -81,22 +88,20 @@ button {
   color: #0ff;
   text-shadow: 0 0 4px #0ff;
   font-size: 12px;
-  flex-shrink: 0; /* Pastikan footer tetap di bawah */
+  flex-shrink: 0; 
 }
 
 /* ==== AREA UTAMA (LOGO / GAME / LEADERBOARD) ==== */
 .content-area {
   width: 100%;
   max-width: 480px;
-  /* FIX 4: Gunakan flex: 1 untuk membuat area konten game mengisi ruang vertikal yang tersisa di #main */
   flex: 1; 
   background: rgba(0,0,0,0.25);
   border-radius: 12px;
   overflow: hidden;
   position: relative;
-  /* Tambahkan min-height agar iframe memiliki ruang */
   min-height: 300px;
-  margin-bottom: 10px; /* Jarak dari footer */
+  margin-bottom: 10px; 
 }
 
 iframe {
@@ -106,7 +111,7 @@ iframe {
   display: none;
 }
 
-/* ==== POSTER LOGO & OVERLAY (TIDAK BERUBAH) ==== */
+/* ==== POSTER LOGO & OVERLAY ==== */
 #logoPlaceholder {
   width: 100%;
   height: 100%;
@@ -140,13 +145,9 @@ iframe {
 #poster-overlay h2{font-size:1.6em;color:#facc15}
 #poster-overlay p{font-size:1em}
 
+/* Hapus styling overlay-cta karena tombol sudah dipindahkan */
 .overlay-cta{
-  padding:12px 30px;
-  font-size:1.1em;
-  font-weight:bold;
-  border-radius:8px;
-  pointer-events:auto; 
-  cursor:pointer;
+  display:none; 
 }
 
 /* ==== MOBILE LOCK (Hingga 768px) ==== */
@@ -166,6 +167,21 @@ iframe {
     flex-wrap: wrap;
     padding: 8px 10px;
     gap: 4px;
+    /* PENTING: Sembunyikan Mode Buttons di mobile agar Header tidak terlalu penuh */
+  }
+
+  /* Sembunyikan Mode Buttons di Mobile Header */
+  #modeButtonsSidebar {
+    display: none !important;
+  }
+  
+  /* TAMPILKAN Mode Buttons di Mobile di area utama saat Home */
+  #modeButtonsMain {
+    display: flex !important;
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
   }
 
   /* Wallet Info yang lebih ringkas */
@@ -179,17 +195,11 @@ iframe {
   }
   
   /* Ukuran tombol lebih kecil di mobile header */
-  #btnConnect, #btnPlay, #btnLeaderboard {
+  #btnConnect, #btnHome, #btnLeaderboard {
     padding: 6px 10px;
     font-size: 12px;
   }
 
-  /* Main area harus mengambil sisa ruang di bawah header */
-  #main {
-    flex: 1; 
-    min-height: 0; 
-  }
-  
   /* Ringkaskan Summary */
   #topScoreSummary {
     padding: 5px 10px;
@@ -198,7 +208,7 @@ iframe {
   
   /* Pastikan iframe mengambil seluruh ruang content-area */
   .content-area {
-    min-height: 300px; /* Memastikan iframe memiliki tinggi minimum yang layak */
+    min-height: 300px;
   }
 }
 </style>
@@ -209,11 +219,18 @@ iframe {
 
   <div id="sidebar">
     <button id="btnConnect">Connect Wallet</button>
-    <button id="btnHome">Home</button> <div style="display:flex; flex-direction:column; justify-content:center; flex-shrink: 0;">
+    <button id="btnHome">Home</button> 
+    <div style="display:flex; flex-direction:column; justify-content:center; flex-shrink: 0;">
         <div id="walletAddr" title="Wallet address">Wallet: -</div>
         <div id="walletBal" title="Native balance">SOMI: -</div>
     </div>
-    <button id="btnPlay">Play Game</button>
+    
+    <div id="modeButtonsSidebar" style="display:flex; flex-direction:column; gap:8px; width:100%;">
+        <button id="btnModeClassic" class="mode-button" data-mode="Classic" data-fee="0.01">Classic (0.01 SOMI)</button>
+        <button id="btnModeTime" class="mode-button" data-mode="TimeAttack" data-fee="0.03">Time Attack (0.03 SOMI)</button>
+        <button id="btnModeHardcore" class="mode-button" data-mode="Hardcore" data-fee="0.05">Hardcore (0.05 SOMI)</button>
+    </div>
+    
     <button id="btnLeaderboard">Leaderboard</button>
   </div>
 
@@ -225,6 +242,12 @@ iframe {
       💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> |
       🏆 <b>Top:</b> <span id="topScoreValue">0</span>
     </div>
+    
+    <div id="modeButtonsMain" style="display:none; width:100%; max-width:480px; margin-bottom: 12px; padding: 0 10px; box-sizing: border-box;">
+        <button id="btnModeClassicMobile" class="mode-button" data-mode="Classic" data-fee="0.01" style="flex:1;">Classic</button>
+        <button id="btnModeTimeMobile" class="mode-button" data-mode="TimeAttack" data-fee="0.03" style="flex:1;">Time Attack</button>
+        <button id="btnModeHardcoreMobile" class="mode-button" data-mode="Hardcore" data-fee="0.05" style="flex:1;">Hardcore</button>
+    </div>
 
     <div class="content-area">
 
@@ -235,13 +258,10 @@ iframe {
             <h2>SOMNIA CHRISTMAS!</h2>
             <p>Main & menangkan Jackpot Natal 🎁</p>
           </div>
-          <div style="margin-bottom:8px;">
-            <button id="overlayStart" class="overlay-cta">Mulai</button>
           </div>
-        </div>
       </div>
 
-      <iframe id="gameFrame" src="./pacman/pacman_xmas.html" title="Pacman Game"></iframe>
+      <iframe id="gameFrame" src="pacman_xmas.html" title="Pacman Game"></iframe>
       <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
 
     </div>
@@ -252,20 +272,26 @@ iframe {
 
 <script>
 const btnConnect = document.getElementById('btnConnect');
-const btnPlay = document.getElementById('btnPlay');
 const btnLeaderboard = document.getElementById('btnLeaderboard');
-const btnHome = document.getElementById('btnHome'); // DITAMBAHKAN: Elemen tombol Home
+const btnHome = document.getElementById('btnHome'); 
 const walletAddrEl = document.getElementById('walletAddr');
 const walletBalEl = document.getElementById('walletBal');
 const gameFrame = document.getElementById('gameFrame');
 const leaderFrame = document.getElementById('leaderFrame');
 const logoPlaceholder = document.getElementById('logoPlaceholder');
-const overlayStart = document.getElementById('overlayStart');
 const posterImg = document.getElementById('posterImg');
 
 // SAFER showMain: only show if element exists
 function showMain(id){
   try{
+    // Cek apakah mode buttons harus ditampilkan
+    const showModeButtons = (id === 'logoPlaceholder');
+    const modeSidebar = document.getElementById('modeButtonsSidebar');
+    const modeMain = document.getElementById('modeButtonsMain');
+    
+    if (modeSidebar) modeSidebar.style.display = showModeButtons && window.innerWidth > 768 ? 'flex' : 'none';
+    if (modeMain) modeMain.style.display = showModeButtons && window.innerWidth <= 768 ? 'flex' : 'none';
+
     logoPlaceholder.style.display='none';
     gameFrame.style.display='none';
     leaderFrame.style.display='none';
@@ -276,55 +302,13 @@ function showMain(id){
   }
 }
 
-// Previously Play directly posted paySuccess -> this allowed game to start without payment.
-// Now Play asks parent (app.js) to start the game; parent must reply with {type:'paySuccess'}.
-function requestStartGame(){
-  // send a request to parent/app.js to start (pay & unlock)
-  try{
-    window.parent.postMessage({ type: 'requestStartGame' }, '*');
-    // show a subtle waiting feedback while parent handles tx
-    const gm = document.createElement('div');
-    gm.id = '__waiting_req';
-    gm.style.position='fixed'; 
-    gm.style.left='50%';
-    gm.style.top='8px';
-    gm.style.transform='translateX(-50%)';
-    gm.style.background='rgba(0,0,0,0.6)';
-    gm.style.color='white';
-    gm.style.padding='6px 10px';
-    gm.style.borderRadius='8px';
-    gm.style.zIndex='999';
-    gm.textContent = 'Requesting start... check wallet.';
-    document.body.appendChild(gm);
-    setTimeout(()=> {
-      const w = document.getElementById('__waiting_req');
-      if(w) w.remove();
-    }, 8000);
-  }catch(e){
-    console.warn('requestStartGame postMessage failed', e);
-  }
-}
-
-// Hook up UI controls to requestStartGame instead of starting locally
-btnPlay.addEventListener('click', (ev)=>{
-  ev.preventDefault();
-  requestStartGame();
-});
-
-overlayStart.addEventListener('click', (ev)=>{
-  ev.preventDefault();
-  requestStartGame();
-});
-
-// DITAMBAHKAN: Listener untuk tombol Home
+// Hook up UI controls 
 btnHome.addEventListener('click', ()=>{
-  showMain('logoPlaceholder'); // Kembali ke tampilan Logo/Poster
+  showMain('logoPlaceholder'); 
 });
-
 
 // Leaderboard shows iframe
 btnLeaderboard.addEventListener('click', ()=>{
-  // Agar Leaderboard selalu refresh saat dibuka
   leaderFrame.src = "leaderboard.html?" + Date.now(); 
   showMain('leaderFrame');
 });
@@ -334,6 +318,25 @@ btnConnect.addEventListener('click', ()=>{
   try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
   catch(e){ console.warn('postMessage connect failed', e); }
 });
+
+
+// Listener untuk semua tombol mode (Sidebar dan Main Area)
+document.querySelectorAll('.mode-button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-mode');
+        const fee = btn.getAttribute('data-fee');
+        
+        if (!mode || !fee) return;
+        
+        // Kirim sinyal ke app.js untuk memproses transaksi dan memulai game
+        window.parent.postMessage({ 
+            type: 'requestStartTx', 
+            modeName: mode, 
+            feeEth: fee 
+        }, '*');
+    });
+});
+
 
 // Listen for messages from parent (app.js)
 window.addEventListener('message', (ev)=>{
@@ -353,34 +356,35 @@ window.addEventListener('message', (ev)=>{
       walletAddrEl.title = d.address;
     }
     if(typeof d.balance !== 'undefined'){
-      walletBalEl.textContent = d.balance + ' SOMI';
+      walletBalEl.textContent = Number(d.balance).toFixed(6) + ' SOMI';
       walletBalEl.title = d.balance + ' SOMI';
     }
   }
 
-  // DITAMBAHKAN: Listener untuk data Jackpot/Top Score dari app.js
+  // Listener untuk data Jackpot/Top Score dari app.js
   if(d.type === 'updateSummary'){
       const poolEl = document.getElementById('poolValue');
       const scoreEl = document.getElementById('topScoreValue');
       
-      if (d.jackpot && poolEl) poolEl.textContent = d.jackpot + ' SOMI';
+      if (d.jackpot && poolEl) poolEl.textContent = parseFloat(d.jackpot).toFixed(6) + ' SOMI';
       if (d.topScore && scoreEl) scoreEl.textContent = d.topScore;
   }
   
-  // DITAMBAHKAN: Listener untuk navigasi otomatis ke Leaderboard setelah submit skor
+  // Listener untuk navigasi otomatis ke Leaderboard setelah submit skor
   if(d.type === 'showLeaderboard'){
-      leaderFrame.src = "leaderboard.html?" + Date.now(); // Force refresh
-      showMain('leaderFrame'); // Pindah ke tampilan Leaderboard
+      leaderFrame.src = "leaderboard.html?" + Date.now(); 
+      showMain('leaderFrame');
   }
-
-  if(d.type === 'startFee'){
-    console.info('Start fee:', d.feeEth || d.feeWei);
-  }
-
+  
+  // Listener dari app.js untuk menampilkan logo/home
   if(d.type === 'forceShowLogo'){
     showMain('logoPlaceholder');
   }
 });
+
+// Resizing logic for mode buttons visibility
+window.addEventListener('resize', () => showMain(document.querySelector('.content-area > div[style*="block"]') ? 'gameFrame' : 'logoPlaceholder'));
+
 
 // ensure poster image fallback (so it won't appear blank)
 posterImg.addEventListener('error', ()=>{
@@ -395,3 +399,4 @@ showMain('logoPlaceholder');
   
 </body>
 </html>
+
