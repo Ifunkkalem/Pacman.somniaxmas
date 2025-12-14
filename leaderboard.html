@@ -1,138 +1,108 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Leaderboard</title>
-
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-
 <style>
-body{
-  background:#0b0b0b;
-  color:#fff;
-  font-family:Arial, sans-serif;
-  margin:0;
-  padding:10px;
+body {
+  margin: 0;
+  padding: 12px;
+  background: #000;
+  color: #fff;
+  font-family: Arial, sans-serif;
 }
-.header{
-  display:flex;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:8px;
-  margin-bottom:10px;
+h2 { text-align: center; }
+table {
+  width: 100%;
+  border-collapse: collapse;
 }
-.stat{
-  font-size:14px;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-th,td{
-  padding:6px;
-  text-align:center;
-  border-bottom:1px solid #222;
-}
-tr.rank-1{
-  background:linear-gradient(90deg,#ffd700,#ffae00);
-  color:#000;
-  font-weight:bold;
+th, td {
+  border-bottom: 1px solid #333;
+  padding: 6px;
+  text-align: center;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-  <div class="stat" id="poolValue">Jackpot: 0 SOMI</div>
-  <div class="stat" id="topScoreValue">Top: 0</div>
+<h2>🏆 Leaderboard</h2>
+
+<div style="text-align:center;margin-bottom:10px;">
+  Jackpot: <b id="jackpot">Loading...</b><br/>
+  Top Score: <b id="topScore">-</b>
 </div>
 
 <table>
 <thead>
 <tr>
-  <th>#</th>
-  <th>Player</th>
-  <th>Score</th>
+<th>#</th>
+<th>Player</th>
+<th>Score</th>
 </tr>
 </thead>
-<tbody id="leaderboardBody"></tbody>
+<tbody id="leaderRows">
+<tr><td colspan="3">Loading...</td></tr>
+</tbody>
 </table>
 
 <script>
-/* ===== CONFIG ===== */
-const RPC_URL = "https://rpc.somnia.network";
-const CONTRACT_ADDRESS = "PASTE_CONTRACT_ADDRESS";
-const CONTRACT_ABI = [ /* ABI LEADERBOARD */ ];
+const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
+const ABI = [
+  "function jackpotPool() view returns(uint256)",
+  "function getTopScores() view returns(address[] memory, uint256[] memory)"
+];
 
-/* ===== GLOBAL ===== */
-let provider;
-let gameContract;
+const provider = new ethers.providers.JsonRpcProvider(
+  "https://somnia-rpc.publicnode.com"
+);
 
-/* ===== INIT ===== */
-async function initLeaderboard(){
-  provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-  gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-  window._provider = provider;
-  window._gameContract = gameContract;
-
-  await fetchHeaderData();
-  await fetchLeaderboard();
-}
-
-/* ===== HEADER ===== */
-async function fetchHeaderData(){
-  try{
-    const jackpotWei = await gameContract.jackpotPool();
-    const topScore = await gameContract.topScore();
-
+async function loadLeaderboard() {
+  try {
+    const jackpotWei = await contract.jackpotPool();
     const jackpot = ethers.utils.formatEther(jackpotWei);
 
-    document.getElementById("poolValue").textContent =
-      "Jackpot: " + Number(jackpot).toFixed(6) + " SOMI";
+    const [players, scores] = await contract.getTopScores();
 
-    document.getElementById("topScoreValue").textContent =
-      "Top: " + topScore.toString();
+    // Jackpot & Top
+    document.getElementById("jackpot").innerText =
+      parseFloat(jackpot).toFixed(6) + " SOMI";
 
-    window.parent?.postMessage({
-      type:"leaderboardData",
-      jackpot: jackpot,
-      topScore: topScore.toString()
-    },"*");
+    const top = scores.length ? scores[0].toString() : "0";
+    document.getElementById("topScore").innerText = top;
 
-  }catch(e){}
-}
+    // Rows
+    const tbody = document.getElementById("leaderRows");
+    tbody.innerHTML = "";
 
-/* ===== LEADERBOARD ===== */
-async function fetchLeaderboard(){
-  try{
-    const rows = await gameContract.getLeaderboard();
-    const tbody = document.getElementById("leaderboardBody");
-    tbody.innerHTML="";
-
-    rows.forEach((r,i)=>{
-      const tr = tbody.insertRow();
-      if(i===0) tr.classList.add("rank-1");
-
-      tr.innerHTML=`
+    players.forEach((addr, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
         <td>${i+1}</td>
-        <td>${r.player.slice(0,6)}...${r.player.slice(-4)}</td>
-        <td>${r.score}</td>
+        <td>${addr.slice(0,6)}...${addr.slice(-4)}</td>
+        <td>${scores[i]}</td>
       `;
+      tbody.appendChild(tr);
     });
-  }catch(e){}
+
+    // 🔥 KIRIM KE app.js (INI YANG SEBELUMNYA HILANG)
+    window.parent.postMessage({
+      type: "leaderboardData",
+      jackpot: jackpot,
+      topScore: top
+    }, "*");
+
+  } catch (e) {
+    console.error("Leaderboard error:", e);
+    document.getElementById("leaderRows").innerHTML =
+      "<tr><td colspan='3'>Failed to load</td></tr>";
+  }
 }
 
-/* ===== AUTO REFRESH ===== */
-setInterval(()=>{
-  fetchHeaderData();
-  fetchLeaderboard();
-},10000);
-
-initLeaderboard();
+loadLeaderboard();
 </script>
 
 </body>
