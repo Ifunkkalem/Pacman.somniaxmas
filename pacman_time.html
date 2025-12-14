@@ -1,0 +1,62 @@
+<script>
+(() => {
+// ... (Deklarasi canvas, ctx, TILE, $) ...
+
+/* ================== KONFIGURASI MODE INI ================== */
+const GAME_MODE = 'TimeAttack';
+const SCORE_MULTIPLIER = 2;
+const TIME_LIMIT = 90; // BATAS WAKTU 90 DETIK
+const PLAYER_LIVES_INITIAL = 1; 
+
+// MAP TIME ATTACK (Standar: Banyak persimpangan)
+const GAME_MAP_DATA = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+  [1,2,1,2,1,2,1,1,2,1,1,2,1,1,2,1,2,1,2,1],
+  [1,2,1,2,1,2,2,2,2,2,2,2,2,2,2,1,2,1,2,1],
+  [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
+  [0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
+  [1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
+  [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
+  [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+
+// AI Time Attack: Menengah (Pengejar + Acak)
+function getGhostAi(ghostIndex) {
+    if (ghostIndex === 0) return 'CHASE_PREDICTIVE'; // Lebih sering mengejar
+    return 'RANDOM_SIMPLE'; 
+}
+
+/* ================== LOGIKA GAME INTI LENGKAP ================== */
+// ... (Salin semua variabel state dan fungsi helper seperti di pacman_classic.html) ...
+
+// *Pastikan logika AI CHASE_PREDICTIVE sudah didefinisikan di fungsi determineGhostDirection*
+
+// PENTING: Salin semua fungsi game inti di sini.
+// ... (resetGame, updateScoreDisplay, movePacman, moveGhosts, checkCollision, gameOver, dll.) ...
+
+// Pastikan startCountdownAndPlay memanggil timer:
+function startCountdownAndPlay(){
+    // ... (logic countdown 3, 2, 1) ...
+    if(count < 0){
+        // ... (clearInterval, set gameRunning = true) ...
+        if (TIME_LIMIT) { // Panggil timer di sini
+            startGameTimer(TIME_LIMIT);
+        }
+    }
+}
+
+// ... (Salin sisa kode dan message handler) ...
+
+// resetGame();
+// requestAnimationFrame(loop);
+
+})();
+</script>
