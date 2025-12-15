@@ -92,6 +92,27 @@ function startCountdown() {
   gm.style.display = "block";
   gm.textContent = "READY " + count;
 
+  const gameFrame = document.getElementById("gameFrame");
+  if (gameFrame && gameFrame.contentWindow) {
+  try {
+    if (typeof gameFrame.contentWindow.resetGame === "function") {
+      gameFrame.contentWindow.resetGame();
+    }
+    if (typeof gameFrame.contentWindow.startCountdown === "function") {
+      gameFrame.contentWindow.startCountdown();
+    }
+    // penting: izinkan input PAD
+    gameFrame.contentWindow.allowLocalPlay = true;
+
+    const gm = gameFrame.contentWindow.document.getElementById("game-message");
+    if (gm) {
+      gm.textContent = "PAYMENT SUCCESS! Starting Game...";
+      gm.style.display = "block";
+    }
+  } catch(e) {
+    console.warn("DOM control error:", e);
+  }
+}
   const interval = setInterval(() => {
     count--;
     if (count >= 0) gm.textContent = "READY " + count;
@@ -136,13 +157,26 @@ async function submitScoreTx(score) {
   const tx = await gameContract.submitScore(Number(score));
   await tx.wait();
 
-  // setelah submit, arahkan ke leaderboard
-  const leaderFrame = document.getElementById("leaderFrame");
-  if(leaderFrame){
-    leaderFrame.src = "leaderboard.html?" + Date.now();
-    showMain("leaderFrame");
-  }
+  const gameFrame = document.getElementById("gameFrame");
+if (gameFrame && gameFrame.contentWindow) {
+  try {
+    // reset game state
+    if (typeof gameFrame.contentWindow.resetGame === "function") {
+      gameFrame.contentWindow.resetGame();
+    }
+    // kunci PAD lagi
+    gameFrame.contentWindow.allowLocalPlay = false;
+
+    // tampilkan pesan
+    const gm = gameFrame.contentWindow.document.getElementById("game-message");
+    if (gm) {
+      gm.textContent = "Score submitted! Pay again to play.";
+      gm.style.display = "block";
+    }
+  } catch(e) { console.warn("DOM control error:", e); }
 }
+// tetap di tampilan game
+showMain("gameFrame");
 
 // ---------------- MESSAGE HANDLER ----------------
 window.addEventListener("message", async (ev) => {
