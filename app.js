@@ -65,7 +65,34 @@ async function payToPlay(){
   if(bal.lt(startFeeWei)){alert("Insufficient balance.");return;}
   const tx=await gameContract.startGame({value:startFeeWei});
   await tx.wait();
+function startCountdown() {
+  const gm = document.getElementById("game-message");
+  let count = 3;
+  gm.style.display = "block";
+  gm.textContent = "READY " + count;
+  gm.style.animation = "pop 300ms ease"; // animasi awal
 
+  if (window.gameStartInterval) clearInterval(window.gameStartInterval);
+
+  window.gameStartInterval = setInterval(() => {
+    count--;
+    if (count >= 0) {
+      gm.textContent = "READY " + count;
+      gm.style.animation = "none"; // reset
+      // reflow trick untuk restart animasi
+      void gm.offsetWidth;
+      gm.style.animation = "pop 300ms ease";
+    }
+    if (count < 0) {
+      clearInterval(window.gameStartInterval);
+      gm.style.display = "none";
+      ghostActive = true;
+      gameRunning = true;
+      lastMove = performance.now();
+      document.getElementById("restart-button").style.display = "block";
+    }
+  }, 1000);
+}
   const gw = safeGameDoc();
   if(gw){
     try{
