@@ -2,114 +2,118 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Somnia Christmas — Pacman</title>
-<script src="libs/ethers.min.js"></script>
-<link rel="icon" href="assets/logo.png" type="image/png">
-<style>
-/* Reset */
-* { box-sizing: border-box; margin:0; padding:0; }
 
-/* Layout */
+<script src="libs/ethers.min.js"></script>
+
+<style>
+*{ box-sizing:border-box; margin:0; padding:0; font-family:Trebuchet MS,sans-serif; }
+
 body {
-  font-family: 'Trebuchet MS', sans-serif;
-  background: linear-gradient(135deg,#0a0a0a,#1a1a1a);
-  color:#fff;
-  height:100vh;
-  display:flex;
+  height: 100vh;
+  min-height: 100%;
+  background: linear-gradient(135deg,#b91c1c,#166534); /* merah-hijau */
+  color: #fff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
-#wrap { display:flex; flex:1; }
+
+#wrap { display:flex; flex:1; width:100%; }
 
 /* Sidebar */
 #sidebar {
-  width:220px;
+  width: 180px;
   background: linear-gradient(180deg,#b91c1c,#166534);
-  padding:16px;
+  color: #fff;
+  padding: 12px;
   display:flex;
   flex-direction:column;
-  gap:14px;
-  border-right:4px solid #ffd700;
+  gap:12px;
+  border-right:4px solid #ffd700; /* aksen emas */
 }
 #sidebar button {
   padding:10px;
+  border-radius:8px;
   border:none;
-  border-radius:6px;
-  cursor:pointer;
-  background:#333;
+  background:linear-gradient(90deg, red, green);
   color:#fff;
-  font-size:14px;
-  transition:background 0.2s;
+  cursor:pointer;
+  font-weight:bold;
 }
-#sidebar button:hover { background:#555; }
-#walletAddr, #walletBal {
-  font-size:13px;
-  margin-top:4px;
-  word-break:break-all;
-}
+#sidebar button:hover { background:linear-gradient(90deg,#ff4d4d,#22c55e); }
+#walletAddr,#walletBal { font-size:12px; }
 
 /* Main */
 #main {
   flex:1;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-}
-#title {
-  font-size:22px;
-  text-align:center;
-  padding:14px;
-  background:#333;
-  color:#00ffae;
-  border-bottom:2px solid #ffd700;
-}
-#topScoreSummary {
-  text-align:center;
-  padding:8px;
-  background:#222;
-  font-size:15px;
-}
-.content-area {
-  flex:1;
-  position:relative;
-  background:#000 url('assets/snow_bg.png') repeat;
-}
-#logoPlaceholder, #gameFrame, #leaderFrame {
-  width:100%;
-  height:100%;
-  border:none;
-  display:none;
-}
-#logoPlaceholder {
+  padding:10px;
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:center;
-  gap:16px;
+  background: linear-gradient(to bottom,#800000,#400000);
+  position:relative;
 }
-#posterImg { max-width:320px; border:4px solid #ffd700; border-radius:12px; }
-#poster-overlay { text-align:center; color:#ffd700; }
-.overlay-cta {
-  margin-top:12px;
-  padding:12px 18px;
-  background:#16a34a;
+#title {
+  color:#ffd700;
+  font-size:26px;
+  margin-bottom:10px;
+  text-shadow:0 0 6px #fff;
+}
+#topScoreSummary {
   color:#fff;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:15px;
-  box-shadow:0 4px 8px rgba(0,0,0,0.4);
+  padding:10px;
+  margin-bottom:12px;
+  border-radius:6px;
+  background:rgba(0,0,0,0.4);
+  width:100%;
+  max-width:480px;
+  text-align:center;
+}
+.content-area {
+  width:100%;
+  max-width:480px;
+  flex:1;
+  background:rgba(0,0,0,0.25) url('assets/snow_bg.png') repeat; /* salju */
+  border-radius:12px;
+  overflow:hidden;
+  position:relative;
+  min-height:300px;
+  margin-bottom:10px;
+}
+iframe { width:100%; height:100%; border:0; display:none; }
+
+/* Poster */
+#logoPlaceholder {
+  width:100%; height:100%; position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(180deg,rgba(0,0,0,0.25),rgba(255,255,255,0.02));
+}
+#logoPlaceholder img { max-width:300px; border:4px solid #ffd700; border-radius:12px; }
+#poster-overlay {
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; justify-content:space-between; align-items:center;
+  text-align:center; padding:20px; text-shadow:0 0 5px black;
+}
+#poster-overlay h2 { font-size:1.6em; color:#ffd700; }
+#poster-overlay p { font-size:1em; color:#fff; }
+.overlay-cta {
+  padding:12px 30px; font-size:1.1em; font-weight:bold;
+  border-radius:8px; cursor:pointer;
+  background:#16a34a; color:#fff;
 }
 .overlay-cta:hover { background:#22c55e; }
 
 .footer {
-  text-align:center;
-  padding:10px;
-  background:#333;
+  margin-top:10px;
+  color:#ffd700;
+  text-shadow:0 0 4px #fff;
   font-size:12px;
-  border-top:2px solid #ffd700;
 }
 </style>
 </head>
+
 <body>
 <div id="wrap">
   <div id="sidebar">
@@ -122,19 +126,24 @@ body {
     <button id="btnPlay">🎮 Play Game</button>
     <button id="btnLeaderboard">📊 Leaderboard</button>
   </div>
+
   <div id="main">
     <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
     <div id="topScoreSummary">
-      💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> | 
+      💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> |
       🏆 <b>Top:</b> <span id="topScoreValue">0</span>
     </div>
     <div class="content-area">
       <div id="logoPlaceholder">
         <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
         <div id="poster-overlay">
-          <h2>✨ SOMNIA CHRISTMAS ✨</h2>
-          <p>Main & menangkan Jackpot Natal 🎁</p>
-          <button id="overlayStart" class="overlay-cta">Mulai</button>
+          <div>
+            <h2>✨ SOMNIA CHRISTMAS ✨</h2>
+            <p>Main & menangkan Jackpot Natal 🎁</p>
+          </div>
+          <div>
+            <button id="overlayStart" class="overlay-cta">Mulai</button>
+          </div>
         </div>
       </div>
       <iframe id="gameFrame" src="./pacman/pacman_xmas.html"></iframe>
