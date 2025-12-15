@@ -86,7 +86,26 @@ async function payToPlay() {
   const tx = await gameContract.startGame({ value: startFeeWei });
   await tx.wait();
 
-  // DOM control langsung ke iframe game
+function startCountdown() {
+  const gm = document.getElementById("game-message");
+  let count = 3;
+  gm.style.display = "block";
+  gm.textContent = "READY " + count;
+
+  const interval = setInterval(() => {
+    count--;
+    if (count >= 0) gm.textContent = "READY " + count;
+    if (count < 0) {
+      clearInterval(interval);
+      gm.style.display = "none";
+      ghostActive = true;
+      gameRunning = true;
+      lastMove = performance.now();
+      document.getElementById("restart-button").style.display = "block";
+    }
+  }, 1000);
+}
+// DOM control langsung ke iframe game
   const gameFrame = document.getElementById("gameFrame");
   if (gameFrame && gameFrame.contentWindow) {
     try {
