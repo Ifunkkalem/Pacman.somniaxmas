@@ -22,22 +22,15 @@
   #ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
   #game-message{
     color:white; background:rgba(0,0,0,.8); padding:10px 15px; border-radius:8px;
-    display:none; z-index:12; position:absolute; top: 50%; left: 50%;
+    display:none; z-index:12; position:absolute; top: 50%; left: 50%; 
     transform: translate(-50%, -50%); text-align: center;
   }
-
-  /* Tombol Game Over: Play Again & Back */
-  #game-over-buttons {
-    position: absolute; top: 10px; right: 10px; z-index: 10; display:none;
+  /* Tombol Restart Manual */
+  #restart-button {
+      position: absolute; top: 10px; right: 10px;
+      background: #b91c1c; color: white; border: none; padding: 5px 10px;
+      border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 10;
   }
-  #btn-play-again, #btn-back {
-    background: linear-gradient(90deg,#cc0000,#16a34a);
-    color: white; border: none; padding: 6px 10px; border-radius: 6px;
-    cursor: pointer; font-size: 14px; margin-left: 6px;
-    box-shadow: 0 3px rgba(0,0,0,0.4);
-  }
-  #btn-play-again { background: linear-gradient(90deg,#16a34a,#22c55e); }
-  #btn-back { background: linear-gradient(90deg,#b91c1c,#ef4444); }
 
   /* Mobile D-PAD */
   #mobileControls{
@@ -67,14 +60,9 @@
 <body>
   <div id="gameWrapper">
     <div id="ui">Score: <span id="current-score-display">0</span></div>
-
-    <!-- Tombol Game Over baru -->
-    <div id="game-over-buttons">
-      <button id="btn-play-again">Play Again (0.001 SOMI)</button>
-      <button id="btn-back">Back</button>
-    </div>
-
+    <button id="restart-button" style="display:none;" onclick="handleGameRestart()">Restart Game</button>
     <div id="game-message"></div>
+
     <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
 
     <div id="mobileControls" aria-hidden="false">
@@ -91,15 +79,16 @@
 <script>
 (() => {
 /* ================= SECURITY & CONFIG ================= */
-// Ganti dengan domain parent app Anda yang SESUAI
-const TRUSTED_ORIGIN = window.location.origin;
+// PERHATIAN: GANTI BARIS INI DENGAN DOMAIN PARENT APP ANDA YANG SESUNGGUHNYA
+// Contoh: "https://pacman-somniaxmasv1.vercel.app"
+const TRUSTED_ORIGIN = "https://pacman-somniaxmasv1.vercel.app"; 
 
 const TILE = 20;
-const MOVE_INTERVAL = 240;
+const MOVE_INTERVAL = 240; 
 
 const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas ? canvas.getContext("2d") : null;
-if (!ctx) return;
+if (!ctx) return; 
 
 /* ================== MAP ================== */
 const GAME_MAP = [
@@ -125,6 +114,7 @@ const GAME_MAP = [
 
 const MAP_W = GAME_MAP[0].length;
 const MAP_H = GAME_MAP.length;
+
 canvas.width = MAP_W * TILE;
 canvas.height = MAP_H * TILE;
 
@@ -140,39 +130,51 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-/* ========== AUDIO SYSTEM (WebAudio dots) ========== */
+/* ========== AUDIO SYSTEM ========== */
 let audioCtx = null;
 const DOT_SOUND_VOLUME = 0.5;
 let dotPool = [];
 const DOT_POOL_SIZE = 5;
 
 function initAudioPool() {
-  if (audioCtx) return;
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    for (let i = 0; i < DOT_POOL_SIZE; i++) {
-      dotPool.push({ freq: 500 + i * 20, duration: 0.05 });
+    if (audioCtx) return;
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        for (let i = 0; i < DOT_POOL_SIZE; i++) {
+            dotPool.push({ freq: 500 + i * 20, duration: 0.05 });
+        }
+    } catch(e) {
+        console.error("AudioContext failed to initialize:", e);
     }
-  } catch(e) { console.error("AudioContext failed:", e); }
-  document.removeEventListener('touchstart', initAudioPool);
-  document.removeEventListener('mousedown', initAudioPool);
+    document.removeEventListener('touchstart', initAudioPool);
+    document.removeEventListener('mousedown', initAudioPool);
 }
+
 let dotIndex = 0;
 function playDotSound() {
-  if (!audioCtx) return;
-  dotIndex = (dotIndex + 1) % DOT_POOL_SIZE;
-  const sound = dotPool[dotIndex];
-  const source = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  source.type = 'sine';
-  source.frequency.setValueAtTime(sound.freq, audioCtx.currentTime);
-  gainNode.gain.setValueAtTime(DOT_SOUND_VOLUME, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + sound.duration);
-  source.connect(gainNode); gainNode.connect(audioCtx.destination);
-  source.start(); source.stop(audioCtx.currentTime + sound.duration);
+    if (!audioCtx) return;
+    dotIndex = (dotIndex + 1) % DOT_POOL_SIZE;
+    const sound = dotPool[dotIndex];
+    
+    const source = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+
+    source.type = 'sine';
+    source.frequency.setValueAtTime(sound.freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(DOT_SOUND_VOLUME, audioCtx.currentTime);
+    
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + sound.duration);
+
+    source.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+
+    source.start();
+    source.stop(audioCtx.currentTime + sound.duration);
 }
+
 document.addEventListener('touchstart', initAudioPool, { once: true });
 document.addEventListener('mousedown', initAudioPool, { once: true });
+
 
 /* ========== STATE & INIT ========== */
 let mapData, pacman, ghosts, score = 0;
@@ -181,7 +183,7 @@ let gameRunning = false;
 let ghostActive = false;
 let scoreSubmitted = false;
 let sessionStartTime = 0;
-let allowLocalPlay = false;
+let allowLocalPlay = false; 
 let animationFrameId = null;
 
 function resetGame(){
@@ -197,30 +199,42 @@ function resetGame(){
   sessionStartTime = Date.now();
   document.getElementById("current-score-display").textContent = score;
   document.getElementById("game-message").style.display = "none";
-  document.getElementById("game-over-buttons").style.display = "none";
+  document.getElementById("restart-button").style.display = "none";
   gameRunning = false;
   ghostActive = false;
 }
 
-function startCountdown() {
-  const gm = document.getElementById("game-message");
-  let count = 3;
-  gm.style.display = "block";
-  gm.textContent = "READY " + count;
-
-  if(window.gameStartInterval) clearInterval(window.gameStartInterval);
-  window.gameStartInterval = setInterval(()=>{
-    count--;
-    if(count >= 0) gm.textContent = "READY " + count;
-    if(count < 0){
-      clearInterval(window.gameStartInterval);
-      gm.style.display = "none";
-      ghostActive = true;
-      gameRunning = true;
-      lastMove = performance.now();
-      // tampilkan tombol game-over saat game benar-benar selesai (di gameEnd)
+window.handleGameRestart = function() {
+    if(!allowLocalPlay) {
+         document.getElementById("game-message").textContent = "Game not yet active. Please connect/pay.";
+         document.getElementById("game-message").style.display = "block";
+         setTimeout(() => document.getElementById("game-message").style.display = "none", 1500);
+         return;
     }
-  }, 1000);
+    resetGame();
+    startCountdown();
+};
+
+function startCountdown() {
+    const gm = document.getElementById("game-message");
+    let count = 3;
+    gm.style.display = "block";
+    gm.textContent = "READY " + count;
+    
+    if(window.gameStartInterval) clearInterval(window.gameStartInterval);
+
+    window.gameStartInterval = setInterval(()=>{
+        count--;
+        if(count >= 0) gm.textContent = "READY " + count;
+        if(count < 0){
+            clearInterval(window.gameStartInterval);
+            gm.style.display = "none";
+            ghostActive = true;
+            gameRunning = true;
+            lastMove = performance.now();
+            document.getElementById("restart-button").style.display = "block";
+        }
+    }, 1000);
 }
 
 /* ========== DRAWING ========== */
@@ -281,6 +295,7 @@ function drawPacman(){
   ctx.fillStyle="white";
   ctx.fillRect(x - TILE*0.35, y - TILE*0.3, TILE*0.7, 3);
 }
+
 function drawGhosts(){
   ghosts.forEach(g=>{
     const wobbleY = Math.sin(Date.now() / 150 + g.x * 0.5) * 1.5;
@@ -320,56 +335,74 @@ function drawGhosts(){
     ctx.fillRect(x + TILE*0.35 - 7, y - TILE*0.4 - 2, 5, 2);
   });
 }
+/* ========== END DRAWING ========== */
+
 
 /* ========== MOVEMENT & COLLISIONS ========== */
-function canMove(x,y){
-  if (y >= 8 && y <= 9 && x === -1) return true;
-  if (y >= 8 && y <= 9 && x === MAP_W) return true;
-  return mapData[y] && mapData[y][x] !== 1;
+function canMove(x,y){ 
+    if (y >= 8 && y <= 9 && x === -1) return true; 
+    if (y >= 8 && y <= 9 && x === MAP_W) return true; 
+    return mapData[y] && mapData[y][x] !== 1; 
 }
+
 function movePacman(){
   let nx = pacman.x, ny = pacman.y;
   const d = pacman.next;
+  
   nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
   ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
-
-  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { pacman.x = MAP_W - 1; pacman.dir = d; return; }
-  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { pacman.x = 0; pacman.dir = d; return; }
+  
+  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) { 
+      pacman.x = MAP_W - 1; pacman.dir = d; return;
+  }
+  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) { 
+      pacman.x = 0; pacman.dir = d; return;
+  }
 
   if(canMove(nx,ny)){
     pacman.x = nx; pacman.y = ny; pacman.dir = d;
   } else {
     const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
     const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
-    if(canMove(cx,cy)){ pacman.x = cx; pacman.y = cy; }
+    if(canMove(cx,cy)){
+        pacman.x = cx; pacman.y = cy;
+    }
   }
 }
+
 function moveGhosts(){
   if(!ghostActive) return;
   ghosts.forEach(g=>{
     const dx = pacman.x - g.x;
     const dy = pacman.y - g.y;
     let newX = g.x, newY = g.y;
-
+    
     if (Math.random() < 0.7) {
-      if (Math.abs(dx) > Math.abs(dy)) { newX = g.x + (dx > 0 ? 1 : -1); }
-      else { newY = g.y + (dy > 0 ? 1 : -1); }
+        if (Math.abs(dx) > Math.abs(dy)) {
+            newX = g.x + (dx > 0 ? 1 : -1);
+        } else {
+            newY = g.y + (dy > 0 ? 1 : -1);
+        }
     } else {
-      const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
-      newX = g.x + d[0]; newY = g.y + d[1];
+        const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+        newX = g.x + d[0];
+        newY = g.y + d[1];
     }
-    if(canMove(newX, newY)){ g.x = newX; g.y = newY; }
+    if(canMove(newX, newY)){ 
+        g.x = newX; g.y = newY; 
+    }
   });
 }
+
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
     mapData[pacman.y][pacman.x] = 0;
     score += 10;
     document.getElementById("current-score-display").textContent = score;
-    playDotSound();
+    playDotSound(); 
     parent.postMessage({ type: "dotEaten" }, TRUSTED_ORIGIN );
   }
-
+  
   for(const g of ghosts){
     if(g.x === pacman.x && g.y === pacman.y){
       gameEnd(false);
@@ -386,22 +419,24 @@ function checkCollision(){
   }
   if(win) gameEnd(true);
 }
+
 function gameEnd(isWin){
   gameRunning = false;
   ghostActive = false;
-  document.getElementById("game-over-buttons").style.display = "block";
-
+  document.getElementById("restart-button").style.display = "block"; 
+  
   const gm = document.getElementById("game-message");
   gm.textContent = (isWin ? "YOU WIN! " : "GAME OVER! ") + "Skor: " + score;
   gm.style.display = "block";
-
+  
   if(scoreSubmitted) return;
   scoreSubmitted = true;
 
   const playDuration = (Date.now() - sessionStartTime) / 1000;
-  if(playDuration < 5) return;
+  if(playDuration < 5) return; 
 
-  parent.postMessage({ type: "submitScore", score }, TRUSTED_ORIGIN);
+  // PERBAIKAN KRITIS: Menggunakan TRUSTED_ORIGIN spesifik, bukan "*"
+  parent.postMessage({ type: "submitScore", score }, TRUSTED_ORIGIN); 
 }
 
 /* ========== LOOP ========== */
@@ -412,40 +447,38 @@ function loop(ts){
     checkCollision();
     lastMove = ts;
   }
+
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawMap(); drawPacman(); drawGhosts();
+  drawMap();
+  drawPacman();
+  drawGhosts();
   animationFrameId = requestAnimationFrame(loop);
 }
 
 /* ================= MESSAGE & INPUT HANDLERS ================= */
 window.addEventListener("message",(e)=>{
-  if(e.origin!==TRUSTED_ORIGIN) return;
+  // Memastikan pesan hanya diterima dari TRUSTED_ORIGIN
+  if(e.origin!==TRUSTED_ORIGIN) return; 
   if(e.data?.type==="paySuccess"){
     if(allowLocalPlay) return;
     allowLocalPlay = true;
+    
     const gm = document.getElementById("game-message");
     gm.textContent = "PAYMENT SUCCESS! Starting Game...";
     gm.style.display = "block";
+    
     resetGame();
     startCountdown();
   }
-});
-
-// Tombol Play Again & Back: kirim pesan ke parent
-document.getElementById("btn-play-again").addEventListener("click", () => {
-  parent.postMessage({ type: "playAgain" }, TRUSTED_ORIGIN);
-});
-document.getElementById("btn-back").addEventListener("click", () => {
-  parent.postMessage({ type: "backToDashboard" }, TRUSTED_ORIGIN);
 });
 
 function handleGameInput(direction){
   if(!allowLocalPlay || !gameRunning) {
     const gm = document.getElementById("game-message");
     if(gm.style.display !== "block" || gm.textContent.includes("READY")) {
-      gm.textContent = "Please connect / pay to start the game.";
-      gm.style.display = "block";
-      setTimeout(()=> gm.style.display = "none", 1200);
+        gm.textContent = "Please connect / pay to start the game.";
+        gm.style.display = "block";
+        setTimeout(()=> gm.style.display = "none", 1200);
     }
     return;
   }
@@ -457,8 +490,15 @@ function handleGameInput(direction){
 /* INPUT HANDLERS D-PAD */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
   const dir = btn.getAttribute("data-dir");
-  const start = (ev) => { ev.preventDefault(); btn.style.transform = "translateY(2px)"; handleGameInput(dir); };
-  const end = (ev) => { ev.preventDefault(); btn.style.transform = ""; };
+  const start = (ev) => {
+    ev.preventDefault();
+    btn.style.transform = "translateY(2px)";
+    handleGameInput(dir); 
+  };
+  const end = (ev) => {
+    ev.preventDefault();
+    btn.style.transform = "";
+  };
   btn.addEventListener("touchstart", start, {passive:false});
   btn.addEventListener("mousedown", start);
   btn.addEventListener("touchend", end);
@@ -475,12 +515,12 @@ window.addEventListener("keydown", (e)=>{
 
 /* ========== STARTUP ========== */
 document.addEventListener('DOMContentLoaded', () => {
-  resetGame();
-  const gm = document.getElementById("game-message");
-  gm.textContent = "Waiting for payment/connection...";
-  gm.style.display = "block";
-  requestAnimationFrame(loop);
+    resetGame(); 
+    document.getElementById("game-message").textContent = "Waiting for payment/connection...";
+    document.getElementById("game-message").style.display = "block";
+    requestAnimationFrame(loop);
 });
+
 })();
 </script>
 </body>
