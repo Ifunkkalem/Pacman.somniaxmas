@@ -12,37 +12,35 @@
 
 /* Layout */
 body {
-  font-family: Arial, sans-serif;
-  background:#111;
+  font-family: 'Trebuchet MS', sans-serif;
+  background: linear-gradient(135deg,#0a0a0a,#1a1a1a);
   color:#fff;
   height:100vh;
   display:flex;
 }
-#wrap {
-  display:flex;
-  flex:1;
-}
+#wrap { display:flex; flex:1; }
 
 /* Sidebar */
 #sidebar {
   width:220px;
-  background:#222;
+  background: linear-gradient(180deg,#b91c1c,#166534);
   padding:16px;
   display:flex;
   flex-direction:column;
-  gap:12px;
+  gap:14px;
+  border-right:4px solid #ffd700;
 }
 #sidebar button {
   padding:10px;
   border:none;
   border-radius:6px;
   cursor:pointer;
-  background:#444;
+  background:#333;
   color:#fff;
   font-size:14px;
   transition:background 0.2s;
 }
-#sidebar button:hover { background:#666; }
+#sidebar button:hover { background:#555; }
 #walletAddr, #walletBal {
   font-size:13px;
   margin-top:4px;
@@ -57,21 +55,23 @@ body {
   overflow:hidden;
 }
 #title {
-  font-size:20px;
+  font-size:22px;
   text-align:center;
-  padding:12px;
+  padding:14px;
   background:#333;
+  color:#00ffae;
+  border-bottom:2px solid #ffd700;
 }
 #topScoreSummary {
   text-align:center;
   padding:8px;
   background:#222;
-  font-size:14px;
+  font-size:15px;
 }
 .content-area {
   flex:1;
   position:relative;
-  background:#000;
+  background:#000 url('assets/snow_bg.png') repeat;
 }
 #logoPlaceholder, #gameFrame, #leaderFrame {
   width:100%;
@@ -84,27 +84,29 @@ body {
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:12px;
+  gap:16px;
 }
-#posterImg { max-width:300px; }
-#poster-overlay { text-align:center; }
+#posterImg { max-width:320px; border:4px solid #ffd700; border-radius:12px; }
+#poster-overlay { text-align:center; color:#ffd700; }
 .overlay-cta {
-  margin-top:10px;
-  padding:10px 16px;
+  margin-top:12px;
+  padding:12px 18px;
   background:#16a34a;
   color:#fff;
   border:none;
-  border-radius:6px;
+  border-radius:8px;
   cursor:pointer;
-  font-size:14px;
+  font-size:15px;
+  box-shadow:0 4px 8px rgba(0,0,0,0.4);
 }
 .overlay-cta:hover { background:#22c55e; }
 
 .footer {
   text-align:center;
-  padding:8px;
+  padding:10px;
   background:#333;
   font-size:12px;
+  border-top:2px solid #ffd700;
 }
 </style>
 </head>
@@ -117,7 +119,7 @@ body {
       <div id="walletAddr">Wallet: -</div>
       <div id="walletBal">SOMI: -</div>
     </div>
-    <button id="btnPlay">▶️ Play Game</button>
+    <button id="btnPlay">🎮 Play Game</button>
     <button id="btnLeaderboard">📊 Leaderboard</button>
   </div>
   <div id="main">
@@ -130,7 +132,7 @@ body {
       <div id="logoPlaceholder">
         <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
         <div id="poster-overlay">
-          <h2>SOMNIA CHRISTMAS!</h2>
+          <h2>✨ SOMNIA CHRISTMAS ✨</h2>
           <p>Main & menangkan Jackpot Natal 🎁</p>
           <button id="overlayStart" class="overlay-cta">Mulai</button>
         </div>
@@ -138,7 +140,7 @@ body {
       <iframe id="gameFrame" src="./pacman/pacman_xmas.html"></iframe>
       <iframe id="leaderFrame" src="leaderboard.html"></iframe>
     </div>
-    <div class="footer">created by: ifunkkalem | @Ifunkkalem91</div>
+    <div class="footer">❄️ created by: ifunkkalem | @Ifunkkalem91 ❄️</div>
   </div>
 </div>
 
