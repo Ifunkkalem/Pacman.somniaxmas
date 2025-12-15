@@ -453,16 +453,10 @@ function loop(ts){
 
 /* ================= MESSAGE & INPUT HANDLERS ================= */
 window.addEventListener("message",(e)=>{
-  // Memastikan pesan hanya diterima dari TRUSTED_ORIGIN
-  if(e.origin!==TRUSTED_ORIGIN) return; 
+  // Jika TRUSTED_ORIGIN = "*" maka jangan filter origin
+  if(TRUSTED_ORIGIN !== "*" && e.origin !== TRUSTED_ORIGIN) return;
   if(e.data?.type==="paySuccess"){
-    if(allowLocalPlay) return;
     allowLocalPlay = true;
-    
-    const gm = document.getElementById("game-message");
-    gm.textContent = "PAYMENT SUCCESS! Starting Game...";
-    gm.style.display = "block";
-    
     resetGame();
     startCountdown();
   }
