@@ -119,6 +119,38 @@ async function connectWallet() {
   return true;
 }
 
+  // ---------------- NETWORK SWITCH ----------------
+async function switchNetwork(provider) {
+  const { chainId } = await provider.getNetwork();
+  // chainId Somnia = 5031 (hex 0x13a7)
+  if (chainId.toString() !== "5031") {
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x13a7" }]
+      });
+      return true;
+    } catch (e) {
+      if (e.code === 4902) {
+        // Chain belum ditambahkan, tambahkan dulu
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x13a7",
+            chainName: "Somnia Mainnet",
+            nativeCurrency: { name: "SOMI", symbol: "SOMI", decimals: 18 },
+            rpcUrls: ["https://somnia-rpc.publicnode.com"],
+            blockExplorerUrls: ["https://explorer.somnia.network"]
+          }]
+        });
+        return true;
+      }
+      alert("Please switch to Somnia network manually.");
+      return false;
+    }
+  }
+  return true;
+}
 async function connectWallet() {
   initAudio(); unlockAudioOnGesture();
   if (!window.ethereum) { alert("No wallet provider found."); return false; }
