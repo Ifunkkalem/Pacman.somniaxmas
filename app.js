@@ -77,49 +77,7 @@ function startBackgroundMusic() {
 }
 function playStartSfx() { if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); } }
 
-// ---------------- WALLET & CONTRACT ----------------
-async function connectWallet() {
-  // Inisialisasi audio sekali
-  initAudio();
-  unlockAudioOnGesture();
-
-  if (!window.ethereum) {
-    alert("No wallet provider found (install MetaMask).");
-    return false;
-  }
-
-  // Gunakan Web3Provider dari window.ethereum
-  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-
-  // Minta izin akun
-  await provider.send("eth_requestAccounts", []);
-  signer = provider.getSigner();
-  userAddress = await signer.getAddress();
-
-  // Switch ke network Somnia
-  const ok = await switchNetwork(provider);
-  if (!ok) return false;
-
-  // Inisialisasi kontrak
-  readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-  gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-  // Ambil startFee dari kontrak
-  try {
-    startFeeWei = await readContract.startFeeWei();
-  } catch {
-    startFeeWei = ethers.utils.parseEther("0.001");
-  }
-
-  // Kirim info wallet ke parent
-  const balance = await provider.getBalance(userAddress);
-  const balanceEth = ethers.utils.formatEther(balance);
-  window.postMessage({ type: "walletInfo", address: userAddress, balance: balanceEth }, "*");
-
-  return true;
-}
-
-  // ---------------- NETWORK SWITCH ----------------
+// ---------------- NETWORK SWITCH ----------------
   async function switchNetwork(provider) {
   const { chainId } = await provider.getNetwork();
   // chainId Somnia = 5031 (hex 0x13a7)
