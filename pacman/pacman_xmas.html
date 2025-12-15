@@ -502,6 +502,9 @@ window.addEventListener("keydown", (e)=>{
     handleGameInput(dir);
   }
 });
+// expose ke global agar bisa dipanggil dari app.js
+  window.resetGame = resetGame;
+  window.startCountdown = startCountdown;
 
 /* ========== STARTUP ========== */
 document.addEventListener('DOMContentLoaded', () => {
