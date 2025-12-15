@@ -120,7 +120,7 @@ async function connectWallet() {
 }
 
   // ---------------- NETWORK SWITCH ----------------
-async function switchNetwork(provider) {
+  async function switchNetwork(provider) {
   const { chainId } = await provider.getNetwork();
   // chainId Somnia = 5031 (hex 0x13a7)
   if (chainId.toString() !== "5031") {
