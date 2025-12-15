@@ -18,15 +18,15 @@
     <button id="restart-button" onclick="handleGameRestart()">Restart Game</button>
     <div id="game-message"></div>
     <canvas id="pacman-canvas"></canvas>
-  <div id="mobileControls" class="dpad">
-    <button class="btn up" data-dir="up">▲</button>
-   <div class="spacer"></div>
-    <button class="btn right" data-dir="right">▶</button>
+    <div id="mobileControls" class="dpad">
+  <button class="btn up" data-dir="up">▲</button>
+  <div class="spacer"></div>
+  <button class="btn right" data-dir="right">▶</button>
 
-    <button class="btn left" data-dir="left">◀</button>
-   <div class="center"></div>
-    <button class="btn down" data-dir="down">▼</button>
-   </div>
+  <button class="btn left" data-dir="left">◀</button>
+  <div class="center"></div>
+  <button class="btn down" data-dir="down">▼</button>
+  </div>
   </div>
 
 <script>
@@ -163,11 +163,6 @@ function startCountdown() {
   let count = 3;
   gm.style.display = "block";
   gm.textContent = "READY " + count;
-  @keyframes pop {
-  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0.2; }
-  60% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
-}
 
   if(window.gameStartInterval) clearInterval(window.gameStartInterval);
 
@@ -447,49 +442,6 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
   btn.addEventListener("mousedown", start);
   btn.addEventListener("touchend", end);
   btn.addEventListener("mouseup", end);
-  #mobileControls.dpad {
-  display: grid;
-  grid-template-columns: 64px 64px 64px;
-  grid-template-rows: 64px 64px 64px;
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  margin-top: 14px;
-}
-
-#mobileControls .btn {
-  padding: 0;
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  border: none;
-  background: #16a34a;
-  color: #fff;
-  font-size: 24px;
-  font-weight: 700;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-  transition: transform 80ms ease, background 120ms ease;
-}
-
-#mobileControls .btn:active {
-  transform: translateY(2px);
-  background: #15803d;
-}
-
-#mobileControls .spacer,
-#mobileControls .center {
-  width: 64px;
-  height: 64px;
-  opacity: 0;
-}
-
-/* Posisi grid (baris/kolom) untuk tombol */
-#mobileControls .up    { grid-column: 2; grid-row: 1; }
-#mobileControls .left  { grid-column: 1; grid-row: 2; }
-#mobileControls .center{ grid-column: 2; grid-row: 2; }
-#mobileControls .right { grid-column: 3; grid-row: 2; }
-#mobileControls .down  { grid-column: 2; grid-row: 3; }
-#mobileControls .spacer{ grid-column: 1; grid-row: 1; } /* sudut kiri atas kosong */
 });
 
 /* keyboard arrows */
