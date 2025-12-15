@@ -1,5 +1,3 @@
-// app.js FINAL
-
 // ---------------- CONFIG ----------------
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
 const CONTRACT_ABI = [
@@ -19,7 +17,6 @@ const SOMNIA_NETWORK_CONFIG = {
 // ---------------- STATE ----------------
 let provider, signer, userAddress, readContract, gameContract;
 let startFeeWei;
-let isGameActive = false;
 
 // ---------------- NETWORK SWITCH ----------------
 async function switchNetwork(provider) {
@@ -64,10 +61,19 @@ async function connectWallet() {
   try { startFeeWei = await readContract.startFeeWei(); }
   catch { startFeeWei = ethers.utils.parseEther("0.001"); }
 
-  // Kirim info wallet ke parent agar dashboard update
+  // Update wallet info di DOM
   const balance = await provider.getBalance(userAddress);
   const balanceEth = ethers.utils.formatEther(balance);
-  window.postMessage({ type: "walletInfo", address: userAddress, balance: balanceEth }, "*");
+  const walletAddrEl = document.getElementById("walletAddr");
+  const walletBalEl = document.getElementById("walletBal");
+  if(walletAddrEl) {
+    walletAddrEl.textContent = "Wallet: " + userAddress.substring(0,6)+"..."+userAddress.slice(-4);
+    walletAddrEl.title = userAddress;
+  }
+  if(walletBalEl) {
+    walletBalEl.textContent = balanceEth + " SOMI";
+    walletBalEl.title = balanceEth + " SOMI";
+  }
 
   return true;
 }
@@ -79,15 +85,44 @@ async function payToPlay() {
   if (bal.lt(startFeeWei)) { alert("Insufficient balance."); return; }
   const tx = await gameContract.startGame({ value: startFeeWei });
   await tx.wait();
-  isGameActive = true;
-  window.postMessage({ type: "paySuccess" }, "*");
+
+  // DOM control langsung ke iframe game
+  const gameFrame = document.getElementById("gameFrame");
+  if (gameFrame && gameFrame.contentWindow) {
+    try {
+      // panggil fungsi global di pacman_xmas.html
+      if (typeof gameFrame.contentWindow.resetGame === "function") {
+        gameFrame.contentWindow.resetGame();
+      }
+      if (typeof gameFrame.contentWindow.startCountdown === "function") {
+        gameFrame.contentWindow.startCountdown();
+      }
+      // update pesan
+      const gm = gameFrame.contentWindow.document.getElementById("game-message");
+      if (gm) {
+        gm.textContent = "PAYMENT SUCCESS! Starting Game...";
+        gm.style.display = "block";
+      }
+    } catch(e) {
+      console.warn("DOM control error:", e);
+    }
+  }
+
+  // tampilkan iframe game
+  showMain("gameFrame");
 }
 
 async function submitScoreTx(score) {
   if (!gameContract || !signer) return;
   const tx = await gameContract.submitScore(Number(score));
   await tx.wait();
-  window.postMessage({ type: "scoreSubmitted" }, "*");
+
+  // setelah submit, arahkan ke leaderboard
+  const leaderFrame = document.getElementById("leaderFrame");
+  if(leaderFrame){
+    leaderFrame.src = "leaderboard.html?" + Date.now();
+    showMain("leaderFrame");
+  }
 }
 
 // ---------------- MESSAGE HANDLER ----------------
@@ -97,7 +132,7 @@ window.addEventListener("message", async (ev) => {
   if (d.type === "requestStartGame") { await payToPlay(); }
   if (d.type === "submitScore") { await submitScoreTx(d.score); }
   if (d.type === "playAgain") { await payToPlay(); }
-  if (d.type === "backToDashboard") { window.postMessage({ type:"forceShowLogo" },"*"); }
+  if (d.type === "backToDashboard") { showMain("logoPlaceholder"); }
 });
 
 // ---------------- DOM READY ----------------
