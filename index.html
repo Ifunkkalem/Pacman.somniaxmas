@@ -123,11 +123,12 @@ window.addEventListener("message", async (ev)=>{
       walletAddrEl.textContent='Wallet: '+d.address.substring(0,6)+'...'+d.address.slice(-4);
       walletAddrEl.title=d.address;
     }
-    if(typeof d.balance!=="undefined"){
-      walletBalEl.textContent=d.balance+' SOMI';
-      walletBalEl.title=d.balance+' SOMI';
+    if(d.balance){
+      document.getElementById("walletBal").textContent = d.balance + " SOMI";
+      document.getElementById("walletBal").title = d.balance + " SOMI";
     }
   }
+
   if(d.type==="updateSummary"){
     const poolEl=document.getElementById('poolValue');
     const scoreEl=document.getElementById('topScoreValue');
