@@ -2,32 +2,26 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Somnia Christmas — Pacman</title>
-
 <script src="libs/ethers.min.js"></script>
+<link rel="icon" href="assets/logo.png" type="image/png">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS,sans-serif;}
-body{height:100vh;background:linear-gradient(to right,#fff,#ff0000);color:#fff;overflow:hidden;display:flex;flex-direction:column;}
-#wrap{display:flex;flex:1;width:100%;}
-#sidebar{width:160px;background:#fff;color:#000;padding:12px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;}
-#main{flex:1;padding:10px;display:flex;flex-direction:column;align-items:center;background:linear-gradient(to bottom,#ff0000,#800000);position:relative;}
-button{padding:10px;border-radius:8px;border:none;background:linear-gradient(90deg,red,green);color:#fff;cursor:pointer;font-weight:bold;}
-#title{color:#00ffae;font-size:26px;margin-bottom:10px;}
-.footer{margin-top:10px;color:#0ff;text-shadow:0 0 4px #0ff;font-size:12px;}
-.content-area{width:100%;max-width:480px;flex:1;background:rgba(0,0,0,0.25);border-radius:12px;overflow:hidden;position:relative;min-height:300px;margin-bottom:10px;}
-iframe{width:100%;height:100%;border:0;display:none;}
-#logoPlaceholder{width:100%;height:100%;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0.25),rgba(255,255,255,0.02));}
-#logoPlaceholder img{width:100%;height:100%;object-fit:cover;}
-#poster-overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;align-items:center;text-align:center;padding:20px;text-shadow:0 0 5px black;pointer-events:none;}
-.overlay-cta{padding:12px 30px;font-size:1.1em;font-weight:bold;border-radius:8px;pointer-events:auto;cursor:pointer;}
-@media(max-width:768px){
-  #wrap{flex-direction:column;}
-  #sidebar{width:100%;flex-direction:row;justify-content:space-around;flex-wrap:wrap;padding:8px 10px;gap:4px;}
-  #walletAddr,#walletBal{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 4px;}
-  #btnConnect,#btnPlay,#btnLeaderboard{padding:6px 10px;font-size:12px;}
-  #main{flex:1;}
-}
+/* ---- Sidebar & Layout ---- */
+body { margin:0; font-family:Arial, sans-serif; background:#111; color:#fff; }
+#wrap { display:flex; height:100vh; }
+#sidebar { width:220px; background:#222; padding:12px; display:flex; flex-direction:column; gap:10px; }
+#sidebar button { padding:8px; border:none; border-radius:6px; cursor:pointer; background:#444; color:#fff; }
+#main { flex:1; display:flex; flex-direction:column; }
+#title { font-size:20px; text-align:center; padding:10px; background:#333; }
+#topScoreSummary { text-align:center; padding:6px; background:#222; }
+.content-area { flex:1; position:relative; }
+#logoPlaceholder, #gameFrame, #leaderFrame { width:100%; height:100%; border:none; display:none; }
+#logoPlaceholder { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+#posterImg { max-width:300px; }
+#poster-overlay { margin-top:12px; text-align:center; }
+.overlay-cta { margin-top:8px; padding:8px 12px; background:#16a34a; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+.footer { text-align:center; padding:8px; background:#333; font-size:12px; }
 </style>
 </head>
 <body>
@@ -35,116 +29,71 @@ iframe{width:100%;height:100%;border:0;display:none;}
   <div id="sidebar">
     <button id="btnConnect">Connect Wallet</button>
     <button id="btnHome">Home</button>
-    <div style="display:flex;flex-direction:column;justify-content:center;flex-shrink:0;">
-      <div id="walletAddr" title="Wallet address">Wallet: -</div>
-      <div id="walletBal" title="Native balance">SOMI: -</div>
+    <div>
+      <div id="walletAddr">Wallet: -</div>
+      <div id="walletBal">SOMI: -</div>
     </div>
     <button id="btnPlay">Play Game</button>
     <button id="btnLeaderboard">Leaderboard</button>
   </div>
-
   <div id="main">
     <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
-    <div id="topScoreSummary" style="color:#fff;padding:10px;margin-bottom:12px;border-radius:6px;background:rgba(0,0,0,0.4);width:100%;max-width:480px;text-align:center;">
-      💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> |
-      🏆 <b>Top:</b> <span id="topScoreValue">0</span>
-    </div>
-
+    <div id="topScoreSummary">💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> | 🏆 <b>Top:</b> <span id="topScoreValue">0</span></div>
     <div class="content-area">
       <div id="logoPlaceholder">
         <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
         <div id="poster-overlay">
-          <div style="margin-top:8px;">
-            <h2>SOMNIA CHRISTMAS!</h2>
-            <p>Main & menangkan Jackpot Natal 🎁</p>
-          </div>
-          <div style="margin-bottom:8px;">
-            <button id="overlayStart" class="overlay-cta">Mulai</button>
-          </div>
+          <h2>SOMNIA CHRISTMAS!</h2>
+          <p>Main & menangkan Jackpot Natal 🎁</p>
+          <button id="overlayStart" class="overlay-cta">Mulai</button>
         </div>
       </div>
-      <iframe id="gameFrame" src="./pacman/pacman_xmas.html" title="Pacman Game"></iframe>
-      <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
+      <iframe id="gameFrame" src="./pacman/pacman_xmas.html"></iframe>
+      <iframe id="leaderFrame" src="leaderboard.html"></iframe>
     </div>
-
     <div class="footer">created by: ifunkkalem | @Ifunkkalem91</div>
   </div>
 </div>
 
 <script>
-const btnConnect = document.getElementById('btnConnect');
-const btnPlay = document.getElementById('btnPlay');
-const btnLeaderboard = document.getElementById('btnLeaderboard');
-const btnHome = document.getElementById('btnHome');
-const walletAddrEl = document.getElementById('walletAddr');
-const walletBalEl = document.getElementById('walletBal');
-const gameFrame = document.getElementById('gameFrame');
-const leaderFrame = document.getElementById('leaderFrame');
-const logoPlaceholder = document.getElementById('logoPlaceholder');
-const overlayStart = document.getElementById('overlayStart');
-const posterImg = document.getElementById('posterImg');
-
 function showMain(id){
-  logoPlaceholder.style.display='none';
-  gameFrame.style.display='none';
-  leaderFrame.style.display='none';
-  const el=document.getElementById(id);
-  if(el) el.style.display='block';
+  document.getElementById("logoPlaceholder").style.display="none";
+  document.getElementById("gameFrame").style.display="none";
+  document.getElementById("leaderFrame").style.display="none";
+  const el=document.getElementById(id); if(el) el.style.display="block";
 }
+function requestStartGame(){ window.parent.postMessage({ type:"requestStartGame" },"*"); }
+document.getElementById("btnPlay").onclick=requestStartGame;
+document.getElementById("overlayStart").onclick=requestStartGame;
+document.getElementById("btnHome").onclick=()=>showMain("logoPlaceholder");
+document.getElementById("btnLeaderboard").onclick=()=>{
+  document.getElementById("leaderFrame").src="leaderboard.html?"+Date.now();
+  showMain("leaderFrame");
+};
+document.getElementById("btnConnect").onclick=()=>window.parent.postMessage({type:"requestConnectWallet"},"*");
 
-function requestStartGame(){
-  window.parent.postMessage({ type: 'requestStartGame' }, '*');
-}
-
-btnPlay.addEventListener('click', ev=>{
-  ev.preventDefault();
-  requestStartGame();
-});
-overlayStart.addEventListener('click', ev=>{
-  ev.preventDefault();
-  requestStartGame();
-});
-btnHome.addEventListener('click', ()=>{ showMain('logoPlaceholder'); });
-btnLeaderboard.addEventListener('click', ()=>{
-  leaderFrame.src="leaderboard.html?"+Date.now();
-  showMain('leaderFrame');
-});
-btnConnect.addEventListener('click', ()=>{
-  window.parent.postMessage({ type: 'requestConnectWallet' }, '*');
-});
-
-// Listener pesan dari game iframe
-window.addEventListener("message", async (ev)=>{
-  const d=ev.data||{};
-  if(!d||typeof d!=="object") return;
-  if(d.type==="paySuccess"){ showMain('gameFrame'); }
+window.addEventListener("message",(ev)=>{
+  const d=ev.data||{}; if(!d||typeof d!=="object") return;
+  if(d.type==="paySuccess"){ showMain("gameFrame"); }
   if(d.type==="walletInfo"){
     if(d.address){
-      walletAddrEl.textContent='Wallet: '+d.address.substring(0,6)+'...'+d.address.slice(-4);
-      walletAddrEl.title=d.address;
+      document.getElementById("walletAddr").textContent="Wallet: "+d.address.substring(0,6)+"..."+d.address.slice(-4);
+      document.getElementById("walletAddr").title=d.address;
     }
     if(d.balance){
-      document.getElementById("walletBal").textContent = d.balance + " SOMI";
-      document.getElementById("walletBal").title = d.balance + " SOMI";
+      document.getElementById("walletBal").textContent=d.balance+" SOMI";
+      document.getElementById("walletBal").title=d.balance+" SOMI";
     }
   }
-
-  if(d.type==="updateSummary"){
-    const poolEl=document.getElementById('poolValue');
-    const scoreEl=document.getElementById('topScoreValue');
-    if(d.jackpot&&poolEl) poolEl.textContent=d.jackpot+' SOMI';
-    if(d.topScore&&scoreEl) scoreEl.textContent=d.topScore;
+  if(d.type==="updateSummary"){ 
+    if(d.jackpot) document.getElementById("poolValue").textContent=d.jackpot+" SOMI";
+    if(d.topScore) document.getElementById("topScoreValue").textContent=d.topScore;
   }
-  if(d.type==="showLeaderboard"){
-    leaderFrame.src="leaderboard.html?"+Date.now();
-    showMain('leaderFrame');
-  }
+  if(d.type==="showLeaderboard"){ document.getElementById("leaderFrame").src="leaderboard.html?"+Date.now(); showMain("leaderFrame"); }
   if(d.type==="playAgain"){ requestStartGame(); }
-  if(d.type==="backToDashboard"){ showMain('logoPlaceholder'); }
+  if(d.type==="backToDashboard"){ showMain("logoPlaceholder"); }
 });
-
-posterImg.addEventListener('error', ()=>{ posterImg.src='assets/logo.png'; });
-showMain('logoPlaceholder');
+showMain("logoPlaceholder");
 </script>
 <script src="app.js"></script>
 </body>
