@@ -19,16 +19,19 @@
     <div id="game-message"></div>
     <canvas id="pacman-canvas"></canvas>
     <div id="mobileControls">
-      <button onclick="handleGameInput('left')">◀</button>
-      <button onclick="handleGameInput('up')">▲</button>
-      <button onclick="handleGameInput('down')">▼</button>
-      <button onclick="handleGameInput('right')">▶</button>
+      <button data-dir="left">◀</button>
+      <button data-dir="up">▲</button>
+      <button data-dir="down">▼</button>
+      <button data-dir="right">▶</button>
     </div>
   </div>
 
 <script>
 (() => {
-const TRUSTED_ORIGIN = "https://pacman-somniaxmasv1.vercel.app"; // jika tidak dipakai postMessage, biarkan saja
+// Jika tetap ingin pakai postMessage, isi domain parent kamu di sini.
+// Kalau DOM-control saja, set ke "*" atau matikan pemakaian TRUSTED_ORIGIN.
+const TRUSTED_ORIGIN = "*";
+
 const TILE = 20;
 const MOVE_INTERVAL = 240;
 
@@ -119,7 +122,7 @@ let gameRunning = false;
 let ghostActive = false;
 let scoreSubmitted = false;
 let sessionStartTime = 0;
-window.allowLocalPlay = false; // penting: dikontrol dari app.js
+window.allowLocalPlay = false; // global agar dikontrol dari app.js
 let animationFrameId = null;
 
 function resetGame(){
@@ -198,6 +201,7 @@ function drawMap(){
     }
   }
 }
+
 function drawPacman(){
   const wobbleY = Math.sin(Date.now() / 150) * 1.5;
   const px = pacman.x*TILE + TILE/2;
@@ -273,132 +277,117 @@ function drawGhosts(){
     ctx.fillRect(gx + TILE*0.35 - 7, gy - TILE*0.4 - 2, 5, 2);
   });
 }
-/* ========== END DRAWING ========== */
 
-/* ========== GAME LOGIC ========== */
-function canMove(nx, ny){
-  // wrap tunnels on row 8 and 9 where zeros exist
-  if (ny>=0 && ny<MAP_H && nx>=0 && nx<MAP_W) {
-    const t = mapData[ny][nx];
-    return t !== 1; // not wall
-  }
-  return false;
-}
-
-function eatDotIfAny(x,y){
-  if(mapData[y][x]===2){
-    mapData[y][x]=0;
-    score+=10;
-    document.getElementById("current-score-display").textContent=score;
-    playDotSound();
-  }
+/* ========== MOVEMENT & COLLISIONS ========== */
+function canMove(x,y){
+  if (y >= 8 && y <= 9 && x === -1) return true;
+  if (y >= 8 && y <= 9 && x === MAP_W) return true;
+  return mapData[y] && mapData[y][x] !== 1;
 }
 
 function movePacman(){
-  let nx=pacman.x, ny=pacman.y;
-  if(pacman.next==="left") nx--;
-  if(pacman.next==="right") nx++;
-  if(pacman.next==="up") ny--;
-  if(pacman.next==="down") ny++;
+  let nx = pacman.x, ny = pacman.y;
+  const d = pacman.next;
+
+  nx = pacman.x + (d==="right"?1:d==="left"?-1:0);
+  ny = pacman.y + (d==="down"?1:d==="up"?-1:0);
+
+  if (nx < 0 && pacman.y >= 8 && pacman.y <= 9) {
+      pacman.x = MAP_W - 1; pacman.dir = d; return;
+  }
+  if (nx >= MAP_W && pacman.y >= 8 && pacman.y <= 9) {
+      pacman.x = 0; pacman.dir = d; return;
+  }
 
   if(canMove(nx,ny)){
-    pacman.x=nx; pacman.y=ny; pacman.dir=pacman.next;
-    eatDotIfAny(pacman.x,pacman.y);
+    pacman.x = nx; pacman.y = ny; pacman.dir = d;
   } else {
-    // try current direction
-    let dx=0, dy=0;
-    if(pacman.dir==="left") dx=-1;
-    if(pacman.dir==="right") dx=1;
-    if(pacman.dir==="up") dy=-1;
-    if(pacman.dir==="down") dy=1;
-    nx=pacman.x+dx; ny=pacman.y+dy;
-    if(canMove(nx,ny)){
-      pacman.x=nx; pacman.y=ny;
-      eatDotIfAny(pacman.x,pacman.y);
+    const cx = pacman.x + (pacman.dir==="right"?1:pacman.dir==="left"?-1:0);
+    const cy = pacman.y + (pacman.dir==="down"?1:pacman.dir==="up"?-1:0);
+    if(canMove(cx,cy)){
+        pacman.x = cx; pacman.y = cy;
     }
   }
 }
 
 function moveGhosts(){
+  if(!ghostActive) return;
   ghosts.forEach(g=>{
-    // simple random walker that avoids walls
-    const dirs = [
-      {d:"left",dx:-1,dy:0},
-      {d:"right",dx:1,dy:0},
-      {d:"up",dx:0,dy:-1},
-      {d:"down",dx:0,dy:1}
-    ];
-    const pick = dirs[Math.floor(Math.random()*dirs.length)];
-    const nx=g.x+pick.dx, ny=g.y+pick.dy;
-    if(canMove(nx,ny)){
-      g.x=nx; g.y=ny;
+    const dx = pacman.x - g.x;
+    const dy = pacman.y - g.y;
+    let newX = g.x, newY = g.y;
+
+    if (Math.random() < 0.7) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+            newX = g.x + (dx > 0 ? 1 : -1);
+        } else {
+            newY = g.y + (dy > 0 ? 1 : -1);
+        }
+    } else {
+        const d = [[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)];
+        newX = g.x + d[0];
+        newY = g.y + d[1];
+    }
+    if(canMove(newX, newY)){
+        g.x = newX; g.y = newY;
     }
   });
 }
 
 function checkCollision(){
+  if(mapData[pacman.y][pacman.x] === 2){
+    mapData[pacman.y][pacman.x] = 0;
+    score += 10;
+    document.getElementById("current-score-display").textContent = score;
+    playDotSound();
+    // opsional: beritahu parent
+    try { window.parent.postMessage({ type: "dotEaten" }, "*"); } catch(e){}
+  }
+
   for(const g of ghosts){
-    if(g.x===pacman.x && g.y===pacman.y){
-      gameOver();
+    if(g.x === pacman.x && g.y === pacman.y){
+      gameEnd(false);
       return;
     }
   }
-  // win condition: no dots left
-  let anyDot=false;
-  for(let y=0;y<MAP_H;y++){
-    for(let x=0;x<MAP_W;x++){
-      if(mapData[y][x]===2){ anyDot=true; break; }
+
+  let win = true;
+  for(let y=0;y<mapData.length;y++){
+    for(let x=0;x<mapData[y].length;x++){
+      if(mapData[y][x] === 2) { win = false; break; }
     }
-    if(anyDot) break;
+    if(!win) break;
   }
-  if(!anyDot){ gameOver(true); }
+  if(win) gameEnd(true);
 }
 
-function gameOver(won=false){
+function gameEnd(isWin){
   gameRunning=false;
   ghostActive=false;
-  const gm=document.getElementById("game-message");
-  gm.style.display="block";
-  gm.textContent = won ? "You win! Submit score..." : "Game Over! Submit score...";
-  // trigger parent to submit score (ke app.js) — atau biarkan app.js memanggil ini via DOM
-  try {
-    // jika ingin kirim via postMessage (opsional)
-    window.parent.postMessage({ type:"submitScore", score }, "*");
-  } catch(e){}
+  document.getElementById("restart-button").style.display = "block";
+
+  const gm = document.getElementById("game-message");
+  gm.textContent = (isWin ? "YOU WIN! " : "GAME OVER! ") + "Skor: " + score;
+  gm.style.display = "block";
+
+  if(scoreSubmitted) return;
+  scoreSubmitted = true;
+
+  const playDuration = (Date.now() - sessionStartTime) / 1000;
+  if(playDuration < 5) return;
+
+  // biarkan app.js yang handle submit via message
+  try { window.parent.postMessage({ type: "submitScore", score }, "*"); } catch(e){}
 }
-
-/* ========== INPUT ========== */
-window.handleGameInput = function(direction){
-  if(!window.allowLocalPlay || !gameRunning){
-    const gm=document.getElementById("game-message");
-    gm.textContent="Please connect / pay to start the game.";
-    gm.style.display="block";
-    setTimeout(()=>gm.style.display="none",1200);
-    return;
-  }
-  const d = (direction||"").toLowerCase();
-  if(["left","right","up","down"].includes(d)){
-    pacman.next=d;
-  }
-};
-
-document.addEventListener("keydown",(e)=>{
-  if(!window.allowLocalPlay || !gameRunning) return;
-  const key = e.key.toLowerCase();
-  if(key==="arrowleft"||key==="a") pacman.next="left";
-  if(key==="arrowright"||key==="d") pacman.next="right";
-  if(key==="arrowup"||key==="w") pacman.next="up";
-  if(key==="arrowdown"||key==="s") pacman.next="down";
-});
 
 /* ========== LOOP ========== */
 function update(ts){
   if(!gameRunning) return;
   if(!lastMove) lastMove = ts;
   const elapsed = ts - lastMove;
-  if(elapsed >= MOVE_INTERVAL){
+  if(elapsed > MOVE_INTERVAL){
     movePacman();
-    if(ghostActive) moveGhosts();
+    moveGhosts();
     checkCollision();
     lastMove = ts;
   }
@@ -417,15 +406,59 @@ function loop(ts){
   animationFrameId = requestAnimationFrame(loop);
 }
 
-/* ========== EXPOSE & INIT ========== */
+/* ================= MESSAGE & INPUT HANDLERS ================= */
+window.addEventListener("message",(e)=>{
+  // kalau pakai DOM-control, bagian ini boleh diabaikan
+  if(TRUSTED_ORIGIN !== "*" && e.origin !== TRUSTED_ORIGIN) return;
+  if(e.data?.type==="paySuccess"){
+    window.allowLocalPlay = true; // penting: set di window
+    resetGame();
+    startCountdown();
+  }
+});
+
+window.handleGameInput = function(direction){
+  if(!window.allowLocalPlay || !gameRunning) {
+    const gm = document.getElementById("game-message");
+    gm.textContent = "Please connect / pay to start the game.";
+    gm.style.display = "block";
+    setTimeout(()=> gm.style.display = "none", 1200);
+    return;
+  }
+  if(direction && typeof direction === "string"){
+    pacman.next = direction.toLowerCase();
+  }
+};
+
+/* INPUT HANDLERS D-PAD */
+document.querySelectorAll("#mobileControls button").forEach(btn=>{
+  const dir = btn.getAttribute("data-dir");
+  const start = (ev) => { ev.preventDefault(); btn.style.transform = "translateY(2px)"; window.handleGameInput(dir); };
+  const end = (ev) => { ev.preventDefault(); btn.style.transform = ""; };
+  btn.addEventListener("touchstart", start, {passive:false});
+  btn.addEventListener("mousedown", start);
+  btn.addEventListener("touchend", end);
+  btn.addEventListener("mouseup", end);
+});
+
+/* keyboard arrows */
+window.addEventListener("keydown", (e)=>{
+  const key = e.key.toLowerCase();
+  if(key==="arrowleft"||key==="a") window.handleGameInput("left");
+  if(key==="arrowright"||key==="d") window.handleGameInput("right");
+  if(key==="arrowup"||key==="w") window.handleGameInput("up");
+  if(key==="arrowdown"||key==="s") window.handleGameInput("down");
+});
+
+/* ========== EXPOSE & STARTUP ========== */
 window.resetGame = resetGame;
 window.startCountdown = startCountdown;
 
-document.addEventListener("DOMContentLoaded",()=>{
+document.addEventListener('DOMContentLoaded', () => {
   resetGame();
   const gm = document.getElementById("game-message");
-  gm.textContent="Waiting for payment/connection...";
-  gm.style.display="block";
+  gm.textContent = "Waiting for payment/connection...";
+  gm.style.display = "block";
   requestAnimationFrame(loop);
 });
 })();
