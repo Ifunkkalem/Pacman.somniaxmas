@@ -27,8 +27,30 @@ let audioUnlocked = false;
 
 // ---------------- AUDIO HELPERS ----------------
 function initAudio() {
-  try { sfxStart = new Audio("assets/sfx_start.mp3"); sfxStart.volume = 0.95; } catch {}
-  try { sfxDot = new Audio("assets/sfx_dot_eat.mp3"); sfxDot.volume = 0.8; } catch {}
+  try {
+    sfxStart = new Audio("assets/sfx_start.mp3");
+    sfxStart.volume = 0.95;
+  } catch (e) {
+    console.warn("sfx_start.mp3 not found, skipping");
+    sfxStart = null;
+  }
+
+  try {
+    sfxDot = new Audio("assets/sfx_dot_eat.mp3");
+    sfxDot.volume = 0.8;
+  } catch (e) {
+    console.warn("sfx_dot_eat.mp3 not found, skipping");
+    sfxDot = null;
+  }
+
+  try {
+    backgroundMusic = new Audio("assets/music_background.mp3");
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.35;
+  } catch (e) {
+    console.warn("music_background.mp3 not found, skipping");
+    backgroundMusic = null;
+  }
 }
 function unlockAudioOnGesture() {
   if (audioUnlocked) return;
@@ -56,20 +78,44 @@ function startBackgroundMusic() {
 function playStartSfx() { if (sfxStart) { sfxStart.currentTime = 0; sfxStart.play().catch(()=>{}); } }
 
 // ---------------- WALLET & CONTRACT ----------------
-async function switchNetwork(provider) {
-  const { chainId } = await provider.getNetwork();
-  if (chainId.toString() !== "5031") {
-    try {
-      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SOMNIA_CHAIN_ID }] });
-      return true;
-    } catch (e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({ method: "wallet_addEthereumChain", params: [SOMNIA_NETWORK_CONFIG] });
-        return true;
-      }
-      alert("Please switch to Somnia network manually."); return false;
-    }
+async function connectWallet() {
+  // Inisialisasi audio sekali
+  initAudio();
+  unlockAudioOnGesture();
+
+  if (!window.ethereum) {
+    alert("No wallet provider found (install MetaMask).");
+    return false;
   }
+
+  // Gunakan Web3Provider dari window.ethereum
+  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+  // Minta izin akun
+  await provider.send("eth_requestAccounts", []);
+  signer = provider.getSigner();
+  userAddress = await signer.getAddress();
+
+  // Switch ke network Somnia
+  const ok = await switchNetwork(provider);
+  if (!ok) return false;
+
+  // Inisialisasi kontrak
+  readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+  gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+  // Ambil startFee dari kontrak
+  try {
+    startFeeWei = await readContract.startFeeWei();
+  } catch {
+    startFeeWei = ethers.utils.parseEther("0.001");
+  }
+
+  // Kirim info wallet ke parent
+  const balance = await provider.getBalance(userAddress);
+  const balanceEth = ethers.utils.formatEther(balance);
+  window.postMessage({ type: "walletInfo", address: userAddress, balance: balanceEth }, "*");
+
   return true;
 }
 
