@@ -163,6 +163,11 @@ function startCountdown() {
   let count = 3;
   gm.style.display = "block";
   gm.textContent = "READY " + count;
+  @keyframes pop {
+  0% { transform: translate(-50%, -50%) scale(0.7); opacity: 0.2; }
+  60% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+}
 
   if(window.gameStartInterval) clearInterval(window.gameStartInterval);
 
