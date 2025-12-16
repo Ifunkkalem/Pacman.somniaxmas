@@ -76,71 +76,128 @@ const btnConnect = document.getElementById('btnConnect');
 const btnPlay = document.getElementById('btnPlay');
 const btnLeaderboard = document.getElementById('btnLeaderboard');
 const btnHome = document.getElementById('btnHome');
-const walletAddrEl = document.getElementById('walletAddr');
-const walletBalEl = document.getElementById('walletBal');
+const walletAddrEl = document.getElementById('walletAddr'); // Menggunakan El untuk konsistensi
+const walletBalEl = document.getElementById('walletBal'); // Menggunakan El untuk konsistensi
 const gameFrame = document.getElementById('gameFrame');
 const leaderFrame = document.getElementById('leaderFrame');
 const logoPlaceholder = document.getElementById('logoPlaceholder');
 const overlayStart = document.getElementById('overlayStart');
 const posterImg = document.getElementById('posterImg');
 
+// Fungsi untuk menampilkan pesan "Waiting/Loading" (Hilangkan agar tidak mengganggu UI)
+function showWaitingFeedback(message = 'Requesting... check wallet.'){
+  const existingWaiting = document.getElementById('__waiting_req');
+  if(existingWaiting) existingWaiting.remove();
+  
+  const gm = document.createElement('div');
+  gm.id = '__waiting_req';
+  gm.style.position='fixed'; 
+  gm.style.left='50%';
+  gm.style.top='8px';
+  gm.style.transform='translateX(-50%)';
+  gm.style.background='rgba(0,0,0,0.8)';
+  gm.style.color='#fff';
+  gm.style.padding='6px 12px';
+  gm.style.borderRadius='8px';
+  gm.style.zIndex='999';
+  gm.textContent = message;
+  document.body.appendChild(gm);
+  setTimeout(()=> { const w = document.getElementById('__waiting_req'); if(w) w.remove(); }, 8000);
+}
+
+// Hapus pesan waiting
+function clearWaitingFeedback(){
+  const w = document.getElementById('__waiting_req'); 
+  if(w) w.remove();
+}
+
+
 function showMain(id){
-  logoPlaceholder.style.display='none';
-  gameFrame.style.display='none';
-  leaderFrame.style.display='none';
-  const el=document.getElementById(id);
-  if(el) el.style.display='block';
+  logoPlaceholder.style.display='none';
+  gameFrame.style.display='none';
+  leaderFrame.style.display='none';
+  const el=document.getElementById(id);
+  if(el) el.style.display='block';
 }
 
 function requestStartGame(){
-  window.parent.postMessage({ type: 'requestStartGame' }, '*');
+  showWaitingFeedback('Requesting game start...');
+  window.postMessage({ type: 'requestStartGame' }, '*');
 }
 
 btnPlay.addEventListener('click', ev=>{
-  ev.preventDefault();
-  requestStartGame();
+  ev.preventDefault();
+  requestStartGame();
 });
 overlayStart.addEventListener('click', ev=>{
-  ev.preventDefault();
-  requestStartGame();
+  ev.preventDefault();
+  requestStartGame();
 });
 btnHome.addEventListener('click', ()=>{ showMain('logoPlaceholder'); });
 btnLeaderboard.addEventListener('click', ()=>{
-  leaderFrame.src="leaderboard.html?"+Date.now();
-  showMain('leaderFrame');
+  leaderFrame.src="leaderboard.html?"+Date.now();
+  showMain('leaderFrame');
 });
 btnConnect.addEventListener('click', ()=>{
-  window.parent.postMessage({ type: 'requestConnectWallet' }, '*');
+  showWaitingFeedback('Requesting wallet connection...');
+  window.postMessage({ type: 'requestConnectWallet' }, '*');
 });
 
-// Listener pesan dari game iframe
+// Listener pesan dari app.js dan iframe game
 window.addEventListener("message", async (ev)=>{
-  const d=ev.data||{};
-  if(!d||typeof d!=="object") return;
-  if(d.type==="paySuccess"){ showMain('gameFrame'); }
-  if(d.type==="walletInfo"){
-    if(d.address){
-      walletAddrEl.textContent='Wallet: '+d.address.substring(0,6)+'...'+d.address.slice(-4);
-      walletAddrEl.title=d.address;
-    }
-    if(d.balance){
-      document.getElementById("walletBal").textContent = d.balance + " SOMI";
-      document.getElementById("walletBal").title = d.balance + " SOMI";
-    }
+  const d=ev.data||{};
+  if(!d||typeof d!=="object") return;
+  
+  // Penanganan feedback waiting
+  if(d.type === 'showWaiting'){
+    showWaitingFeedback(d.message || 'Processing transaction...');
+  }
+  if(d.type === 'clearWaiting'){
+    clearWaitingFeedback();
   }
 
-  if(d.type==="updateSummary"){
-    const poolEl=document.getElementById('poolValue');
-    const scoreEl=document.getElementById('topScoreValue');
-    if(d.jackpot&&poolEl) poolEl.textContent=d.jackpot+' SOMI';
-    if(d.topScore&&scoreEl) scoreEl.textContent=d.topScore;
+  // >>> PERBAIKAN UTAMA: Penanganan Wallet Info <<<
+  if(d.type==="walletInfo"){
+    clearWaitingFeedback(); // Clear waiting setelah status didapat
+    if(d.address){
+      walletAddrEl.textContent='Wallet: '+d.address.substring(0,6)+'...'+d.address.slice(-4);
+      walletAddrEl.title=d.address;
+    } else {
+      walletAddrEl.textContent='Wallet: -'; // Pastikan kembali ke default jika terputus
+    }
+    if(typeof d.balance !== 'undefined'){
+      walletBalEl.textContent = d.balance + " SOMI";
+      walletBalEl.title = d.balance + " SOMI";
+    } else {
+      walletBalEl.textContent = 'SOMI: -';
+    }
+  }
+  
+  // Penanganan Sukses Bayar
+  if(d.type==="paySuccess"){ 
+    clearWaitingFeedback();
+    showMain('gameFrame'); 
   }
-  if(d.type==="showLeaderboard"){
-    leaderFrame.src="leaderboard.html?"+Date.now();
-    showMain('leaderFrame');
+
+  // Penanganan Summary (Jackpot/Top Score)
+  if(d.type==="updateSummary"){
+    const poolEl=document.getElementById('poolValue');
+    const scoreEl=document.getElementById('topScoreValue');
+    if(d.jackpot&&poolEl) poolEl.textContent=d.jackpot+' SOMI';
+    if(d.topScore&&scoreEl) scoreEl.textContent=d.topScore;
+  }
+  
+  // Penanganan Navigasi
+  if(d.type==="showLeaderboard"){
+    leaderFrame.src="leaderboard.html?"+Date.now();
+    showMain('leaderFrame');
+  }
+  if(d.type==="playAgain"){ 
+    requestStartGame(); 
   }
-  if(d.type==="playAgain"){ requestStartGame(); }
-  if(d.type==="backToDashboard"){ showMain('logoPlaceholder'); }
+  if(d.type==="backToDashboard"){ 
+    showMain('logoPlaceholder'); 
+  }
 });
 
 posterImg.addEventListener('error', ()=>{ posterImg.src='assets/logo.png'; });
