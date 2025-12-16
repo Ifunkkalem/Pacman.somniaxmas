@@ -18,29 +18,32 @@
   canvas{
     background:#020617; border-radius:10px; display:block;
     box-shadow: 0 8px 24px rgba(0,0,0,0.6); image-rendering: optimizeSpeed;
+    /* Memberi kanvas z-index yang lebih rendah dari overlay */
+    z-index: 15; 
   }
   #ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
   #game-message{
     color:white; background:rgba(0,0,0,.8); padding:10px 15px; border-radius:8px;
-    display:none; z-index:12; position:absolute; top: 50%; left: 50%; 
+    display:none; z-index:25; /* Z-index lebih tinggi */ position:absolute; top: 50%; left: 50%; 
     transform: translate(-50%, -50%); text-align: center;
   }
   /* Tombol Restart Manual */
   #restart-button {
       position: absolute; top: 10px; right: 10px;
       background: #b91c1c; color: white; border: none; padding: 5px 10px;
-      border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 10;
+      border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 30; /* Z-index lebih tinggi */
   }
 
-  /* --- COUNTDOWN OVERLAY STYLE --- */
+  /* --- COUNTDOWN OVERLAY STYLE (Perbaikan Positioning dan Z-Index) --- */
   #countdown-overlay {
     position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
+    top: 0; left: 0; 
+    width: 100%; height: 100%;
     background: rgba(0, 0, 0, 0.95);
     display: none;
     justify-content: center;
     align-items: center;
-    z-index: 20;
+    z-index: 50; /* Z-index TERTINGGI untuk menutupi semuanya */
     font-size: 80px;
     color: #ffd700;
     text-shadow: 0 0 20px #cc0000;
@@ -64,7 +67,8 @@
     margin-top: 6px;
     user-select: none; 
     -webkit-tap-highlight-color: transparent;
-    width: 210px; /* Lebar sesuai ukuran tombol */
+    width: 210px; 
+    z-index: 20; /* Penting agar tombol bisa diklik */
   }
 
   #mobileControls .btn {
@@ -119,7 +123,6 @@
 <script>
 (() => {
 /* ================= SECURITY & CONFIG ================= */
-// KRITIS: Menggunakan domain spesifik Anda
 const TRUSTED_ORIGIN = "https://pacman-somniaxmasv1.vercel.app";
 
 const TILE = 20;
@@ -129,7 +132,8 @@ const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas ? canvas.getContext("2d") : null;
 if (!ctx) return;
 
-/* ================== MAP ================== */
+/* ================== MAP & UTIL (Omitted for brevity) ================== */
+// ... (Bagian MAP dan Utility Functions sama)
 const GAME_MAP = [
 [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
 [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
@@ -152,7 +156,6 @@ const GAME_MAP = [
 ];
 const MAP_W = GAME_MAP[0].length;
 const MAP_H = GAME_MAP.length;
-
 canvas.width = MAP_W * TILE;
 canvas.height = MAP_H * TILE;
 
@@ -170,12 +173,13 @@ function roundRect(ctx, x, y, w, h, r) {
 
 /* ========== AUDIO SYSTEM (DOT SOUND & BGM) ========== */
 const bgm = document.getElementById("game-bgm");
+let hasUserInteracted = false; // Flag untuk melacak interaksi pengguna
 
 function playBGM() {
-    if (bgm && bgm.paused) {
-        // Coba mainkan BGM. Ini mungkin gagal jika belum ada interaksi pengguna
+    if (bgm && bgm.paused && hasUserInteracted) {
+        // Coba mainkan BGM hanya jika ada interaksi dan belum dimainkan
         bgm.play().catch(e => {
-            console.warn("BGM autoplay failed. Waiting for user interaction or further signal.", e);
+            console.warn("BGM autoplay failed. User interaction might not be recognized yet.", e);
         });
     }
 }
@@ -187,7 +191,7 @@ function stopBGM() {
     }
 }
 
-// ... (Kode untuk DOT SOUND tetap sama)
+// ... (Kode Dot Sound tetap sama)
 let audioCtx = null;
 const DOT_SOUND_VOLUME = 0.5;
 let dotPool = [];
@@ -200,6 +204,8 @@ function initAudioPool() {
     for (let i = 0; i < DOT_POOL_SIZE; i++) {
       dotPool.push({ freq: 500 + i * 20, duration: 0.05 });
     }
+    hasUserInteracted = true; // Set flag interaksi di sini
+    playBGM(); // Coba mainkan BGM
   } catch(e) { console.error("AudioContext failed to initialize:", e); }
   document.removeEventListener('touchstart', initAudioPool);
   document.removeEventListener('mousedown', initAudioPool);
@@ -248,13 +254,18 @@ function resetGame(){
   document.getElementById("current-score-display").textContent = score;
   document.getElementById("game-message").style.display = "none";
   document.getElementById("restart-button").style.display = "none";
-  document.getElementById("countdown-overlay").classList.remove('active'); // Sembunyikan countdown
-  stopBGM(); // Pastikan BGM mati saat reset
+  document.getElementById("countdown-overlay").classList.remove('active');
+  stopBGM(); 
   gameRunning = false;
   ghostActive = false;
 }
 
 window.handleGameRestart = function() {
+  // Coba putar BGM saat ada interaksi pertama
+  if (!hasUserInteracted) {
+      initAudioPool();
+  }
+
   if(!window.allowLocalPlay) {
     const gm = document.getElementById("game-message");
     gm.textContent = "Game not yet active. Please connect/pay.";
@@ -270,10 +281,10 @@ function startCountdown() {
   const overlay = document.getElementById("countdown-overlay");
   let count = 3;
   
-  overlay.classList.add('active');
+  // Memastikan overlay benar-benar tampil
+  overlay.classList.add('active'); 
   overlay.textContent = count;
   
-  // Hapus game-message saat countdown aktif
   document.getElementById("game-message").style.display = "none";
 
   if(window.gameStartInterval) clearInterval(window.gameStartInterval);
@@ -286,19 +297,21 @@ function startCountdown() {
         overlay.textContent = "GO!";
     } else {
         clearInterval(window.gameStartInterval);
-        overlay.classList.remove('active');
-        ghostActive = true;
-        gameRunning = true;
-        lastMove = performance.now();
-        document.getElementById("restart-button").style.display = "block";
-        playBGM(); // Mulai BGM setelah countdown
+        // Memberi sedikit jeda agar GO! terlihat
+        setTimeout(() => {
+            overlay.classList.remove('active');
+            ghostActive = true;
+            gameRunning = true;
+            lastMove = performance.now();
+            document.getElementById("restart-button").style.display = "block";
+            playBGM(); // Mulai BGM setelah countdown (didukung oleh initAudioPool)
+        }, 300); // 300ms jeda setelah GO!
     }
   }, 1000);
 }
 
-/* ========== DRAWING & MOVEMENT (Kode ini tetap sama) ========== */
-// ... (Kode drawMap, drawPacman, drawGhosts, canMove, movePacman, moveGhosts tetap sama)
-
+/* ========== DRAWING & MOVEMENT (Omitted for brevity) ========== */
+// ... (Bagian Draw, Movement, Collision sama)
 function drawMap(){
   for(let y=0;y<MAP_H;y++){
     for(let x=0;x<MAP_W;x++){
@@ -453,7 +466,6 @@ function moveGhosts(){
     }
   });
 }
-// ... (Akhir kode draw & movement)
 
 function checkCollision(){
   if(mapData[pacman.y][pacman.x] === 2){
@@ -490,7 +502,7 @@ function gameEnd(isWin){
   gm.textContent = (isWin ? "YOU WIN! " : "GAME OVER! ") + "Skor: " + score;
   gm.style.display = "block";
   
-  stopBGM(); // Matikan BGM saat game over
+  stopBGM(); 
 
   if(scoreSubmitted) return;
   scoreSubmitted = true;
@@ -534,12 +546,16 @@ window.addEventListener("message",(e)=>{
   if(e.data?.type==="paySuccess"){
     if(window.allowLocalPlay) return; 
 
+    // Coba putar BGM segera saat menerima paySuccess (interaksi dari parent)
+    if (!hasUserInteracted) {
+        initAudioPool(); // Ini akan mengaktifkan hasUserInteracted dan mencoba playBGM()
+    }
+
     window.allowLocalPlay = true; 
     const gm = document.getElementById("game-message");
     gm.textContent = "PAYMENT SUCCESS! Starting Game...";
     gm.style.display = "block";
     
-    // Memberikan jeda visual sebelum countdown dimulai
     setTimeout(() => {
         resetGame();
         startCountdown();
@@ -548,9 +564,13 @@ window.addEventListener("message",(e)=>{
 });
 
 window.handleGameInput = function(direction){
+  // Coba putar BGM saat ada interaksi pertama
+  if (!hasUserInteracted) {
+      initAudioPool();
+  }
+
   if(!window.allowLocalPlay || !gameRunning) {
     const gm = document.getElementById("game-message");
-    // Hanya tampilkan pesan jika countdown tidak aktif
     if (!document.getElementById("countdown-overlay").classList.contains('active')) {
         gm.textContent = "Please connect / pay to start the game.";
         gm.style.display = "block";
@@ -566,7 +586,12 @@ window.handleGameInput = function(direction){
 /* INPUT HANDLERS D-PAD */
 document.querySelectorAll("#mobileControls button").forEach(btn=>{
   const dir = btn.getAttribute("data-dir");
-  const start = (ev) => { ev.preventDefault(); btn.style.transform = "translateY(2px)"; window.handleGameInput(dir); };
+  const start = (ev) => { 
+    ev.preventDefault(); 
+    btn.style.transform = "translateY(2px)"; 
+    window.handleGameInput(dir);
+    if (!hasUserInteracted) initAudioPool(); // Trigger BGM on first touch
+  };
   const end = (ev) => { ev.preventDefault(); btn.style.transform = ""; };
   btn.addEventListener("touchstart", start, {passive:false});
   btn.addEventListener("mousedown", start);
@@ -577,6 +602,8 @@ document.querySelectorAll("#mobileControls button").forEach(btn=>{
 /* keyboard arrows */
 window.addEventListener("keydown", (e)=>{
   const key = e.key.toLowerCase();
+  if (!hasUserInteracted) initAudioPool(); // Trigger BGM on first keypress
+
   if(key==="arrowleft"||key==="a") window.handleGameInput("left");
   if(key==="arrowright"||key==="d") window.handleGameInput("right");
   if(key==="arrowup"||key==="w") window.handleGameInput("up");
@@ -594,5 +621,5 @@ document.addEventListener('DOMContentLoaded', () => {
 })();
 </script>
 </body>
-    </html>
+</html>
   
