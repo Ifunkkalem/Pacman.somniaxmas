@@ -7,20 +7,24 @@
 <script src="libs/ethers.min.js"></script>
 <link rel="icon" href="assets/logo1.png" type="image/png">
 <style>
+/* Reset dan Font Dasar */
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS,sans-serif;}
 
 body {
   height:100vh;
   display:flex;
-  background:linear-gradient(135deg,#b91c1c,#166534);
+  background:linear-gradient(135deg,#b91c1c,#166534); /* Merah dan Hijau Natal */
   color:#fff;
   overflow:hidden;
 }
 
-/* Layout */
-#wrap { display:flex; flex:1; }
+/* Layout Utama */
+#wrap { 
+    display:flex; 
+    flex:1; 
+}
 
-/* Sidebar */
+/* Sidebar (Menu) */
 #sidebar {
   width:200px;
   background:linear-gradient(180deg,#b91c1c,#166534);
@@ -40,14 +44,10 @@ body {
   cursor:pointer;
 }
 #sidebar button:hover { background:linear-gradient(90deg,#ff4d4d,#22c55e); }
-#walletAddr,#walletBal { font-size:12px; }
-/* FIX CSS MOBILE: Pastikan info wallet/saldo tetap rapi di mode mobile */
-#sidebar > div {
-    flex-basis: 100%; /* Memastikan wallet info mengambil lebar penuh di mobile */
-    text-align: center;
-}
+#walletAddr,#walletBal { font-size:12px; text-align: center; }
 
-/* Main */
+
+/* Main Content Area */
 #main {
   flex:1;
   display:flex;
@@ -55,12 +55,13 @@ body {
   align-items:center;
   background:linear-gradient(to bottom,#800000,#400000);
   position:relative;
+  padding:8px; /* Padding utama untuk mencegah konten menempel di tepi */
 }
 #title {
   font-size:24px;
   color:#ffd700;
   text-shadow:0 0 6px #fff;
-  padding:12px;
+  padding:4px 12px;
 }
 #topScoreSummary {
   background:rgba(0,0,0,0.4);
@@ -82,7 +83,7 @@ body {
 }
 iframe { width:100%; height:100%; border:0; display:none; }
 
-/* Poster */
+/* Poster (Logo Placeholder) */
 #logoPlaceholder {
   width:100%; height:100%;
   position:absolute; inset:0;
@@ -91,7 +92,7 @@ iframe { width:100%; height:100%; border:0; display:none; }
 #posterImg {
   width: 100%;
   height: 100%;
-  object-fit: cover;   /* gambar akan menyesuaikan area */
+  object-fit: cover; 
   border:4px solid #ffd700;
   border-radius:12px;
 }
@@ -117,7 +118,7 @@ iframe { width:100%; height:100%; border:0; display:none; }
   font-size:12px;
 }
 
-/* Snow animation */
+/* Snow animation (tidak berubah) */
 .snowflake {
   position:fixed;
   top:-10px;
@@ -132,19 +133,41 @@ iframe { width:100%; height:100%; border:0; display:none; }
   100% { transform:translateY(100vh) rotate(360deg); opacity:0.8; }
 }
 
-/* Mobile header layout */
+/* FIX BUG 1: Mobile Layout */
 @media (max-width:768px){
-  #wrap { flex-direction:column; }
+  #wrap { 
+    flex-direction:column; 
+    overflow: auto; /* Izinkan scrolling jika ada elemen besar di mobile */
+}
   #sidebar {
     width:100%;
-    flex-direction:row;
-    flex-wrap:wrap;
-    justify-content:space-around; /* Ganti center menjadi space-around untuk distribusi lebih baik */
-    gap:8px;
+    flex-direction:row; /* Menu berjejer ke samping */
+    flex-wrap:wrap; /* Wrap jika terlalu banyak tombol */
+    justify-content:space-around;
     border-right:none;
     border-bottom:4px solid #ffd700;
   }
-  #main { padding:8px; }
+  /* Mengatur lebar tombol agar tidak terlalu besar di mobile */
+  #sidebar button {
+    flex-basis: 45%; /* Ambil 45% lebar, 2 tombol per baris */
+  }
+  /* Mengatur tampilan info wallet agar rapi di mobile */
+  #walletInfoContainer { 
+    display: flex; 
+    flex-direction: row; 
+    justify-content: space-around; 
+    width: 100%; 
+    gap: 8px;
+    margin-top: 4px;
+  }
+  #walletAddr, #walletBal {
+    flex: 1; 
+    text-align: center;
+  }
+  #main { 
+    padding:8px; 
+    min-height: calc(100vh - 120px); /* Memastikan area utama cukup tinggi */
+}
   #topScoreSummary { max-width:100%; }
   .content-area { max-width:100%; }
 }
@@ -155,8 +178,7 @@ iframe { width:100%; height:100%; border:0; display:none; }
   <div id="sidebar">
     <button id="btnConnect">🔗 Connect Wallet</button>
     <button id="btnHome">🏠 Home</button>
-    <div>
-      <div id="walletAddr">Wallet: -</div>
+    <div id="walletInfoContainer">       <div id="walletAddr">Wallet: -</div>
       <div id="walletBal">SOMI: -</div>
     </div>
     <button id="btnPlay">🎮 Play Game</button>
@@ -254,13 +276,13 @@ function showWaitingFeedback(){
 btnPlay.addEventListener('click', (ev)=>{ 
     ev.preventDefault(); 
     showWaitingFeedback();
-    try{ window.parent.postMessage({ type: 'requestStartGame' }, '*'); }
+    try{ window.postMessage({ type: 'requestStartGame' }, '*'); }
     catch(e){ console.warn('postMessage start failed', e); }
 });
 overlayStart.addEventListener('click', (ev)=>{ 
     ev.preventDefault(); 
     showWaitingFeedback();
-    try{ window.parent.postMessage({ type: 'requestStartGame' }, '*'); }
+    try{ window.postMessage({ type: 'requestStartGame' }, '*'); }
     catch(e){ console.warn('postMessage start failed', e); }
 });
 btnHome.addEventListener('click', ()=>{ showMain('logoPlaceholder'); });
@@ -269,17 +291,17 @@ btnLeaderboard.addEventListener('click', ()=>{
   showMain('leaderFrame');
 });
 btnConnect.addEventListener('click', ()=>{
-  try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
+  try{ window.postMessage({ type: 'requestConnectWallet' }, '*'); }
   catch(e){ console.warn('postMessage connect failed', e); }
 });
 
-// Listen for messages from parent (app.js) & iframes
+// Listen for messages from app.js & iframes
 window.addEventListener('message', (ev)=>{
   const d = ev.data || {};
   if(!d || typeof d !== 'object') return;
 
   if(d.type === 'paySuccess'){
-    // Dipicu oleh index.html setelah payToPlay berhasil
+    // Dipicu oleh app.js setelah payToPlay berhasil
     showMain('gameFrame');
     const w = document.getElementById('__waiting_req'); if(w) w.remove();
   }
