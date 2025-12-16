@@ -8,69 +8,70 @@
 <script src="libs/ethers.min.js"></script>
 
 <style>
+/* ... (Gaya CSS tidak berubah) ... */
 body {
-  font-family: Trebuchet MS, sans-serif;
-  background: #800000;
-  color: #fff;
-  margin: 0;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  font-family: Trebuchet MS, sans-serif;
+  background: #800000;
+  color: #fff;
+  margin: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 h2 {
-  color: #00ffae;
-  margin-bottom: 6px;
+  color: #00ffae;
+  margin-bottom: 6px;
 }
 
 #headerBox {
-  background: rgba(0,0,0,.35);
-  padding: 10px 14px;
-  border-radius: 10px;
-  margin-bottom: 14px;
-  text-align: center;
-  min-width: 280px;
+  background: rgba(0,0,0,.35);
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  text-align: center;
+  min-width: 280px;
 }
 
 #jackpot {
-  font-size: 18px;
-  font-weight: bold;
-  color: #ffd700;
+  font-size: 18px;
+  font-weight: bold;
+  color: #ffd700;
 }
 
 #topScore {
-  font-size: 14px;
-  margin-top: 4px;
+  font-size: 14px;
+  margin-top: 4px;
 }
 
 #connectionStatus {
-  font-size: 12px;
-  margin-bottom: 10px;
-  opacity: .9;
+  font-size: 12px;
+  margin-bottom: 10px;
+  opacity: .9;
 }
 
 table {
-  width: 100%;
-  max-width: 520px;
-  border-collapse: collapse;
-  background: rgba(255,255,255,.08);
-  border-radius: 10px;
-  overflow: hidden;
+  width: 100%;
+  max-width: 520px;
+  border-collapse: collapse;
+  background: rgba(255,255,255,.08);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 th, td {
-  padding: 10px;
-  border-bottom: 1px solid rgba(255,255,255,.2);
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,.2);
 }
 
 th {
-  background: rgba(0,0,0,.45);
-  color: #ff4d4d;
+  background: rgba(0,0,0,.45);
+  color: #ff4d4d;
 }
 
 td {
-  font-size: 14px;
+  font-size: 14px;
 }
 
 .rank { width: 50px; text-align: center; }
@@ -85,8 +86,8 @@ tr:nth-child(even) { background: rgba(255,255,255,.05); }
 <h2>🏆 SOMNIA LEADERBOARD</h2>
 
 <div id="headerBox">
-  <div id="jackpot">Jackpot: Loading...</div>
-  <div id="topScore">Top Score: -</div>
+  <div id="jackpot">Jackpot: Loading...</div>
+  <div id="topScore">Top Score: -</div>
 </div>
 
 <div id="connectionStatus">Connecting to blockchain...</div>
@@ -94,9 +95,9 @@ tr:nth-child(even) { background: rgba(255,255,255,.05); }
 <table>
 <thead>
 <tr>
-  <th class="rank">#</th>
-  <th>Wallet</th>
-  <th class="score">Score</th>
+  <th class="rank">#</th>
+  <th>Wallet</th>
+  <th class="score">Score</th>
 </tr>
 </thead>
 <tbody id="leaderboardBody">
@@ -107,95 +108,104 @@ tr:nth-child(even) { background: rgba(255,255,255,.05); }
 <script>
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
 const RPC_URL = "https://somnia-rpc.publicnode.com";
+const TRUSTED_ORIGIN = window.location.origin || "*"; // Target origin untuk parent
 
 const ABI = [
-  "function getTop10() view returns (address[], uint256[])"
+  "function getTop10() view returns (address[], uint256[])",
+  "function startFeeWei() view returns (uint256)" // ABI tambahan untuk keamanan
 ];
 
 let provider, contract;
+let globalJackpotValue = '0.000000';
 
 async function init() {
-  try {
-    provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+  try {
+    provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-    await loadJackpot();
-    await loadLeaderboard();
+    await loadJackpot();
+    await loadLeaderboard();
 
-  } catch (e) {
-    console.error(e);
-    document.getElementById("jackpot").innerText = "Jackpot: Error";
-  }
+    document.getElementById("connectionStatus").innerText = 
+      "Last updated: " + new Date().toLocaleTimeString();
+
+  } catch (e) {
+    console.error("Initialization error:", e);
+    document.getElementById("jackpot").innerText = "Jackpot: Error";
+    document.getElementById("connectionStatus").innerText = "Connection failed.";
+  }
 }
 
 // ================= JACKPOT =================
 async function loadJackpot() {
-  try {
-    const balanceWei = await provider.getBalance(CONTRACT_ADDRESS);
-    const jackpot = ethers.utils.formatEther(balanceWei);
+  try {
+    const balanceWei = await provider.getBalance(CONTRACT_ADDRESS);
+    const jackpot = ethers.utils.formatEther(balanceWei);
+    
+    globalJackpotValue = Number(jackpot).toFixed(6); // Simpan nilai jackpot
+    document.getElementById("jackpot").innerText =
+      "Jackpot: " + globalJackpotValue + " SOMI";
 
-    document.getElementById("jackpot").innerText =
-      "Jackpot: " + Number(jackpot).toFixed(6) + " SOMI";
-
-  } catch (e) {
-    console.error("Jackpot error:", e);
-    document.getElementById("jackpot").innerText = "Jackpot: 0 SOMI";
-  }
+  } catch (e) {
+    console.error("Jackpot error:", e);
+    document.getElementById("jackpot").innerText = "Jackpot: 0 SOMI";
+    globalJackpotValue = '0.000000';
+  }
 }
 
 // ================= LEADERBOARD =================
 async function loadLeaderboard() {
-  const tbody = document.getElementById("leaderboardBody");
-  tbody.innerHTML = "";
+  const tbody = document.getElementById("leaderboardBody");
+  tbody.innerHTML = "";
 
-  try {
-    const [players, scores] = await contract.getTop10();
+  try {
+    const [players, scores] = await contract.getTop10();
 
-    if (!players.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="3" style="text-align:center">No data</td></tr>';
-      return;
-    }
+    if (!players.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="3" style="text-align:center">No data</td></tr>';
+      return;
+    }
 
-    // DEDUPE WALLET (ambil skor tertinggi per wallet)
-    const best = {};
-    players.forEach((addr, i) => {
-      const s = Number(scores[i]);
-      if (!best[addr] || s > best[addr]) best[addr] = s;
-    });
+    // DEDUPE WALLET (ambil skor tertinggi per wallet)
+    const best = {};
+    players.forEach((addr, i) => {
+      const s = Number(scores[i]);
+      if (!best[addr] || s > best[addr]) best[addr] = s;
+    });
 
-    const finalList = Object.entries(best)
-      .map(([addr, score]) => ({ addr, score }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+    const finalList = Object.entries(best)
+      .map(([addr, score]) => ({ addr, score }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
 
-    // TOP SCORE GLOBAL
-    const topScore = finalList.length ? finalList[0].score : 0;
-    document.getElementById("topScore").innerText =
-      "Top Score: " + topScore;
+    // TOP SCORE GLOBAL
+    const topScore = finalList.length ? finalList[0].score : 0;
+    document.getElementById("topScore").innerText =
+      "Top Score: " + topScore;
 
-    // Kirim ke parent (index/app.js)
-    window.parent.postMessage({
-      type: "updateSummary",
-      jackpot: document.getElementById("jackpot").innerText.replace("Jackpot: ","").replace(" SOMI",""),
-      topScore: topScore
-    }, "*");
+    // Kirim ke parent (index/app.js) - Menggunakan TRUSTED_ORIGIN
+    window.parent.postMessage({
+      type: "updateSummary",
+      jackpot: globalJackpotValue, // Menggunakan nilai global
+      topScore: topScore.toString()
+    }, TRUSTED_ORIGIN); 
 
-    finalList.forEach((item, i) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="rank">${i + 1}</td>
-        <td>${item.addr.slice(0,6)}...${item.addr.slice(-4)}</td>
-        <td class="score">${item.score}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+    finalList.forEach((item, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td class="rank">${i + 1}</td>
+        <td>${item.addr.slice(0,6)}...${item.addr.slice(-4)}</td>
+        <td class="score">${item.score}</td>
+      `;
+      tbody.appendChild(tr);
+    });
 
-  } catch (e) {
-    console.error("Leaderboard error:", e);
-    tbody.innerHTML =
-      '<tr><td colspan="3" style="text-align:center">Failed to load</td></tr>';
-  }
+  } catch (e) {
+    console.error("Leaderboard error:", e);
+    tbody.innerHTML =
+      '<tr><td colspan="3" style="text-align:center">Failed to load</td></tr>';
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
