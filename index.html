@@ -10,11 +10,11 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS,sans-serif;}
 
 body {
-  height:100vh;
-  display:flex;
-  background:linear-gradient(135deg,#b91c1c,#166534);
-  color:#fff;
-  overflow:hidden;
+  height:100vh;
+  display:flex;
+  background:linear-gradient(135deg,#b91c1c,#166534);
+  color:#fff;
+  overflow:hidden;
 }
 
 /* Layout */
@@ -22,166 +22,171 @@ body {
 
 /* Sidebar */
 #sidebar {
-  width:200px;
-  background:linear-gradient(180deg,#b91c1c,#166534);
-  padding:14px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  border-right:4px solid #ffd700;
+  width:200px;
+  background:linear-gradient(180deg,#b91c1c,#166534);
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  border-right:4px solid #ffd700;
 }
 #sidebar button {
-  padding:10px;
-  border:none;
-  border-radius:8px;
-  background:linear-gradient(90deg,red,green);
-  color:#fff;
-  font-weight:bold;
-  cursor:pointer;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:linear-gradient(90deg,red,green);
+  color:#fff;
+  font-weight:bold;
+  cursor:pointer;
 }
 #sidebar button:hover { background:linear-gradient(90deg,#ff4d4d,#22c55e); }
 #walletAddr,#walletBal { font-size:12px; }
+/* FIX CSS MOBILE: Pastikan info wallet/saldo tetap rapi di mode mobile */
+#sidebar > div {
+    flex-basis: 100%; /* Memastikan wallet info mengambil lebar penuh di mobile */
+    text-align: center;
+}
 
 /* Main */
 #main {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  background:linear-gradient(to bottom,#800000,#400000);
-  position:relative;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  background:linear-gradient(to bottom,#800000,#400000);
+  position:relative;
 }
 #title {
-  font-size:24px;
-  color:#ffd700;
-  text-shadow:0 0 6px #fff;
-  padding:12px;
+  font-size:24px;
+  color:#ffd700;
+  text-shadow:0 0 6px #fff;
+  padding:12px;
 }
 #topScoreSummary {
-  background:rgba(0,0,0,0.4);
-  padding:8px;
-  border-radius:6px;
-  margin-bottom:12px;
-  width:100%;
-  max-width:480px;
-  text-align:center;
+  background:rgba(0,0,0,0.4);
+  padding:8px;
+  border-radius:6px;
+  margin-bottom:12px;
+  width:100%;
+  max-width:480px;
+  text-align:center;
 }
 .content-area {
-  flex:1;
-  width:100%;
-  max-width:480px;
-  background:rgba(0,0,0,0.25);
-  border-radius:12px;
-  overflow:hidden;
-  position:relative;
+  flex:1;
+  width:100%;
+  max-width:480px;
+  background:rgba(0,0,0,0.25);
+  border-radius:12px;
+  overflow:hidden;
+  position:relative;
 }
 iframe { width:100%; height:100%; border:0; display:none; }
 
 /* Poster */
 #logoPlaceholder {
-  width:100%; height:100%;
-  position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
+  width:100%; height:100%;
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
 }
 #posterImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;   /* gambar akan menyesuaikan area */
-  border:4px solid #ffd700;
-  border-radius:12px;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;   /* gambar akan menyesuaikan area */
+  border:4px solid #ffd700;
+  border-radius:12px;
 }
 #poster-overlay {
-  position:absolute; inset:0;
-  display:flex; flex-direction:column; justify-content:space-between; align-items:center;
-  text-align:center; padding:20px; text-shadow:0 0 5px black;
+  position:absolute; inset:0;
+  display:flex; flex-direction:column; justify-content:space-between; align-items:center;
+  text-align:center; padding:20px; text-shadow:0 0 5px black;
 }
 #poster-overlay h2 { font-size:1.6em; color:#ffd700; }
 #poster-overlay p { font-size:1em; color:#fff; }
 .overlay-cta {
-  padding:12px 30px; font-size:1.1em; font-weight:bold;
-  border-radius:8px; cursor:pointer;
-  background:#16a34a; color:#fff;
+  padding:12px 30px; font-size:1.1em; font-weight:bold;
+  border-radius:8px; cursor:pointer;
+  background:#16a34a; color:#fff;
 }
 .overlay-cta:hover { background:#22c55e; }
 
 .footer {
-  text-align:center;
-  padding:10px;
-  color:#ffd700;
-  text-shadow:0 0 4px #fff;
-  font-size:12px;
+  text-align:center;
+  padding:10px;
+  color:#ffd700;
+  text-shadow:0 0 4px #fff;
+  font-size:12px;
 }
 
 /* Snow animation */
 .snowflake {
-  position:fixed;
-  top:-10px;
-  color:#fff;
-  font-size:1em;
-  pointer-events:none;
-  animation-name:fall;
-  animation-timing-function:linear;
+  position:fixed;
+  top:-10px;
+  color:#fff;
+  font-size:1em;
+  pointer-events:none;
+  animation-name:fall;
+  animation-timing-function:linear;
 }
 @keyframes fall {
-  0% { transform:translateY(0) rotate(0deg); opacity:1; }
-  100% { transform:translateY(100vh) rotate(360deg); opacity:0.8; }
+  0% { transform:translateY(0) rotate(0deg); opacity:1; }
+  100% { transform:translateY(100vh) rotate(360deg); opacity:0.8; }
 }
 
 /* Mobile header layout */
 @media (max-width:768px){
-  #wrap { flex-direction:column; }
-  #sidebar {
-    width:100%;
-    flex-direction:row;
-    flex-wrap:wrap;
-    justify-content:center;
-    gap:8px;
-    border-right:none;
-    border-bottom:4px solid #ffd700;
-  }
-  #main { padding:8px; }
-  #topScoreSummary { max-width:100%; }
-  .content-area { max-width:100%; }
+  #wrap { flex-direction:column; }
+  #sidebar {
+    width:100%;
+    flex-direction:row;
+    flex-wrap:wrap;
+    justify-content:space-around; /* Ganti center menjadi space-around untuk distribusi lebih baik */
+    gap:8px;
+    border-right:none;
+    border-bottom:4px solid #ffd700;
+  }
+  #main { padding:8px; }
+  #topScoreSummary { max-width:100%; }
+  .content-area { max-width:100%; }
 }
 </style>
 </head>
 <body>
 <div id="wrap">
-  <div id="sidebar">
-    <button id="btnConnect">🔗 Connect Wallet</button>
-    <button id="btnHome">🏠 Home</button>
-    <div>
-      <div id="walletAddr">Wallet: -</div>
-      <div id="walletBal">SOMI: -</div>
-    </div>
-    <button id="btnPlay">🎮 Play Game</button>
-    <button id="btnLeaderboard">📊 Leaderboard</button>
-  </div>
+  <div id="sidebar">
+    <button id="btnConnect">🔗 Connect Wallet</button>
+    <button id="btnHome">🏠 Home</button>
+    <div>
+      <div id="walletAddr">Wallet: -</div>
+      <div id="walletBal">SOMI: -</div>
+    </div>
+    <button id="btnPlay">🎮 Play Game</button>
+    <button id="btnLeaderboard">📊 Leaderboard</button>
+  </div>
 
-  <div id="main">
-    <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
-    <div id="topScoreSummary">
-      💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> |
-      🏆 <b>Top:</b> <span id="topScoreValue">0</span>
-    </div>
-    <div class="content-area">
-      <div id="logoPlaceholder">
-        <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
-        <div id="poster-overlay">
-          <div>
-            <h2>✨ SOMNIA CHRISTMAS ✨</h2>
-            <p>Main & menangkan Jackpot Natal 🎁</p>
-          </div>
-          <div>
-            <button id="overlayStart" class="overlay-cta">Mulai</button>
-          </div>
-        </div>
-      </div>
-      <iframe id="gameFrame" src="./pacman/pacman_xmas.html" title="Pacman Game"></iframe>
-      <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
-    </div>
-    <div class="footer">❄️ created by: ifunkkalem | @Ifunkkalem91 ❄️</div>
-  </div>
+  <div id="main">
+    <div id="title">☃️ SOMNIA CHRISTMAS CARNIVAL 🎄</div>
+    <div id="topScoreSummary">
+      💰 <b>Jackpot:</b> <span id="poolValue">0.00 SOMI</span> |
+      🏆 <b>Top:</b> <span id="topScoreValue">0</span>
+    </div>
+    <div class="content-area">
+      <div id="logoPlaceholder">
+        <img id="posterImg" src="assets/logo1.png" alt="Somnia Logo">
+        <div id="poster-overlay">
+          <div>
+            <h2>✨ SOMNIA CHRISTMAS ✨</h2>
+            <p>Main & menangkan Jackpot Natal 🎁</p>
+          </div>
+          <div>
+            <button id="overlayStart" class="overlay-cta">Mulai</button>
+          </div>
+        </div>
+      </div>
+      <iframe id="gameFrame" src="./pacman/pacman_xmas.html" title="Pacman Game"></iframe>
+      <iframe id="leaderFrame" src="leaderboard.html" title="Leaderboard"></iframe>
+    </div>
+    <div class="footer">❄️ created by: ifunkkalem | @Ifunkkalem91 ❄️</div>
+  </div>
 </div>
 
 <script>
@@ -200,112 +205,120 @@ const posterImg = document.getElementById('posterImg');
 
 // Snow effect generator
 function createSnowflake(){
-  const snowflake=document.createElement('div');
-  snowflake.classList.add('snowflake');
-  snowflake.textContent='❄';
-  snowflake.style.left=Math.random()*window.innerWidth+'px';
-  snowflake.style.fontSize=(Math.random()*10+10)+'px';
-  snowflake.style.animationDuration=(Math.random()*5+5)+'s';
-  document.body.appendChild(snowflake);
-  setTimeout(()=>snowflake.remove(),10000);
+  const snowflake=document.createElement('div');
+  snowflake.classList.add('snowflake');
+  snowflake.textContent='❄';
+  snowflake.style.left=Math.random()*window.innerWidth+'px';
+  snowflake.style.fontSize=(Math.random()*10+10)+'px';
+  snowflake.style.animationDuration=(Math.random()*5+5)+'s';
+  document.body.appendChild(snowflake);
+  setTimeout(()=>snowflake.remove(),10000);
 }
 const snowInterval = setInterval(createSnowflake, 200);
 
 // SAFER showMain: only show if element exists
 function showMain(id){
-  try{
-    logoPlaceholder.style.display='none';
-    gameFrame.style.display='none';
-    leaderFrame.style.display='none';
-    const el = document.getElementById(id);
-    if(el) el.style.display = 'block';
-  }catch(e){
-    console.warn('showMain error', e);
-  }
+  try{
+    logoPlaceholder.style.display='none';
+    gameFrame.style.display='none';
+    leaderFrame.style.display='none';
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'block';
+  }catch(e){
+    console.warn('showMain error', e);
+  }
 }
 
-// Request start game via parent (app.js)
-function requestStartGame(){
-  try{
-    window.parent.postMessage({ type: 'requestStartGame' }, '*');
-    // subtle waiting feedback while parent handles tx
-    const gm = document.createElement('div');
-    gm.id = '__waiting_req';
-    gm.style.position='fixed'; 
-    gm.style.left='50%';
-    gm.style.top='8px';
-    gm.style.transform='translateX(-50%)';
-    gm.style.background='rgba(0,0,0,0.6)';
-    gm.style.color='white';
-    gm.style.padding='6px 10px';
-    gm.style.borderRadius='8px';
-    gm.style.zIndex='999';
-    gm.textContent = 'Requesting start... check wallet.';
-    document.body.appendChild(gm);
-    setTimeout(()=> { const w = document.getElementById('__waiting_req'); if(w) w.remove(); }, 8000);
-  }catch(e){
-    console.warn('requestStartGame postMessage failed', e);
-  }
+// Function untuk menampilkan pesan menunggu
+function showWaitingFeedback(){
+  const existingWaiting = document.getElementById('__waiting_req');
+  if(existingWaiting) existingWaiting.remove();
+  
+  const gm = document.createElement('div');
+  gm.id = '__waiting_req';
+  gm.style.position='fixed'; 
+  gm.style.left='50%';
+  gm.style.top='8px';
+  gm.style.transform='translateX(-50%)';
+  gm.style.background='rgba(0,0,0,0.6)';
+  gm.style.color='white';
+  gm.style.padding='6px 10px';
+  gm.style.borderRadius='8px';
+  gm.style.zIndex='999';
+  gm.textContent = 'Requesting start... check wallet.';
+  document.body.appendChild(gm);
+  setTimeout(()=> { const w = document.getElementById('__waiting_req'); if(w) w.remove(); }, 8000);
 }
 
 // Hook up UI
-btnPlay.addEventListener('click', (ev)=>{ ev.preventDefault(); requestStartGame(); });
-overlayStart.addEventListener('click', (ev)=>{ ev.preventDefault(); requestStartGame(); });
+btnPlay.addEventListener('click', (ev)=>{ 
+    ev.preventDefault(); 
+    showWaitingFeedback();
+    try{ window.parent.postMessage({ type: 'requestStartGame' }, '*'); }
+    catch(e){ console.warn('postMessage start failed', e); }
+});
+overlayStart.addEventListener('click', (ev)=>{ 
+    ev.preventDefault(); 
+    showWaitingFeedback();
+    try{ window.parent.postMessage({ type: 'requestStartGame' }, '*'); }
+    catch(e){ console.warn('postMessage start failed', e); }
+});
 btnHome.addEventListener('click', ()=>{ showMain('logoPlaceholder'); });
 btnLeaderboard.addEventListener('click', ()=>{
-  leaderFrame.src = "leaderboard.html?" + Date.now(); 
-  showMain('leaderFrame');
+  leaderFrame.src = "leaderboard.html?" + Date.now(); 
+  showMain('leaderFrame');
 });
 btnConnect.addEventListener('click', ()=>{
-  try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
-  catch(e){ console.warn('postMessage connect failed', e); }
+  try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
+  catch(e){ console.warn('postMessage connect failed', e); }
 });
 
-// Listen for messages from parent (app.js)
+// Listen for messages from parent (app.js) & iframes
 window.addEventListener('message', (ev)=>{
-  const d = ev.data || {};
-  if(!d || typeof d !== 'object') return;
+  const d = ev.data || {};
+  if(!d || typeof d !== 'object') return;
 
-  if(d.type === 'paySuccess'){
-    showMain('gameFrame');
+  if(d.type === 'paySuccess'){
+    // Dipicu oleh index.html setelah payToPlay berhasil
+    showMain('gameFrame');
+    const w = document.getElementById('__waiting_req'); if(w) w.remove();
+  }
+  
+  if(d.type === 'clearWaiting'){
     const w = document.getElementById('__waiting_req'); if(w) w.remove();
   }
 
-  if(d.type === 'walletInfo'){
-    if(d.address){
-      walletAddr.textContent = 'Wallet: ' + (d.address.length>12 ? d.address.substring(0,6)+'...'+d.address.slice(-4) : d.address);
-      walletAddr.title = d.address;
-    }
-    if(typeof d.balance !== 'undefined'){
-      walletBal.textContent = d.balance + ' SOMI';
-      walletBal.title = d.balance + ' SOMI';
-    }
-  }
+  if(d.type === 'walletInfo'){
+    if(d.address){
+      walletAddr.textContent = 'Wallet: ' + (d.address.length>12 ? d.address.substring(0,6)+'...'+d.address.slice(-4) : d.address);
+      walletAddr.title = d.address;
+    }
+    if(typeof d.balance !== 'undefined'){
+      walletBal.textContent = d.balance + ' SOMI';
+      walletBal.title = d.balance + ' SOMI';
+    }
+  }
 
-  if(d.type === 'updateSummary'){
-    const poolEl = document.getElementById('poolValue');
-    const scoreEl = document.getElementById('topScoreValue');
-    if (d.jackpot && poolEl) poolEl.textContent = d.jackpot + ' SOMI';
-    if (d.topScore && scoreEl) scoreEl.textContent = d.topScore;
-  }
+  if(d.type === 'updateSummary'){
+    const poolEl = document.getElementById('poolValue');
+    const scoreEl = document.getElementById('topScoreValue');
+    if (d.jackpot && poolEl) poolEl.textContent = d.jackpot + ' SOMI';
+    if (d.topScore && scoreEl) scoreEl.textContent = d.topScore;
+  }
 
-  if(d.type === 'showLeaderboard'){
-    leaderFrame.src = "leaderboard.html?" + Date.now();
-    showMain('leaderFrame');
-  }
+  if(d.type === 'showLeaderboard'){
+    leaderFrame.src = "leaderboard.html?" + Date.now();
+    showMain('leaderFrame');
+  }
 
-  if(d.type === 'startFee'){
-    console.info('Start fee:', d.feeEth || d.feeWei);
-  }
-
-  if(d.type === 'forceShowLogo'){
-    showMain('logoPlaceholder');
-  }
+  if(d.type === 'forceShowLogo'){
+    showMain('logoPlaceholder');
+  }
 });
 
 // Poster fallback
 posterImg.addEventListener('error', ()=>{
-  posterImg.src = 'assets/logo.png';
+  posterImg.src = 'assets/logo.png';
 });
 
 // Initial state
