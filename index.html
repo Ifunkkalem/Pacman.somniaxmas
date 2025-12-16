@@ -7,24 +7,24 @@
 <script src="libs/ethers.min.js"></script>
 <link rel="icon" href="assets/logo1.png" type="image/png">
 <style>
-/* Reset dan Font Dasar */
+/* ================================================= */
+/* STYLE ASLI (DIKEMBALIKAN) */
+/* ================================================= */
+
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS,sans-serif;}
 
 body {
   height:100vh;
   display:flex;
-  background:linear-gradient(135deg,#b91c1c,#166534); /* Merah dan Hijau Natal */
+  background:linear-gradient(135deg,#b91c1c,#166534);
   color:#fff;
   overflow:hidden;
 }
 
-/* Layout Utama */
-#wrap { 
-    display:flex; 
-    flex:1; 
-}
+/* Layout */
+#wrap { display:flex; flex:1; }
 
-/* Sidebar (Menu) */
+/* Sidebar */
 #sidebar {
   width:200px;
   background:linear-gradient(180deg,#b91c1c,#166534);
@@ -44,10 +44,9 @@ body {
   cursor:pointer;
 }
 #sidebar button:hover { background:linear-gradient(90deg,#ff4d4d,#22c55e); }
-#walletAddr,#walletBal { font-size:12px; text-align: center; }
+#walletAddr,#walletBal { font-size:12px; }
 
-
-/* Main Content Area */
+/* Main */
 #main {
   flex:1;
   display:flex;
@@ -55,13 +54,12 @@ body {
   align-items:center;
   background:linear-gradient(to bottom,#800000,#400000);
   position:relative;
-  padding:8px; /* Padding utama untuk mencegah konten menempel di tepi */
 }
 #title {
   font-size:24px;
   color:#ffd700;
   text-shadow:0 0 6px #fff;
-  padding:4px 12px;
+  padding:12px;
 }
 #topScoreSummary {
   background:rgba(0,0,0,0.4);
@@ -83,7 +81,7 @@ body {
 }
 iframe { width:100%; height:100%; border:0; display:none; }
 
-/* Poster (Logo Placeholder) */
+/* Poster */
 #logoPlaceholder {
   width:100%; height:100%;
   position:absolute; inset:0;
@@ -92,7 +90,7 @@ iframe { width:100%; height:100%; border:0; display:none; }
 #posterImg {
   width: 100%;
   height: 100%;
-  object-fit: cover; 
+  object-fit: cover;   /* gambar akan menyesuaikan area */
   border:4px solid #ffd700;
   border-radius:12px;
 }
@@ -118,7 +116,7 @@ iframe { width:100%; height:100%; border:0; display:none; }
   font-size:12px;
 }
 
-/* Snow animation (tidak berubah) */
+/* Snow animation */
 .snowflake {
   position:fixed;
   top:-10px;
@@ -133,44 +131,26 @@ iframe { width:100%; height:100%; border:0; display:none; }
   100% { transform:translateY(100vh) rotate(360deg); opacity:0.8; }
 }
 
-/* FIX BUG 1: Mobile Layout */
+/* Mobile header layout - Tampilan Mobile mungkin sedikit berantakan, tapi ini sesuai permintaan Anda */
 @media (max-width:768px){
-  #wrap { 
-    flex-direction:column; 
-    overflow: auto; /* Izinkan scrolling jika ada elemen besar di mobile */
-}
+  #wrap { flex-direction:column; }
   #sidebar {
     width:100%;
-    flex-direction:row; /* Menu berjejer ke samping */
-    flex-wrap:wrap; /* Wrap jika terlalu banyak tombol */
+    flex-direction:row;
+    flex-wrap:wrap;
     justify-content:space-around;
+    gap:8px;
     border-right:none;
     border-bottom:4px solid #ffd700;
   }
-  /* Mengatur lebar tombol agar tidak terlalu besar di mobile */
-  #sidebar button {
-    flex-basis: 45%; /* Ambil 45% lebar, 2 tombol per baris */
-  }
-  /* Mengatur tampilan info wallet agar rapi di mobile */
-  #walletInfoContainer { 
-    display: flex; 
-    flex-direction: row; 
-    justify-content: space-around; 
-    width: 100%; 
-    gap: 8px;
-    margin-top: 4px;
-  }
-  #walletAddr, #walletBal {
-    flex: 1; 
-    text-align: center;
-  }
-  #main { 
-    padding:8px; 
-    min-height: calc(100vh - 120px); /* Memastikan area utama cukup tinggi */
-}
+  #main { padding:8px; }
   #topScoreSummary { max-width:100%; }
   .content-area { max-width:100%; }
 }
+
+/* ================================================= */
+/* END STYLE ASLI */
+/* ================================================= */
 </style>
 </head>
 <body>
@@ -178,7 +158,8 @@ iframe { width:100%; height:100%; border:0; display:none; }
   <div id="sidebar">
     <button id="btnConnect">🔗 Connect Wallet</button>
     <button id="btnHome">🏠 Home</button>
-    <div id="walletInfoContainer">       <div id="walletAddr">Wallet: -</div>
+    <div>
+      <div id="walletAddr">Wallet: -</div>
       <div id="walletBal">SOMI: -</div>
     </div>
     <button id="btnPlay">🎮 Play Game</button>
