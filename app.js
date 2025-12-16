@@ -17,6 +17,20 @@ const SOMNIA_NETWORK_CONFIG={
 let provider,signer,userAddress,readContract,gameContract;
 let startFeeWei;
 
+// --- Fungsi untuk mengirim data Wallet ke index.html (perbaikan inti) ---
+function updateWalletUI(address, balanceEth) {
+    const data = {
+        type: 'walletInfo',
+        address: address,
+        balance: balanceEth ? Number(balanceEth).toFixed(4) : '-'
+    };
+    // Kirim pesan ke index.html. Karena index.html adalah parent/iframe,
+    // kita gunakan window.parent.postMessage jika app.js di iframe, 
+    // tapi karena app.js ada di index.html, kita pakai window.postMessage.
+    // Kita asumsikan app.js berjalan di konteks index.html.
+    window.postMessage(data, '*');
+}
+
 async function switchNetwork(provider){
   const {chainId}=await provider.getNetwork();
   if(chainId.toString()!=="5031"){
@@ -37,23 +51,43 @@ async function switchNetwork(provider){
 
 async function connectWallet(){
   if(!window.ethereum){alert("No wallet provider found.");return false;}
+  
   provider=new ethers.providers.Web3Provider(window.ethereum,"any");
-  await provider.send("eth_requestAccounts",[]);
-  signer=provider.getSigner();
-  userAddress=await signer.getAddress();
+  
+  // 1. Minta akun dan dapatkan signer
+  try {
+    await provider.send("eth_requestAccounts",[]);
+    signer=provider.getSigner();
+    userAddress=await signer.getAddress();
+  } catch (e) {
+    console.error("Account request rejected or failed:", e);
+    alert("Wallet connection rejected or failed.");
+    // Reset UI di index.html jika gagal koneksi
+    updateWalletUI('-', '-'); 
+    return false;
+  }
+  
+  // 2. Cek dan Ganti Jaringan
   const ok=await switchNetwork(provider);
-  if(!ok) return false;
+  if(!ok) {
+    updateWalletUI(userAddress, '-'); // Tampilkan alamat tapi saldo gagal
+    return false;
+  }
+  
+  // 3. Inisialisasi Kontrak
   readContract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,provider);
   gameContract=new ethers.Contract(CONTRACT_ADDRESS,CONTRACT_ABI,signer);
   try{startFeeWei=await readContract.startFeeWei();}catch{startFeeWei=ethers.utils.parseEther("0.001");}
+  
+  // 4. Ambil Saldo
   const balance=await provider.getBalance(userAddress);
   const balanceEth=ethers.utils.formatEther(balance);
-  const walletAddrEl=document.getElementById("walletAddr");
-  const walletBalEl=document.getElementById("walletBal");
-  if(walletAddrEl){walletAddrEl.textContent="Wallet: "+userAddress.substring(0,6)+"..."+userAddress.slice(-4);walletAddrEl.title=userAddress;}
-  if(walletBalEl){walletBalEl.textContent=Number(balanceEth).toFixed(4)+" SOMI";walletBalEl.title=balanceEth+" SOMI";}
   
-  updateTopScores(); // Ambil skor setelah koneksi
+  // 5. Update UI di index.html (PERBAIKAN UTAMA)
+  updateWalletUI(userAddress, balanceEth);
+  
+  // 6. Ambil Top Skor/Jackpot
+  updateTopScores(); 
   return true;
 }
 
@@ -65,18 +99,18 @@ function safeGameDoc(){
 async function payToPlay(){
   if(!signer){const ok=await connectWallet();if(!ok)return;}
   
-  // Hapus feedback waiting lama dari index.html
-  window.postMessage({ type: 'clearWaiting' }, '*'); 
+  window.postMessage({ type: 'clearWaiting' }, '*'); 
 
   const bal=await provider.getBalance(userAddress);
   if(bal.lt(startFeeWei)){alert("Insufficient balance.");return;}
   
   try {
-    // 1. Kirim transaksi
     const tx=await gameContract.startGame({value:startFeeWei});
+    // Kirim feedback waiting ke index.html
+    window.postMessage({ type: 'showWaiting' }, '*'); 
+
     await tx.wait();
 
-    // 2. Kirim sinyal sukses ke iframe (pacman_xmas.html)
     const gw = safeGameDoc();
     if(gw){
       gw.postMessage({ type: 'paySuccess' }, '*'); 
@@ -87,6 +121,7 @@ async function payToPlay(){
   } catch (e) {
     console.error("Game start transaction failed:", e);
     alert("Transaction failed or was rejected. Check console for details.");
+    window.postMessage({ type: 'clearWaiting' }, '*');
   }
 }
 
@@ -95,21 +130,24 @@ async function submitScoreTx(score){
   
   try {
     const tx=await gameContract.submitScore(Number(score));
+    // Kirim feedback waiting ke index.html
+    window.postMessage({ type: 'showWaiting', message: 'Submitting score to blockchain...' }, '*');
+    
     await tx.wait();
 
-    // 1. Kirim sinyal sukses ke iframe
     const gw = safeGameDoc();
     if(gw){
       gw.postMessage({ type: 'scoreSubmittedSuccess' }, '*');
     }
     
-    // 2. Perbarui Leaderboard di index.html dan refresh leaderFrame
     updateTopScores();
     window.postMessage({ type: 'showLeaderboard' }, '*'); 
+    window.postMessage({ type: 'clearWaiting' }, '*');
 
   } catch(e) { 
     console.error("Score submission failed:", e);
     alert("Score submission failed. Please try again.");
+    window.postMessage({ type: 'clearWaiting' }, '*');
   }
 }
 
@@ -137,7 +175,27 @@ async function updateTopScores() {
   }
 }
 
-// Terima pesan dari iframe game (dotEaten / submitScore)
+// --- MetaMask Event Listeners (Untuk menjaga status saat wallet berubah) ---
+if (window.ethereum) {
+    window.ethereum.on('accountsChanged', (accounts) => {
+        // Jika akun berubah, coba koneksi ulang untuk update UI
+        if (accounts.length > 0) {
+            connectWallet();
+        } else {
+            // Jika semua akun hilang (disconnected)
+            updateWalletUI('-', '-'); 
+            alert("Wallet disconnected. Please reconnect.");
+        }
+    });
+
+    window.ethereum.on('chainChanged', () => {
+        // Jika chain berubah, muat ulang untuk inisialisasi provider baru
+        window.location.reload();
+    });
+}
+// --------------------------------------------------------------------------
+
+// Terima pesan dari index.html UI dan iframe game
 window.addEventListener("message",async(ev)=>{
   const d=ev.data||{}; if(!d||typeof d!=="object") return;
   
@@ -148,16 +206,27 @@ window.addEventListener("message",async(ev)=>{
   // Pesan dari pacman_xmas.html Iframe
   if(d.type==="submitScore"){await submitScoreTx(d.score);}
   if(d.type==="playAgain"){await payToPlay();}
-  if(d.type==="backToDashboard"){showMain("logoPlaceholder");}
-  if(d.type==="dotEaten"){ /* opsional: bisa update UI jackpot lokal */ }
+  if(d.type==="backToDashboard"){window.postMessage({ type: 'forceShowLogo' }, '*');}
 });
 
 document.addEventListener("DOMContentLoaded",async()=>{
+  // Cek koneksi di awal (koneksi otomatis MetaMask)
   if(window.ethereum){
     const tempProvider=new ethers.providers.Web3Provider(window.ethereum,"any");
-    const accounts=await tempProvider.listAccounts();
-    if(accounts.length>0){await connectWallet();}
+    try {
+        // Cek apakah ada akun yang sudah terhubung
+        const accounts = await tempProvider.listAccounts();
+        if(accounts.length > 0){
+            await connectWallet();
+        } else {
+            // Tampilkan status default jika tidak ada akun yang otomatis terhubung
+            updateWalletUI('-', '-');
+        }
+    } catch (e) {
+        console.warn("Failed to list accounts on load:", e);
+        updateWalletUI('-', '-');
+    }
   }
-  // Ambil top score/jackpot di awal
+  // Ambil top score/jackpot di awal (tanpa perlu wallet terhubung)
   updateTopScores();
 });
