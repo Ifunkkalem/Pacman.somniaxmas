@@ -7,10 +7,6 @@
 <script src="libs/ethers.min.js"></script>
 <link rel="icon" href="assets/logo1.png" type="image/png">
 <style>
-/* ================================================= */
-/* STYLE ASLI (DIKEMBALIKAN) */
-/* ================================================= */
-
 *{box-sizing:border-box;margin:0;padding:0;font-family:Trebuchet MS,sans-serif;}
 
 body {
@@ -131,14 +127,14 @@ iframe { width:100%; height:100%; border:0; display:none; }
   100% { transform:translateY(100vh) rotate(360deg); opacity:0.8; }
 }
 
-/* Mobile header layout - Tampilan Mobile mungkin sedikit berantakan, tapi ini sesuai permintaan Anda */
+/* Mobile header layout */
 @media (max-width:768px){
   #wrap { flex-direction:column; }
   #sidebar {
     width:100%;
     flex-direction:row;
     flex-wrap:wrap;
-    justify-content:space-around;
+    justify-content:center;
     gap:8px;
     border-right:none;
     border-bottom:4px solid #ffd700;
@@ -147,10 +143,6 @@ iframe { width:100%; height:100%; border:0; display:none; }
   #topScoreSummary { max-width:100%; }
   .content-area { max-width:100%; }
 }
-
-/* ================================================= */
-/* END STYLE ASLI */
-/* ================================================= */
 </style>
 </head>
 <body>
@@ -232,64 +224,52 @@ function showMain(id){
   }
 }
 
-// Function untuk menampilkan pesan menunggu
-function showWaitingFeedback(){
-  const existingWaiting = document.getElementById('__waiting_req');
-  if(existingWaiting) existingWaiting.remove();
-  
-  const gm = document.createElement('div');
-  gm.id = '__waiting_req';
-  gm.style.position='fixed'; 
-  gm.style.left='50%';
-  gm.style.top='8px';
-  gm.style.transform='translateX(-50%)';
-  gm.style.background='rgba(0,0,0,0.6)';
-  gm.style.color='white';
-  gm.style.padding='6px 10px';
-  gm.style.borderRadius='8px';
-  gm.style.zIndex='999';
-  gm.textContent = 'Requesting start... check wallet.';
-  document.body.appendChild(gm);
-  setTimeout(()=> { const w = document.getElementById('__waiting_req'); if(w) w.remove(); }, 8000);
+// Request start game via parent (app.js)
+function requestStartGame(){
+  try{
+    window.parent.postMessage({ type: 'requestStartGame' }, '*');
+    // subtle waiting feedback while parent handles tx
+    const gm = document.createElement('div');
+    gm.id = '__waiting_req';
+    gm.style.position='fixed'; 
+    gm.style.left='50%';
+    gm.style.top='8px';
+    gm.style.transform='translateX(-50%)';
+    gm.style.background='rgba(0,0,0,0.6)';
+    gm.style.color='white';
+    gm.style.padding='6px 10px';
+    gm.style.borderRadius='8px';
+    gm.style.zIndex='999';
+    gm.textContent = 'Requesting start... check wallet.';
+    document.body.appendChild(gm);
+    setTimeout(()=> { const w = document.getElementById('__waiting_req'); if(w) w.remove(); }, 8000);
+  }catch(e){
+    console.warn('requestStartGame postMessage failed', e);
+  }
 }
 
 // Hook up UI
-btnPlay.addEventListener('click', (ev)=>{ 
-    ev.preventDefault(); 
-    showWaitingFeedback();
-    try{ window.postMessage({ type: 'requestStartGame' }, '*'); }
-    catch(e){ console.warn('postMessage start failed', e); }
-});
-overlayStart.addEventListener('click', (ev)=>{ 
-    ev.preventDefault(); 
-    showWaitingFeedback();
-    try{ window.postMessage({ type: 'requestStartGame' }, '*'); }
-    catch(e){ console.warn('postMessage start failed', e); }
-});
+btnPlay.addEventListener('click', (ev)=>{ ev.preventDefault(); requestStartGame(); });
+overlayStart.addEventListener('click', (ev)=>{ ev.preventDefault(); requestStartGame(); });
 btnHome.addEventListener('click', ()=>{ showMain('logoPlaceholder'); });
 btnLeaderboard.addEventListener('click', ()=>{
   leaderFrame.src = "leaderboard.html?" + Date.now(); 
   showMain('leaderFrame');
 });
 btnConnect.addEventListener('click', ()=>{
-  try{ window.postMessage({ type: 'requestConnectWallet' }, '*'); }
+  try{ window.parent.postMessage({ type: 'requestConnectWallet' }, '*'); }
   catch(e){ console.warn('postMessage connect failed', e); }
 });
 
-// Listen for messages from app.js & iframes
+// Listen for messages from parent (app.js)
 window.addEventListener('message', (ev)=>{
   const d = ev.data || {};
   if(!d || typeof d !== 'object') return;
 
   if(d.type === 'paySuccess'){
-    // Dipicu oleh app.js setelah payToPlay berhasil
     showMain('gameFrame');
     const w = document.getElementById('__waiting_req'); if(w) w.remove();
   }
-  
-  if(d.type === 'clearWaiting'){
-    const w = document.getElementById('__waiting_req'); if(w) w.remove();
-  }
 
   if(d.type === 'walletInfo'){
     if(d.address){
@@ -312,6 +292,10 @@ window.addEventListener('message', (ev)=>{
   if(d.type === 'showLeaderboard'){
     leaderFrame.src = "leaderboard.html?" + Date.now();
     showMain('leaderFrame');
+  }
+
+  if(d.type === 'startFee'){
+    console.info('Start fee:', d.feeEth || d.feeWei);
   }
 
   if(d.type === 'forceShowLogo'){
