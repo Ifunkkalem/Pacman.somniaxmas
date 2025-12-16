@@ -5,35 +5,93 @@
 <title>Pacman XMAS - Santa vs Reindeer</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  canvas { background:#000; display:block; margin:0 auto; }
-  #game-message { color:#fff; text-align:center; margin-top:10px; }
-  #restart-button { display:none; margin:10px auto; }
-  #mobileControls { display:flex; justify-content:center; gap:10px; margin-top:10px; }
-  #mobileControls button { padding:10px 14px; border-radius:8px; border:none; background:#16a34a; color:#fff; font-weight:bold; }
+  html,body{
+    margin:0; background:#000; height:100%; min-height:100vh;
+    display:flex; justify-content:center; align-items:flex-start;
+    font-family:Arial, Helvetica, sans-serif; padding:12px; box-sizing:border-box;
+  }
+  #gameWrapper{
+    width: calc(20 * 20px + 40px); max-width: 92vw;
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    position: relative;
+  }
+  canvas{
+    background:#020617; border-radius:10px; display:block;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6); image-rendering: optimizeSpeed;
+  }
+  #ui{position:relative;color:#fff;z-index:2;align-self:flex-start}
+  #game-message{
+    color:white; background:rgba(0,0,0,.8); padding:10px 15px; border-radius:8px;
+    display:none; z-index:12; position:absolute; top: 50%; left: 50%; 
+    transform: translate(-50%, -50%); text-align: center;
+  }
+  /* Tombol Restart Manual */
+  #restart-button {
+      position: absolute; top: 10px; right: 10px;
+      background: #b91c1c; color: white; border: none; padding: 5px 10px;
+      border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 10;
+  }
+
+  /* --- FIX D-PAD PLUS (+) STYLE --- */
+  #mobileControls {
+    display: grid;
+    grid-template-areas: ". up ." "left center right" ". down .";
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+    user-select: none; 
+    -webkit-tap-highlight-color: transparent;
+    width: 210px; /* 3 * 70px + 2 * 8px */
+  }
+
+  #mobileControls .btn {
+    width: 70px; height: 70px; border-radius:10px;border:0;
+    background:linear-gradient(90deg,#cc0000,#16a34a);color:#fff;font-size:22px;
+    display:inline-flex;align-items:center;justify-content:center;
+    box-shadow:0 4px rgba(0,0,0,0.4); touch-action: manipulation;
+    cursor: pointer;
+  }
+  
+  /* Assign buttons to grid areas */
+  .btn[data-dir="up"] { grid-area: up; }
+  .btn[data-dir="left"] { grid-area: left; }
+  .btn[data-dir="right"] { grid-area: right; }
+  .btn[data-dir="down"] { grid-area: down; }
+  .center-filler { grid-area: center; width: 70px; height: 70px; visibility: hidden; }
+
+  @media(min-width:900px){
+    body{align-items:center}
+    #gameWrapper{max-width:760px}
+    #mobileControls{display:none}
+  }
+  @media(max-width:480px){
+    #gameWrapper{ width: 90vw; }
+  }
 </style>
 </head>
+
 <body>
   <div id="gameWrapper">
     <div id="ui">Score: <span id="current-score-display">0</span></div>
-    <button id="restart-button" onclick="handleGameRestart()">Restart Game</button>
+    <button id="restart-button" style="display:none;" onclick="handleGameRestart()">Restart Game</button>
     <div id="game-message"></div>
-    <canvas id="pacman-canvas"></canvas>
-    <div id="mobileControls" class="dpad">
-  <button class="btn up" data-dir="up">▲</button>
-  <div class="spacer"></div>
-  <button class="btn right" data-dir="right">▶</button>
 
-  <button class="btn left" data-dir="left">◀</button>
-  <div class="center"></div>
-  <button class="btn down" data-dir="down">▼</button>
-  </div>
+    <canvas id="pacman-canvas" aria-label="Pacman XMAS game"></canvas>
+
+    <div id="mobileControls" aria-hidden="false">
+        <button class="btn" data-dir="up">↑</button>
+        <div class="center-filler" aria-hidden="true"></div>
+        <button class="btn" data-dir="left">←</button>
+        <button class="btn" data-dir="right">→</button>
+        <button class="btn" data-dir="down">↓</button>
+    </div>
   </div>
 
 <script>
 (() => {
-// Jika tetap ingin pakai postMessage, isi domain parent kamu di sini.
-// Kalau DOM-control saja, set ke "*" atau matikan pemakaian TRUSTED_ORIGIN.
-const TRUSTED_ORIGIN = "*";
+/* ================= SECURITY & CONFIG ================= */
+// KRITIS: Mengembalikan ke domain spesifik Anda untuk keamanan
+const TRUSTED_ORIGIN = "https://pacman-somniaxmasv1.vercel.app";
 
 const TILE = 20;
 const MOVE_INTERVAL = 240;
@@ -343,8 +401,8 @@ function checkCollision(){
     score += 10;
     document.getElementById("current-score-display").textContent = score;
     playDotSound();
-    // opsional: beritahu parent
-    try { window.parent.postMessage({ type: "dotEaten" }, "*"); } catch(e){}
+    // Komunikasi PostMessage: Menggunakan TRUSTED_ORIGIN spesifik
+    try { window.parent.postMessage({ type: "dotEaten" }, TRUSTED_ORIGIN); } catch(e){}
   }
 
   for(const g of ghosts){
@@ -379,8 +437,8 @@ function gameEnd(isWin){
   const playDuration = (Date.now() - sessionStartTime) / 1000;
   if(playDuration < 5) return;
 
-  // biarkan app.js yang handle submit via message
-  try { window.parent.postMessage({ type: "submitScore", score }, "*"); } catch(e){}
+  // Komunikasi PostMessage: Menggunakan TRUSTED_ORIGIN spesifik
+  try { window.parent.postMessage({ type: "submitScore", score }, TRUSTED_ORIGIN); } catch(e){}
 }
 
 /* ========== LOOP ========== */
@@ -411,10 +469,14 @@ function loop(ts){
 
 /* ================= MESSAGE & INPUT HANDLERS ================= */
 window.addEventListener("message",(e)=>{
-  // kalau pakai DOM-control, bagian ini boleh diabaikan
-  if(TRUSTED_ORIGIN !== "*" && e.origin !== TRUSTED_ORIGIN) return;
+  // Memastikan pesan hanya diterima dari TRUSTED_ORIGIN
+  if(e.origin !== TRUSTED_ORIGIN) return;
+  
   if(e.data?.type==="paySuccess"){
     window.allowLocalPlay = true; // penting: set di window
+    const gm = document.getElementById("game-message");
+    gm.textContent = "PAYMENT SUCCESS! Starting Game...";
+    gm.style.display = "block";
     resetGame();
     startCountdown();
   }
@@ -468,3 +530,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+  
