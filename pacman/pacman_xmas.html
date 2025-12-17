@@ -2,439 +2,210 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pacman XMAS - Santa vs Reindeer</title>
+<title>Pacman XMAS - 4 Ghosts Sprite Edition</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  html,body{
-    margin:0; background:#000; height:100%; min-height:100vh;
-    display:flex; justify-content:center; align-items:flex-start;
-    font-family:'Comic Sans MS', Arial, sans-serif; padding:12px; box-sizing:border-box;
-    overflow: hidden;
-    /* Menambahkan background Natal halus */
-    background: radial-gradient(circle at center, #0f172a 0%, #000000 100%);
-  }
-  #gameWrapper{
-    width: calc(20 * 20px + 40px); max-width: 95vw;
-    display:flex; flex-direction:column; align-items:center; gap:12px;
-    position: relative;
-  }
-  canvas{
-    background: rgba(2, 6, 23, 0.8); /* Sedikit transparan */
-    border-radius:12px; display:block;
-    border: 3px solid #1e293b;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
-    z-index: 15; 
-  }
-  #ui{position:relative;color:#ffd700;z-index:2;align-self:flex-start; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 4px #000;}
-  #game-message{
-    color:white; background:rgba(0,0,0,.9); padding:20px; border-radius:16px;
-    display:none; z-index:25; position:absolute; top: 45%; left: 50%; 
-    transform: translate(-50%, -50%); text-align: center; border: 3px solid #cc0000;
-    pointer-events: none; width: 85%; box-shadow: 0 0 20px #cc0000;
-  }
-  #game-message h2 { margin-top:0; color: #ffd700; }
-  #restart-button {
-      position: absolute; top: 10px; right: 10px;
-      background: linear-gradient(to bottom, #ef4444, #b91c1c); 
-      color: white; border: 2px solid #fff; padding: 8px 16px;
-      border-radius: 8px; cursor: pointer; font-size: 14px; z-index: 30; font-weight: bold;
-      box-shadow: 0 4px #7f1d1d;
-  }
-  #restart-button:active { transform: translateY(2px); box-shadow: 0 2px #7f1d1d; }
-  
-  #countdown-overlay {
-    position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85);
-    display: none; justify-content: center; align-items: center;
-    z-index: 50; font-size: 120px; color: #ffd700;
-    text-shadow: 0 0 30px #cc0000, 0 0 10px #fff; font-weight: 900; transition: opacity 0.2s;
-  }
-  #countdown-overlay.active { display: flex; }
-
-  /* Mobile Controls */
-  #mobileControls {
-    display: grid; grid-template-areas: ". up ." "left center right" ". down .";
-    grid-template-columns: 70px 70px 70px; gap: 10px; margin-top: 15px;
-  }
-  #mobileControls .btn {
-    width: 70px; height: 70px; border-radius:15px; border:2px solid #166534;
-    background: linear-gradient(135deg,#dc2626,#15803d); color:#fff; font-size:32px;
-    display:flex; align-items:center; justify-content:center;
-    box-shadow:0 6px 0 #064e3b; cursor: pointer; touch-action: manipulation;
-    text-shadow: 2px 2px 4px #000;
-  }
-  #mobileControls .btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #064e3b; }
-  .btn[data-dir="up"] { grid-area: up; }
-  .btn[data-dir="left"] { grid-area: left; }
-  .btn[data-dir="right"] { grid-area: right; }
-  .btn[data-dir="down"] { grid-area: down; }
-
-  @media(min-width:900px){ #mobileControls{display:none} }
+  html,body{ margin:0; background:#020617; height:100%; display:flex; justify-content:center; align-items:center; font-family: sans-serif; overflow: hidden; }
+  #gameWrapper{ display:flex; flex-direction:column; align-items:center; gap:10px; }
+  canvas{ background:#000; border: 3px solid #334155; border-radius:10px; box-shadow: 0 0 30px rgba(255,255,255,0.1); }
+  #ui{ color:#ffd700; font-size: 20px; font-weight: bold; width: 100%; display: flex; justify-content: space-between; padding: 5px; box-sizing: border-box; }
 </style>
 </head>
 <body>
 
 <div id="gameWrapper">
-    <div id="ui">🎅 Score: <span id="current-score-display">0</span></div>
-    <button id="restart-button" style="display:none;" onclick="handleGameRestart()">RESTART</button>
-    <div id="countdown-overlay"></div>
-    <div id="game-message"></div>
-    <canvas id="pacman-canvas"></canvas>
-
-    <div id="mobileControls">
-        <button class="btn" data-dir="up">↑</button>
-        <div style="grid-area: center;"></div>
-        <button class="btn" data-dir="left">←</button>
-        <button class="btn" data-dir="right">→</button>
-        <button class="btn" data-dir="down">↓</button>
+    <div id="ui">
+        <span>🎅 Score: <span id="score">0</span></span>
+        <span id="power-status" style="color: #60a5fa; display: none; font-weight: bold;">POWER UP!</span>
     </div>
+    <canvas id="pacman-canvas"></canvas>
 </div>
 
 <script>
 (() => {
-const TRUSTED_ORIGIN = "*"; 
-const TILE = 20;
-const MOVE_INTERVAL = 220; 
-
+const TILE = 28; // Ukuran sedikit diperbesar agar sprite terlihat jelas
 const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas.getContext("2d");
 
-const GAME_MAP = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,2,2,2,2,2,2,2,2,1,1,2,2,2,2,2,2,2,2,1],
-    [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
-    [1,2,1,1,1,2,1,1,2,1,1,2,1,1,2,1,1,1,2,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-    [1,2,1,1,1,2,1,2,1,1,1,1,2,1,2,1,1,1,2,1],
-    [1,2,2,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,1],
-    [1,1,1,1,1,2,1,1,1,0,0,1,1,1,2,1,1,1,1,1],
-    [0,0,0,0,1,2,1,0,0,0,0,0,0,1,2,1,0,0,0,0],
-    [1,1,1,1,1,2,1,0,1,1,1,1,0,1,2,1,1,1,1,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-    [1,2,1,1,1,2,1,1,1,1,1,1,1,1,2,1,1,1,2,1],
-    [1,2,2,2,1,2,2,2,2,1,1,2,2,2,2,1,2,2,2,1],
-    [1,1,2,1,1,1,1,1,2,1,1,2,1,1,1,1,1,2,1,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-    [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+/* --- KONFIGURASI GITHUB SPRITE --- */
+// GANTI URL DI BAWAH INI DENGAN URL REPO ANDA
+const GITHUB_BASE = "https://raw.https://github.com/Ifunkkalem/Pacman.somniaxmas/repo/main/assets/";
+
+const sprites = {
+    santa: new Image(),
+    ghost1: new Image(),
+    ghost2: new Image(),
+    ghost3: new Image(),
+    ghost4: new Image(),
+    scared: new Image() // Opsional: Rusa biru saat ketakutan
+};
+
+// Masukkan nama file PNG Anda di sini
+sprites.santa.src = GITHUB_BASE + "santa.png";
+sprites.ghost1.src = GITHUB_BASE + "rudolph.png";
+sprites.ghost2.src = GITHUB_BASE + "vixen.png";
+sprites.ghost3.src = GITHUB_BASE + "dancer.png";
+sprites.ghost4.src = GITHUB_BASE + "dasher.png";
+sprites.scared.src = GITHUB_BASE + "kelinci.png";
+
+const MAP = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,3,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,3,1],
+    [1,2,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,2,1,1,2,1,2,1,1,1,1,1,2,1,2,1,1,2,1],
+    [1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,1],
+    [1,1,1,1,2,1,1,1,0,1,0,1,1,1,2,1,1,1,1],
+    [0,0,0,1,2,1,0,0,0,0,0,0,0,1,2,1,0,0,0],
+    [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],
+    [1,2,2,2,2,2,2,1,0,0,0,1,2,2,2,2,2,2,1],
+    [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],
+    [1,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,1],
+    [1,3,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,3,1],
+    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-const MAP_W = GAME_MAP[0].length;
-const MAP_H = GAME_MAP.length;
-canvas.width = MAP_W * TILE;
-canvas.height = MAP_H * TILE;
+let mapData = MAP.map(row => [...row]);
+let pacman = { x: 9, y: 9, dir: "right", next: "right", power: 0 };
 
-let mapData, pacman, ghosts, score = 0;
-let lastMove = 0, gameRunning = false, ghostActive = false, scoreSubmitted = false;
-window.allowLocalPlay = false;
+// 4 Ghosts dengan Sprite berbeda
+let ghosts = [
+    { x: 8, y: 7, img: sprites.ghost1, scared: false, startX: 8, startY: 7 },
+    { x: 9, y: 7, img: sprites.ghost2, scared: false, startX: 9, startY: 7 },
+    { x: 10, y: 7, img: sprites.ghost3, scared: false, startX: 10, startY: 7 },
+    { x: 9, y: 8, img: sprites.ghost4, scared: false, startX: 9, startY: 8 }
+];
 
-/* --- IMPROVED DRAWING FUNCTIONS --- */
-function drawMap() {
-    for (let y = 0; y < MAP_H; y++) {
-        for (let x = 0; x < MAP_W; x++) {
-            const val = mapData[y][x];
-            if (val === 1) {
-                // Tembok dengan efek es 3D sederhana
-                ctx.fillStyle = "#1e293b";
+let score = 0;
+let gameRunning = true;
+
+/* --- DRAWING SPRITES --- */
+function drawSanta() {
+    const px = pacman.x * TILE;
+    const py = pacman.y * TILE;
+    
+    // Jika gambar sudah terload, gambar sprite, jika belum gambar lingkaran
+    if (sprites.santa.complete) {
+        ctx.drawImage(sprites.santa, px, py, TILE, TILE);
+    } else {
+        ctx.fillStyle = "red";
+        ctx.beginPath(); ctx.arc(px + TILE/2, py + TILE/2, TILE/2 - 2, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+function drawGhost(g) {
+    const gx = g.x * TILE;
+    const gy = g.y * TILE;
+    
+    let currentImg = g.img;
+    if (g.scared) {
+        currentImg = sprites.scared.complete ? sprites.scared : g.img;
+        ctx.globalAlpha = 0.7; // Efek transparan saat takut
+    }
+
+    if (currentImg.complete) {
+        ctx.drawImage(currentImg, gx, gy, TILE, TILE);
+    } else {
+        // Fallback jika GitHub belum respon
+        ctx.fillStyle = "blue";
+        ctx.fillRect(gx+4, gy+4, TILE-8, TILE-8);
+    }
+    ctx.globalAlpha = 1.0;
+}
+
+/* --- GAME LOGIC --- */
+function update() {
+    if(!gameRunning) return;
+
+    // Movement Santa
+    let nx = pacman.x + (pacman.next === "right" ? 1 : pacman.next === "left" ? -1 : 0);
+    let ny = pacman.y + (pacman.next === "down" ? 1 : pacman.next === "up" ? -1 : 0);
+
+    if(mapData[ny] && mapData[ny][nx] !== 1) {
+        pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next;
+        if(mapData[ny][nx] === 2) { mapData[ny][nx] = 0; score += 10; }
+        if(mapData[ny][nx] === 3) { mapData[ny][nx] = 0; score += 50; activatePower(); }
+    }
+
+    // Power Timer
+    if(pacman.power > 0) {
+        pacman.power--;
+        if(pacman.power === 0) ghosts.forEach(g => g.scared = false);
+    }
+
+    // Ghosts AI
+    ghosts.forEach(g => {
+        const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+        const valid = dirs.filter(d => mapData[g.y + d[1]][g.x + d[0]] !== 1);
+        const move = valid[Math.floor(Math.random() * valid.length)];
+        g.x += move[0]; g.y += move[1];
+
+        if(g.x === pacman.x && g.y === pacman.y) {
+            if(g.scared) {
+                score += 200;
+                g.x = g.startX; g.y = g.startY;
+                g.scared = false;
+            } else {
+                gameRunning = false;
+                alert("GAME OVER! Skor: " + score);
+                location.reload();
+            }
+        }
+    });
+    document.getElementById("score").textContent = score;
+}
+
+function activatePower() {
+    pacman.power = 50; 
+    ghosts.forEach(g => g.scared = true);
+    document.getElementById("power-status").style.display = "inline";
+    setTimeout(() => { if(pacman.power <= 0) document.getElementById("power-status").style.display = "none"; }, 5000);
+}
+
+function draw() {
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    
+    // Draw Labirin Es
+    for(let y=0; y<mapData.length; y++){
+        for(let x=0; x<mapData[y].length; x++){
+            if(mapData[y][x] === 1) {
+                ctx.fillStyle = "#1e3a8a"; // Biru gelap salju
                 ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
-                ctx.fillStyle = "#334155"; // Highlight atas
-                ctx.fillRect(x*TILE, y*TILE, TILE, 2);
-                ctx.fillStyle = "#0f172a"; // Shadow bawah
-                ctx.fillRect(x*TILE, y*TILE+TILE-2, TILE, 2);
-            } else if (val === 2) {
-                // Dot Salju yang bersinar
-                ctx.shadowBlur = 4;
-                ctx.shadowColor = "#fff";
-                ctx.fillStyle = "#fff";
-                ctx.beginPath();
-                ctx.arc(x*TILE + TILE/2, y*TILE + TILE/2, 2.5, 0, Math.PI*2);
-                ctx.fill();
-                ctx.shadowBlur = 0; // Reset shadow
+                ctx.strokeStyle = "#3b82f6";
+                ctx.strokeRect(x*TILE, y*TILE, TILE, TILE);
+            } else if(mapData[y][x] === 2) {
+                ctx.fillStyle = "white";
+                ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 2, 0, Math.PI*2); ctx.fill();
+            } else if(mapData[y][x] === 3) {
+                // Bintang Emas
+                ctx.fillStyle = "#fbbf24";
+                ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 6, 0, Math.PI*2); ctx.fill();
             }
         }
     }
+
+    drawSanta();
+    ghosts.forEach(drawGhost);
 }
 
-function drawPacman() {
-    const px = pacman.x * TILE + TILE/2;
-    const py = pacman.y * TILE + TILE/2;
-    const size = TILE/2 - 1;
-
-    ctx.save();
-    // Bayangan di bawah Santa
-    ctx.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetY = 3;
-
-    // Badan Santa (Gradien Merah 3D)
-    const bodyGrad = ctx.createRadialGradient(px, py, size*0.2, px, py, size);
-    bodyGrad.addColorStop(0, "#ef4444");
-    bodyGrad.addColorStop(1, "#b91c1c");
-    ctx.fillStyle = bodyGrad;
-    ctx.beginPath();
-    ctx.arc(px, py, size, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset shadow untuk detail
-
-    // Janggut Putih (Fluffy)
-    ctx.fillStyle = "#f8fafc";
-    ctx.beginPath();
-    ctx.arc(px, py+3, size*0.7, 0, Math.PI); // Janggut utama
-    ctx.arc(px-4, py+2, 3, 0, Math.PI*2); // Samping kiri
-    ctx.arc(px+4, py+2, 3, 0, Math.PI*2); // Samping kanan
-    ctx.fill();
-
-    // Wajah (Pink)
-    ctx.fillStyle = "#fca5a5";
-    ctx.beginPath();
-    ctx.arc(px, py-2, 4, 0, Math.PI*2);
-    ctx.fill();
-
-    // Mata
-    ctx.fillStyle = "#000";
-    ctx.beginPath();
-    let eyeOffset = (pacman.dir === 'left' ? -2 : 2);
-    if(pacman.dir === 'up') eyeOffset = 0;
-    ctx.arc(px + eyeOffset - 2, py - 3, 1.5, 0, Math.PI*2);
-    ctx.arc(px + eyeOffset + 2, py - 3, 1.5, 0, Math.PI*2);
-    ctx.fill();
-
-    // Topi Pom-pom
-    ctx.fillStyle = "#fff";
-    ctx.beginPath();
-    ctx.arc(px, py - size, 3.5, 0, Math.PI*2);
-    ctx.fill();
-    
-    ctx.restore();
+function loop() {
+    update();
+    draw();
+    setTimeout(() => requestAnimationFrame(loop), 200);
 }
 
-function drawGhosts() {
-    ghosts.forEach(g => {
-        const gx = g.x * TILE + TILE/2;
-        const gy = g.y * TILE + TILE / 2;
-        const size = TILE/2 - 2;
-
-        ctx.save();
-        // Bayangan di bawah Reindeer
-        ctx.shadowColor = 'rgba(0,0,0,0.4)';
-        ctx.shadowBlur = 5;
-        ctx.shadowOffsetY = 2;
-
-        // Badan Reindeer (Gradien Cokelat)
-        const furGrad = ctx.createLinearGradient(gx-size, gy-size, gx+size, gy+size);
-        furGrad.addColorStop(0, g.color);
-        furGrad.addColorStop(1, "#451a03"); // Warna lebih gelap di bawah
-        ctx.fillStyle = furGrad;
-        ctx.beginPath();
-        // Bentuk kepala agak lonjong ke bawah
-        ctx.ellipse(gx, gy, size, size*0.9, 0, 0, Math.PI*2);
-        ctx.fill();
-
-        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
-
-        // Tanduk (Lebih detail)
-        ctx.strokeStyle = g.antlerColor;
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        // Kiri
-        ctx.moveTo(gx-3, gy-5); ctx.lineTo(gx-7, gy-11);
-        ctx.moveTo(gx-7, gy-11); ctx.lineTo(gx-10, gy-9);
-        ctx.moveTo(gx-7, gy-9); ctx.lineTo(gx-5, gy-7);
-        // Kanan
-        ctx.moveTo(gx+3, gy-5); ctx.lineTo(gx+7, gy-11);
-        ctx.moveTo(gx+7, gy-11); ctx.lineTo(gx+10, gy-9);
-        ctx.moveTo(gx+7, gy-9); ctx.lineTo(gx+5, gy-7);
-        ctx.stroke();
-
-        // Mata Putih
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(gx-3, gy-2, 2, 0, Math.PI*2);
-        ctx.arc(gx+3, gy-2, 2, 0, Math.PI*2);
-        ctx.fill();
-        // Pupil Hitam
-        ctx.fillStyle = "#000";
-        ctx.beginPath();
-        ctx.arc(gx-3, gy-2, 1, 0, Math.PI*2);
-        ctx.arc(gx+3, gy-2, 1, 0, Math.PI*2);
-        ctx.fill();
-
-        // Hidung Bersinar (Rudolph Effect)
-        ctx.shadowColor = g.noseColor;
-        ctx.shadowBlur = 10; // Efek glow
-        ctx.fillStyle = g.noseColor;
-        ctx.beginPath();
-        ctx.arc(gx, gy + 3, 2.5, 0, Math.PI*2);
-        ctx.fill();
-
-        ctx.restore();
-    });
-}
-
-/* --- AUDIO --- */
-let audioCtx = null;
-function playSound(freq) {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = "triangle"; // Suara lebih lembut ala 8-bit
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.05, audioCtx.currentTime); // Volume lebih kecil
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.08);
-}
-
-/* --- LOGIC --- */
-window.resetGame = function() {
-    mapData = GAME_MAP.map(r => [...r]);
-    pacman = { x: 1, y: 1, dir: "right", next: "right" };
-    ghosts = [
-        // Rudolph (Hidung Merah)
-        { x: 9, y: 8, color: "#92400e", antlerColor: "#78350f", noseColor: "#ff0000" },
-        // Dasher (Hidung Hijau/Biasa)
-        { x: 10, y: 8, color: "#854d0e", antlerColor: "#78350f", noseColor: "#451a03" }
-    ];
-    score = 0;
-    scoreSubmitted = false;
-    document.getElementById("current-score-display").textContent = score;
-};
-
-window.startCountdown = function() {
-    const overlay = document.getElementById("countdown-overlay");
-    let count = 3;
-    overlay.classList.add('active');
-    overlay.textContent = count;
-    
-    const timer = setInterval(() => {
-        count--;
-        if (count > 0) overlay.textContent = count;
-        else if (count === 0) overlay.textContent = "GO!";
-        else {
-            clearInterval(timer);
-            overlay.classList.remove('active');
-            gameRunning = true;
-            ghostActive = true;
-            lastMove = performance.now();
-        }
-    }, 1000);
-};
-
-function canMove(x, y) {
-    if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return false;
-    return mapData[y][x] !== 1;
-}
-
-function updateGame(ts) {
-    if (!gameRunning) return;
-    if (ts - lastMove > MOVE_INTERVAL) {
-        // Move Pacman
-        let nx = pacman.x + (pacman.next === "right" ? 1 : pacman.next === "left" ? -1 : 0);
-        let ny = pacman.y + (pacman.next === "down" ? 1 : pacman.next === "up" ? -1 : 0);
-        if (canMove(nx, ny)) {
-            pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next;
-        } else {
-            nx = pacman.x + (pacman.dir === "right" ? 1 : pacman.dir === "left" ? -1 : 0);
-            ny = pacman.y + (pacman.dir === "down" ? 1 : pacman.dir === "up" ? -1 : 0);
-            if (canMove(nx, ny)) { pacman.x = nx; pacman.y = ny; }
-        }
-
-        // Eat Snow
-        if (mapData[pacman.y][pacman.x] === 2) {
-            mapData[pacman.y][pacman.x] = 0;
-            score += 10;
-            document.getElementById("current-score-display").textContent = score;
-            playSound(500 + Math.random()*200); // Nada sedikit bervariasi
-        }
-
-        // Move Ghosts (Simple AI)
-        if (ghostActive) {
-            ghosts.forEach(g => {
-                const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
-                const valid = dirs.filter(d => canMove(g.x + d[0], g.y + d[1]));
-                // 70% kejar Santa, 30% acak
-                let move;
-                if(Math.random() < 0.7 && valid.length > 1){
-                     move = valid.reduce((best, current) => {
-                        const bestDist = Math.abs(pacman.x - (g.x+best[0])) + Math.abs(pacman.y - (g.y+best[1]));
-                        const currDist = Math.abs(pacman.x - (g.x+current[0])) + Math.abs(pacman.y - (g.y+current[1]));
-                        return currDist < bestDist ? current : best;
-                    });
-                } else {
-                     move = valid[Math.floor(Math.random() * valid.length)];
-                }
-                g.x += move[0]; g.y += move[1];
-                // Collision
-                if (g.x === pacman.x && g.y === pacman.y) gameEnd(false);
-            });
-        }
-        
-        // Win Check
-        if (!mapData.some(row => row.includes(2))) gameEnd(true);
-        lastMove = ts;
-    }
-}
-
-function gameEnd(win) {
-    gameRunning = false;
-    const gm = document.getElementById("game-message");
-    gm.innerHTML = `<h2>${win ? "🎄 YOU WIN! 🎄" : "🎅 GAME OVER! 🎅"}</h2>Your Score: ${score}`;
-    gm.style.display = "block";
-    document.getElementById("restart-button").style.display = "block";
-    if (score > 0 && !scoreSubmitted) {
-        scoreSubmitted = true;
-        window.parent.postMessage({ type: "submitScore", score: score }, "*");
-    }
-}
-
-function loop(ts) {
-    updateGame(ts);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawMap();
-    drawPacman();
-    drawGhosts();
-    requestAnimationFrame(loop);
-}
-
-/* --- INPUTS --- */
-window.addEventListener("message", (e) => {
-    if (e.data.type === "paySuccess") {
-        window.allowLocalPlay = true;
-        document.getElementById("game-message").style.display = "none";
-        resetGame();
-        startCountdown();
-    }
-});
-
-function setDir(d) { if(gameRunning) pacman.next = d; }
-
+// Input
 window.addEventListener("keydown", (e) => {
-    if(e.key === "ArrowUp") setDir("up");
-    if(e.key === "ArrowDown") setDir("down");
-    if(e.key === "ArrowLeft") setDir("left");
-    if(e.key === "ArrowRight") setDir("right");
+    if(e.key === "ArrowUp") pacman.next = "up";
+    if(e.key === "ArrowDown") pacman.next = "down";
+    if(e.key === "ArrowLeft") pacman.next = "left";
+    if(e.key === "ArrowRight") pacman.next = "right";
 });
 
-document.querySelectorAll(".btn").forEach(b => {
-    b.addEventListener("touchstart", (e) => { e.preventDefault(); setDir(b.dataset.dir); });
-    b.addEventListener("mousedown", () => setDir(b.dataset.dir));
-});
-
-window.handleGameRestart = () => {
-    if(window.allowLocalPlay) {
-        document.getElementById("game-message").style.display = "none";
-        resetGame();
-        startCountdown();
-    }
-};
-
-/* --- START --- */
-resetGame();
+canvas.width = mapData[0].length * TILE;
+canvas.height = mapData.length * TILE;
 loop();
-document.getElementById("game-message").innerHTML = "<h2>🎅 Waiting for Payment...</h2>Check your wallet to play!";
-document.getElementById("game-message").style.display = "block";
 })();
 </script>
 </body>
