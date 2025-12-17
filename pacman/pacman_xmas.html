@@ -8,8 +8,10 @@
   html,body{
     margin:0; background:#000; height:100%; min-height:100vh;
     display:flex; justify-content:center; align-items:flex-start;
-    font-family:Arial, sans-serif; padding:12px; box-sizing:border-box;
+    font-family:'Comic Sans MS', Arial, sans-serif; padding:12px; box-sizing:border-box;
     overflow: hidden;
+    /* Menambahkan background Natal halus */
+    background: radial-gradient(circle at center, #0f172a 0%, #000000 100%);
   }
   #gameWrapper{
     width: calc(20 * 20px + 40px); max-width: 95vw;
@@ -17,27 +19,34 @@
     position: relative;
   }
   canvas{
-    background:#020617; border-radius:10px; display:block;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.8); image-rendering: pixelated;
+    background: rgba(2, 6, 23, 0.8); /* Sedikit transparan */
+    border-radius:12px; display:block;
+    border: 3px solid #1e293b;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
     z-index: 15; 
   }
-  #ui{position:relative;color:#fff;z-index:2;align-self:flex-start; font-weight: bold; font-size: 18px;}
+  #ui{position:relative;color:#ffd700;z-index:2;align-self:flex-start; font-weight: bold; font-size: 20px; text-shadow: 2px 2px 4px #000;}
   #game-message{
-    color:white; background:rgba(0,0,0,.85); padding:15px 20px; border-radius:12px;
-    display:none; z-index:25; position:absolute; top: 40%; left: 50%; 
-    transform: translate(-50%, -50%); text-align: center; border: 2px solid #ff0000;
-    pointer-events: none; width: 80%;
+    color:white; background:rgba(0,0,0,.9); padding:20px; border-radius:16px;
+    display:none; z-index:25; position:absolute; top: 45%; left: 50%; 
+    transform: translate(-50%, -50%); text-align: center; border: 3px solid #cc0000;
+    pointer-events: none; width: 85%; box-shadow: 0 0 20px #cc0000;
   }
+  #game-message h2 { margin-top:0; color: #ffd700; }
   #restart-button {
       position: absolute; top: 10px; right: 10px;
-      background: #b91c1c; color: white; border: none; padding: 5px 12px;
-      border-radius: 5px; cursor: pointer; font-size: 14px; z-index: 30; 
+      background: linear-gradient(to bottom, #ef4444, #b91c1c); 
+      color: white; border: 2px solid #fff; padding: 8px 16px;
+      border-radius: 8px; cursor: pointer; font-size: 14px; z-index: 30; font-weight: bold;
+      box-shadow: 0 4px #7f1d1d;
   }
+  #restart-button:active { transform: translateY(2px); box-shadow: 0 2px #7f1d1d; }
+  
   #countdown-overlay {
     position: absolute; inset: 0; background: rgba(0, 0, 0, 0.85);
     display: none; justify-content: center; align-items: center;
-    z-index: 50; font-size: 100px; color: #ffd700;
-    text-shadow: 0 0 20px #cc0000; font-weight: bold; transition: opacity 0.2s;
+    z-index: 50; font-size: 120px; color: #ffd700;
+    text-shadow: 0 0 30px #cc0000, 0 0 10px #fff; font-weight: 900; transition: opacity 0.2s;
   }
   #countdown-overlay.active { display: flex; }
 
@@ -47,12 +56,13 @@
     grid-template-columns: 70px 70px 70px; gap: 10px; margin-top: 15px;
   }
   #mobileControls .btn {
-    width: 70px; height: 70px; border-radius:15px; border:0;
-    background: linear-gradient(135deg,#cc0000,#16a34a); color:#fff; font-size:28px;
+    width: 70px; height: 70px; border-radius:15px; border:2px solid #166534;
+    background: linear-gradient(135deg,#dc2626,#15803d); color:#fff; font-size:32px;
     display:flex; align-items:center; justify-content:center;
-    box-shadow:0 5px 0 #065f46; cursor: pointer; touch-action: manipulation;
+    box-shadow:0 6px 0 #064e3b; cursor: pointer; touch-action: manipulation;
+    text-shadow: 2px 2px 4px #000;
   }
-  #mobileControls .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #065f46; }
+  #mobileControls .btn:active { transform: translateY(3px); box-shadow: 0 3px 0 #064e3b; }
   .btn[data-dir="up"] { grid-area: up; }
   .btn[data-dir="left"] { grid-area: left; }
   .btn[data-dir="right"] { grid-area: right; }
@@ -64,8 +74,8 @@
 <body>
 
 <div id="gameWrapper">
-    <div id="ui">Score: <span id="current-score-display">0</span></div>
-    <button id="restart-button" style="display:none;" onclick="handleGameRestart()">Restart</button>
+    <div id="ui">🎅 Score: <span id="current-score-display">0</span></div>
+    <button id="restart-button" style="display:none;" onclick="handleGameRestart()">RESTART</button>
     <div id="countdown-overlay"></div>
     <div id="game-message"></div>
     <canvas id="pacman-canvas"></canvas>
@@ -83,7 +93,7 @@
 (() => {
 const TRUSTED_ORIGIN = "*"; 
 const TILE = 20;
-const MOVE_INTERVAL = 220; // Kecepatan gerak (ms)
+const MOVE_INTERVAL = 200; 
 
 const canvas = document.getElementById("pacman-canvas");
 const ctx = canvas.getContext("2d");
@@ -118,19 +128,28 @@ let mapData, pacman, ghosts, score = 0;
 let lastMove = 0, gameRunning = false, ghostActive = false, scoreSubmitted = false;
 window.allowLocalPlay = false;
 
-/* --- DRAWING FUNCTIONS --- */
+/* --- IMPROVED DRAWING FUNCTIONS --- */
 function drawMap() {
     for (let y = 0; y < MAP_H; y++) {
         for (let x = 0; x < MAP_W; x++) {
             const val = mapData[y][x];
             if (val === 1) {
-                ctx.fillStyle = "#1e293b"; // Wall
-                ctx.fillRect(x*TILE, y*TILE, TILE-1, TILE-1);
+                // Tembok dengan efek es 3D sederhana
+                ctx.fillStyle = "#1e293b";
+                ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+                ctx.fillStyle = "#334155"; // Highlight atas
+                ctx.fillRect(x*TILE, y*TILE, TILE, 2);
+                ctx.fillStyle = "#0f172a"; // Shadow bawah
+                ctx.fillRect(x*TILE, y*TILE+TILE-2, TILE, 2);
             } else if (val === 2) {
-                ctx.fillStyle = "#fff"; // Snow Dot
+                // Dot Salju yang bersinar
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = "#fff";
+                ctx.fillStyle = "#fff";
                 ctx.beginPath();
-                ctx.arc(x*TILE + TILE/2, y*TILE + TILE/2, 2, 0, Math.PI*2);
+                ctx.arc(x*TILE + TILE/2, y*TILE + TILE/2, 2.5, 0, Math.PI*2);
                 ctx.fill();
+                ctx.shadowBlur = 0; // Reset shadow
             }
         }
     }
@@ -139,44 +158,118 @@ function drawMap() {
 function drawPacman() {
     const px = pacman.x * TILE + TILE/2;
     const py = pacman.y * TILE + TILE/2;
-    // Santa Body
-    ctx.fillStyle = "#ef4444";
+    const size = TILE/2 - 1;
+
+    ctx.save();
+    // Bayangan di bawah Santa
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 3;
+
+    // Badan Santa (Gradien Merah 3D)
+    const bodyGrad = ctx.createRadialGradient(px, py, size*0.2, px, py, size);
+    bodyGrad.addColorStop(0, "#ef4444");
+    bodyGrad.addColorStop(1, "#b91c1c");
+    ctx.fillStyle = bodyGrad;
     ctx.beginPath();
-    ctx.arc(px, py, TILE/2 - 2, 0, Math.PI*2);
+    ctx.arc(px, py, size, 0, Math.PI*2);
     ctx.fill();
-    // Santa Hat Pom-pom
-    ctx.fillStyle = "#fff";
+
+    ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; // Reset shadow untuk detail
+
+    // Janggut Putih (Fluffy)
+    ctx.fillStyle = "#f8fafc";
     ctx.beginPath();
-    ctx.arc(px, py - 6, 4, 0, Math.PI*2);
+    ctx.arc(px, py+3, size*0.7, 0, Math.PI); // Janggut utama
+    ctx.arc(px-4, py+2, 3, 0, Math.PI*2); // Samping kiri
+    ctx.arc(px+4, py+2, 3, 0, Math.PI*2); // Samping kanan
     ctx.fill();
-    // Eye
+
+    // Wajah (Pink)
+    ctx.fillStyle = "#fca5a5";
+    ctx.beginPath();
+    ctx.arc(px, py-2, 4, 0, Math.PI*2);
+    ctx.fill();
+
+    // Mata
     ctx.fillStyle = "#000";
     ctx.beginPath();
-    ctx.arc(px + (pacman.dir === 'left' ? -4 : 4), py - 2, 2, 0, Math.PI*2);
+    let eyeOffset = (pacman.dir === 'left' ? -2 : 2);
+    if(pacman.dir === 'up') eyeOffset = 0;
+    ctx.arc(px + eyeOffset - 2, py - 3, 1.5, 0, Math.PI*2);
+    ctx.arc(px + eyeOffset + 2, py - 3, 1.5, 0, Math.PI*2);
     ctx.fill();
+
+    // Topi Pom-pom
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(px, py - size, 3.5, 0, Math.PI*2);
+    ctx.fill();
+    
+    ctx.restore();
 }
 
 function drawGhosts() {
     ghosts.forEach(g => {
         const gx = g.x * TILE + TILE/2;
-        const gy = g.y * TILE + TILE/2;
-        // Reindeer Body
-        ctx.fillStyle = g.color;
+        const gy = g.y * TILE + TILE / 2;
+        const size = TILE/2 - 2;
+
+        ctx.save();
+        // Bayangan di bawah Reindeer
+        ctx.shadowColor = 'rgba(0,0,0,0.4)';
+        ctx.shadowBlur = 5;
+        ctx.shadowOffsetY = 2;
+
+        // Badan Reindeer (Gradien Cokelat)
+        const furGrad = ctx.createLinearGradient(gx-size, gy-size, gx+size, gy+size);
+        furGrad.addColorStop(0, g.color);
+        furGrad.addColorStop(1, "#451a03"); // Warna lebih gelap di bawah
+        ctx.fillStyle = furGrad;
         ctx.beginPath();
-        ctx.arc(gx, gy, TILE/2 - 2, 0, Math.PI*2);
+        // Bentuk kepala agak lonjong ke bawah
+        ctx.ellipse(gx, gy, size, size*0.9, 0, 0, Math.PI*2);
         ctx.fill();
-        // Antlers
+
+        ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+        // Tanduk (Lebih detail)
         ctx.strokeStyle = g.antlerColor;
         ctx.lineWidth = 2;
+        ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(gx-4, gy-5); ctx.lineTo(gx-8, gy-12);
-        ctx.moveTo(gx+4, gy-5); ctx.lineTo(gx+8, gy-12);
+        // Kiri
+        ctx.moveTo(gx-3, gy-5); ctx.lineTo(gx-7, gy-11);
+        ctx.moveTo(gx-7, gy-11); ctx.lineTo(gx-10, gy-9);
+        ctx.moveTo(gx-7, gy-9); ctx.lineTo(gx-5, gy-7);
+        // Kanan
+        ctx.moveTo(gx+3, gy-5); ctx.lineTo(gx+7, gy-11);
+        ctx.moveTo(gx+7, gy-11); ctx.lineTo(gx+10, gy-9);
+        ctx.moveTo(gx+7, gy-9); ctx.lineTo(gx+5, gy-7);
         ctx.stroke();
-        // Red Nose
+
+        // Mata Putih
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(gx-3, gy-2, 2, 0, Math.PI*2);
+        ctx.arc(gx+3, gy-2, 2, 0, Math.PI*2);
+        ctx.fill();
+        // Pupil Hitam
+        ctx.fillStyle = "#000";
+        ctx.beginPath();
+        ctx.arc(gx-3, gy-2, 1, 0, Math.PI*2);
+        ctx.arc(gx+3, gy-2, 1, 0, Math.PI*2);
+        ctx.fill();
+
+        // Hidung Bersinar (Rudolph Effect)
+        ctx.shadowColor = g.noseColor;
+        ctx.shadowBlur = 10; // Efek glow
         ctx.fillStyle = g.noseColor;
         ctx.beginPath();
-        ctx.arc(gx, gy+2, 3, 0, Math.PI*2);
+        ctx.arc(gx, gy + 3, 2.5, 0, Math.PI*2);
         ctx.fill();
+
+        ctx.restore();
     });
 }
 
@@ -187,10 +280,11 @@ function playSound(freq) {
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
     osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = "triangle"; // Suara lebih lembut ala 8-bit
     osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime); // Volume lebih kecil
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.08);
 }
 
 /* --- LOGIC --- */
@@ -198,8 +292,10 @@ window.resetGame = function() {
     mapData = GAME_MAP.map(r => [...r]);
     pacman = { x: 1, y: 1, dir: "right", next: "right" };
     ghosts = [
-        { x: 9, y: 8, color: "#92400e", antlerColor: "#451a03", noseColor: "#ef4444" },
-        { x: 10, y: 8, color: "#92400e", antlerColor: "#451a03", noseColor: "#22c55e" }
+        // Rudolph (Hidung Merah)
+        { x: 9, y: 8, color: "#92400e", antlerColor: "#78350f", noseColor: "#ff0000" },
+        // Dasher (Hidung Hijau/Biasa)
+        { x: 10, y: 8, color: "#854d0e", antlerColor: "#78350f", noseColor: "#451a03" }
     ];
     score = 0;
     scoreSubmitted = false;
@@ -250,7 +346,7 @@ function updateGame(ts) {
             mapData[pacman.y][pacman.x] = 0;
             score += 10;
             document.getElementById("current-score-display").textContent = score;
-            playSound(600);
+            playSound(500 + Math.random()*200); // Nada sedikit bervariasi
         }
 
         // Move Ghosts (Simple AI)
@@ -258,7 +354,17 @@ function updateGame(ts) {
             ghosts.forEach(g => {
                 const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
                 const valid = dirs.filter(d => canMove(g.x + d[0], g.y + d[1]));
-                const move = valid[Math.floor(Math.random() * valid.length)];
+                // 70% kejar Santa, 30% acak
+                let move;
+                if(Math.random() < 0.7 && valid.length > 1){
+                     move = valid.reduce((best, current) => {
+                        const bestDist = Math.abs(pacman.x - (g.x+best[0])) + Math.abs(pacman.y - (g.y+best[1]));
+                        const currDist = Math.abs(pacman.x - (g.x+current[0])) + Math.abs(pacman.y - (g.y+current[1]));
+                        return currDist < bestDist ? current : best;
+                    });
+                } else {
+                     move = valid[Math.floor(Math.random() * valid.length)];
+                }
                 g.x += move[0]; g.y += move[1];
                 // Collision
                 if (g.x === pacman.x && g.y === pacman.y) gameEnd(false);
@@ -274,7 +380,7 @@ function updateGame(ts) {
 function gameEnd(win) {
     gameRunning = false;
     const gm = document.getElementById("game-message");
-    gm.innerHTML = `<h2>${win ? "YOU WIN!" : "GAME OVER!"}</h2>Score: ${score}`;
+    gm.innerHTML = `<h2>${win ? "🎄 YOU WIN! 🎄" : "🎅 GAME OVER! 🎅"}</h2>Your Score: ${score}`;
     gm.style.display = "block";
     document.getElementById("restart-button").style.display = "block";
     if (score > 0 && !scoreSubmitted) {
@@ -327,7 +433,7 @@ window.handleGameRestart = () => {
 /* --- START --- */
 resetGame();
 loop();
-document.getElementById("game-message").textContent = "Waiting for Payment...";
+document.getElementById("game-message").innerHTML = "<h2>🎅 Waiting for Payment...</h2>Check your wallet to play!";
 document.getElementById("game-message").style.display = "block";
 })();
 </script>
