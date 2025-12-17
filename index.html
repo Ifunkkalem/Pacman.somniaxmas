@@ -143,18 +143,63 @@ btnConnect.addEventListener('click', ()=>{
   window.postMessage({ type: 'requestConnectWallet' }, '*');
 });
 
-// Listener pesan dari app.js dan iframe game
+// ... (kode lainnya tetap sama)
+
 window.addEventListener("message", async (ev)=>{
-  const d=ev.data||{};
-  if(!d||typeof d!=="object") return;
-  
-  // Penanganan feedback waiting
+  const d = ev.data || {};
+  if(!d || typeof d !== "object") return;
+  
   if(d.type === 'showWaiting'){
-    showWaitingFeedback(d.message || 'Processing transaction...');
+    showWaitingFeedback(d.message);
   }
   if(d.type === 'clearWaiting'){
     clearWaitingFeedback();
   }
+
+  if(d.type === "walletInfo"){
+    clearWaitingFeedback();
+    if(d.address){
+      walletAddrEl.textContent = 'Wallet: ' + d.address.substring(0,6) + '...' + d.address.slice(-4);
+      walletAddrEl.title = d.address;
+    }
+    if(typeof d.balance !== 'undefined'){
+      walletBalEl.textContent = d.balance + " SOMI";
+    }
+  }
+
+  // >>> PERBAIKAN DI SINI <<<
+  if(d.type === "paySuccess"){ 
+    clearWaitingFeedback();
+    showMain('gameFrame'); 
+    
+    // Pastikan game di dalam iframe tahu bahwa pembayaran sukses
+    // Kita kirim ulang pesan 'paySuccess' ke DALAM iframe
+    if(gameFrame && gameFrame.contentWindow){
+      setTimeout(() => {
+        gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
+        console.log("Sinyal paySuccess diteruskan ke Iframe Game");
+      }, 500); // Beri jeda sedikit agar iframe siap
+    }
+  }
+
+  if(d.type === "updateSummary"){
+    const poolEl = document.getElementById('poolValue');
+    const scoreEl = document.getElementById('topScoreValue');
+    if(d.jackpot && poolEl) poolEl.textContent = d.jackpot + ' SOMI';
+    if(d.topScore && scoreEl) scoreEl.textContent = d.topScore;
+  }
+  
+  if(d.type === "showLeaderboard"){
+    leaderFrame.src = "leaderboard.html?" + Date.now();
+    showMain('leaderFrame');
+  }
+  if(d.type === "playAgain"){ 
+    requestStartGame(); 
+  }
+  if(d.type === "backToDashboard"){ 
+    showMain('logoPlaceholder'); 
+  }
+});
 
   // >>> PERBAIKAN UTAMA: Penanganan Wallet Info <<<
   if(d.type==="walletInfo"){
