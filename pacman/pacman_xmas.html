@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Somnia Christmas Carnival - On-Chain Edition</title>
+    <title>Somnia Christmas Carnival - Smart AI Edition</title>
     <style>
         body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
         #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
@@ -62,7 +62,6 @@
     const MAP_H = mapData.length;
     const MAP_W = mapData[0].length;
 
-    // Posisi Awal Default
     const START_POS = {
         pacman: { x: 1, y: 1, dir: "right" },
         ghosts: [
@@ -75,63 +74,42 @@
 
     let pacman = { ...START_POS.pacman, next: "right", pTime: 0 };
     let ghosts = START_POS.ghosts.map(g => ({ ...g, sc: false }));
-    
     let score = 0;
     let gameRunning = false;
     let frameCounter = 0;
 
-    // FUNGSI RESET POSISI (Tanpa Reload)
     function resetPositions() {
-        pacman.x = START_POS.pacman.x;
-        pacman.y = START_POS.pacman.y;
-        pacman.dir = START_POS.pacman.dir;
-        pacman.next = START_POS.pacman.dir;
+        pacman.x = START_POS.pacman.x; pacman.y = START_POS.pacman.y;
+        pacman.dir = START_POS.pacman.dir; pacman.next = START_POS.pacman.dir;
         pacman.pTime = 0;
-        
-        ghosts.forEach((g, i) => {
-            g.x = START_POS.ghosts[i].ox;
-            g.y = START_POS.ghosts[i].oy;
-            g.sc = false;
-        });
-        
+        ghosts.forEach((g, i) => { g.x = START_POS.ghosts[i].ox; g.y = START_POS.ghosts[i].oy; g.sc = false; });
         frameCounter = 0;
         document.getElementById("pwr").style.display = "none";
     }
 
-    // FUNGSI GAME OVER & SUBMIT ON-CHAIN
     async function handleGameOver() {
         gameRunning = false;
         const finalScore = score;
-        
-        // Munculkan kembali overlay
         document.getElementById("overlay").style.display = "flex";
         document.getElementById("status-text").innerText = "Submitting Score On-Chain...";
-        
-        // Kirim sinyal ke app.js untuk submit score
-        window.postMessage({ 
-            type: "submitScoreOnChain", 
-            score: finalScore 
-        }, "*");
-
-        // Reset game data untuk sesi berikutnya
+        window.postMessage({ type: "submitScoreOnChain", score: finalScore }, "*");
         score = 0;
         document.getElementById("score").innerText = "0";
-        mapData = MAP.map(row => [...row]); // Isi ulang koin
+        mapData = MAP.map(row => [...row]);
         resetPositions();
     }
 
-    /* ========== DRAWING FUNCTIONS ========== */
     function drawMap() {
         for(let y=0; y<MAP_H; y++){
             for(let x=0; x<MAP_W; x++){
                 const t = mapData[y][x];
                 if(t===1){
                     ctx.fillStyle="#b91c1c"; ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
-                    ctx.strokeStyle="rgba(255,255,255,0.2)"; ctx.strokeRect(x*TILE+0.5, y*TILE+0.5, TILE-1, TILE-1);
+                    ctx.strokeStyle="rgba(255,255,255,0.15)"; ctx.strokeRect(x*TILE+0.5, y*TILE+0.5, TILE-1, TILE-1);
                 } else if(t===2){
                     ctx.fillStyle="#ffd700"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 2, 0, 7); ctx.fill();
                 } else if(t===3){
-                    ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 6, 0, 7); ctx.fill();
+                    ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 5, 0, 7); ctx.fill();
                 }
             }
         }
@@ -142,11 +120,10 @@
         const y = pacman.y*TILE + TILE/2 + (Math.sin(Date.now()/150)*1.5);
         const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
         const angle = {right:0, left:Math.PI, up:-Math.PI/2, down:Math.PI/2}[pacman.dir] || 0;
-
         ctx.fillStyle="#facc15"; ctx.beginPath(); ctx.moveTo(x,y);
         ctx.arc(x,y,TILE/2-2, angle+mouth*0.6, angle-mouth*0.6+Math.PI*2); ctx.fill();
-        ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(x, y+3, 6, 0, 7); ctx.fill(); // Jenggot
-        ctx.fillStyle="#cc0000"; ctx.beginPath(); ctx.moveTo(x-8, y-6); ctx.lineTo(x+8, y-6); ctx.lineTo(x, y-18); ctx.fill(); // Topi
+        ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(x, y+3, 6, 0, 7); ctx.fill(); 
+        ctx.fillStyle="#cc0000"; ctx.beginPath(); ctx.moveTo(x-8, y-5); ctx.lineTo(x+8, y-5); ctx.lineTo(x, y-16); ctx.fill();
     }
 
     function drawGhosts() {
@@ -154,8 +131,8 @@
             const x = g.x*TILE + TILE/2;
             const y = g.y*TILE + TILE/2 + (Math.sin(Date.now()/150 + i)*1.5);
             ctx.fillStyle = g.sc ? "#1e40af" : g.color;
-            ctx.beginPath(); ctx.roundRect(x-10, y-10, 20, 20, 5); ctx.fill();
-            ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(x-4, y-4, 2, 0, 7); ctx.arc(x+4, y-4, 2, 0, 7); ctx.fill(); // Mata
+            ctx.beginPath(); ctx.roundRect(x-9, y-9, 18, 18, 4); ctx.fill();
+            ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(x-3, y-3, 2, 0, 7); ctx.arc(x+3, y-3, 2, 0, 7); ctx.fill();
         });
     }
 
@@ -184,13 +161,27 @@
         }
 
         ghosts.forEach((g, i) => {
-            if (frameCounter < i * 45) return;
+            if (frameCounter < i * 50) return;
+            
             const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
             const valid = dirs.filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
+            
             if (valid.length > 0) {
-                const d = valid[Math.floor(Math.random()*valid.length)];
-                g.x += d[0]; g.y += d[1];
+                // KEPINTARAN GHOST: 60% Mengejar Santa, 40% Acak
+                let chosen;
+                if (Math.random() < 0.6 && !g.sc) {
+                    valid.sort((a, b) => {
+                        const distA = Math.hypot(g.x + a[0] - pacman.x, g.y + a[1] - pacman.y);
+                        const distB = Math.hypot(g.x + b[0] - pacman.x, g.y + b[1] - pacman.y);
+                        return distA - distB;
+                    });
+                    chosen = valid[0];
+                } else {
+                    chosen = valid[Math.floor(Math.random() * valid.length)];
+                }
+                g.x += chosen[0]; g.y += chosen[1];
             }
+
             if (g.x === pacman.x && g.y === pacman.y) {
                 if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
                 else { handleGameOver(); }
@@ -203,17 +194,14 @@
         update();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawMap(); drawSanta(); drawGhosts();
-        setTimeout(() => requestAnimationFrame(loop), 180);
+        // KECEPATAN DIPERLAMBAT (240ms)
+        setTimeout(() => requestAnimationFrame(loop), 240);
     }
 
     window.setDir = (d) => { pacman.next = d; };
     window.addEventListener("message", (e) => {
-        if (e.data.type === "paySuccess") {
-            gameRunning = true;
-            document.getElementById("overlay").style.display = "none";
-        }
+        if (e.data.type === "paySuccess") { gameRunning = true; document.getElementById("overlay").style.display = "none"; }
     });
-
     canvas.width = MAP_W * TILE; canvas.height = MAP_H * TILE;
     loop();
 })();
