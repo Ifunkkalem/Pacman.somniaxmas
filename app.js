@@ -32,18 +32,20 @@ function updateWalletUI(address, balanceEth) {
 
 async function switchNetwork(provider) {
   try {
-    const { chainId } = await provider.getNetwork();
-    if (chainId.toString() !== "5031") {
+    const network = await provider.getNetwork();
+    // 5031 adalah desimal dari 0x13a7
+    if (network.chainId !== 5031) {
       try {
-        await window.ethereum.request({ 
-            method: "wallet_switchEthereumChain", 
-            params: [{ chainId: SOMNIA_CHAIN_ID }] 
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: SOMNIA_CHAIN_ID }],
         });
       } catch (switchError) {
+        // Error 4902 berarti rantai belum ditambahkan ke dompet
         if (switchError.code === 4902) {
-          await window.ethereum.request({ 
-              method: "wallet_addEthereumChain", 
-              params: [SOMNIA_NETWORK_CONFIG] 
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [SOMNIA_NETWORK_CONFIG],
           });
         } else {
           throw switchError;
@@ -52,51 +54,54 @@ async function switchNetwork(provider) {
     }
     return true;
   } catch (e) {
-    console.error("Gagal ganti network:", e);
+    console.error("Gagal beralih jaringan:", e);
     return false;
   }
 }
 
 async function connectWallet() {
   if (!window.ethereum) {
-      alert("Silakan buka di OKX Wallet / MetaMask Browser!");
-      return false;
+    alert("Dompet tidak terdeteksi. Gunakan Browser di dalam OKX/MetaMask!");
+    return false;
   }
   
-  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
   try {
-    // Meminta akun
-    await provider.send("eth_requestAccounts", []);
+    // Memicu pop-up koneksi dompet
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    userAddress = accounts[0];
     
-    // Aktifkan Audio di Game Frame
-    const gameFrame = document.getElementById("gameFrame");
-    if (gameFrame && gameFrame.contentWindow) {
-        gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
-    }
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    
+    // Pastikan jaringan sudah di Somnia
+    const isCorrectNetwork = await switchNetwork(provider);
+    if (!isCorrectNetwork) return false;
 
     signer = provider.getSigner();
-    userAddress = await signer.getAddress();
     
-    // Pastikan network benar
-    const ok = await switchNetwork(provider);
-    if (!ok) return false;
-
-    // Inisialisasi Kontrak
+    // Inisialisasi kontrak
     readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
     
+    // Ambil info biaya
     try {
-        startFeeWei = await readContract.startFeeWei();
+      startFeeWei = await readContract.startFeeWei();
     } catch {
-        startFeeWei = ethers.utils.parseEther("0.001");
+      startFeeWei = ethers.utils.parseEther("0.001");
     }
     
     const balance = await provider.getBalance(userAddress);
     updateWalletUI(userAddress, ethers.utils.formatEther(balance));
-    updateTopScores(); 
+    updateTopScores();
+    
+    // Beritahu Iframe untuk mengizinkan suara
+    const gameFrame = document.getElementById("gameFrame");
+    if (gameFrame && gameFrame.contentWindow) {
+      gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
+    }
+    
     return true;
   } catch (e) {
-    console.error("Koneksi Wallet Gagal:", e);
+    console.error("Koneksi gagal:", e);
     return false;
   }
 }
