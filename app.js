@@ -1,7 +1,19 @@
-const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
-const CONTRACT_ABI = [{"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newFee","type":"uint256"}],"name":"FeeUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"}],"name":"GameStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newMaxScore","type":"uint256"}],"name":"MaxScoreUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"score","type":"uint256"}],"name":"ScoreSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdraw","type":"event"},{"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxScorePerSubmit","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"players","outputs":[{"internalType":"uint256","name":"totalScore","type":"uint256"},{"internalType":"uint256","name":"lastPlayed","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"newMaxScore","type":"uint256"}],"name":"setMaxScore","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"newFee","type":"uint256"}],"name":"setStartFee","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"startFeeWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"startGame","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"score","type":"uint256"}],"name":"submitScore","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"top10Scores","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"top10Wallets","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"treasury","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"withdraw","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+/* ================= CONFIG ================= */
 
-const SOMNIA_CHAIN_ID = "0x13a7";
+const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
+const CONTRACT_ABI = [
+  {"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
+  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newFee","type":"uint256"}],"name":"FeeUpdated","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"}],"name":"GameStarted","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newMaxScore","type":"uint256"}],"name":"MaxScoreUpdated","type":"event"},
+  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"score","type":"uint256"}],"name":"ScoreSubmitted","type":"event"},
+  {"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"startFeeWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"startGame","outputs":[],"stateMutability":"payable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"score","type":"uint256"}],"name":"submitScore","outputs":[],"stateMutability":"nonpayable","type":"function"}
+];
+
+const SOMNIA_CHAIN_ID = "0x13a7"; // 5031
 const SOMNIA_NETWORK_CONFIG = {
   chainId: SOMNIA_CHAIN_ID,
   chainName: "Somnia Mainnet",
@@ -10,177 +22,160 @@ const SOMNIA_NETWORK_CONFIG = {
   blockExplorerUrls: ["https://explorer.somnia.network"]
 };
 
-let provider, signer, userAddress, readContract, gameContract;
+/* ================= STATE ================= */
+
+let provider, signer, userAddress;
+let readContract, gameContract;
 let startFeeWei;
 
-// --- 1. LISTENER PESAN DARI IFRAME ---
+/* ================= IFRAME MESSAGE LISTENER ================= */
+/* ONLY accept messages from game iframe */
+
 window.addEventListener("message", async (e) => {
-    // Menangani pengiriman skor otomatis saat Game Over
-    if (e.data.type === "submitScore") {
-        await submitScoreTx(e.data.score);
-    }
+  const gameFrame = document.getElementById("gameFrame");
+  if (!gameFrame || e.source !== gameFrame.contentWindow) return;
+
+  if (e.data?.type === "submitScore") {
+    await submitScoreTx(e.data.score);
+  }
 });
 
-// Helper UI
-function updateWalletUI(address, balanceEth) {
-    window.postMessage({
-        type: 'walletInfo',
-        address: address,
-        balance: balanceEth ? Number(balanceEth).toFixed(4) : '-'
-    }, '*');
-}
+/* ================= WALLET ================= */
 
-async function switchNetwork(provider) {
+async function switchNetwork() {
+  const network = await provider.getNetwork();
+  const targetChain = parseInt(SOMNIA_CHAIN_ID, 16);
+
+  if (network.chainId === targetChain) return true;
+
   try {
-    const network = await provider.getNetwork();
-    // 5031 adalah desimal dari 0x13a7
-    if (network.chainId !== 5031) {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: SOMNIA_CHAIN_ID }],
-        });
-      } catch (switchError) {
-        // Error 4902 berarti rantai belum ditambahkan ke dompet
-        if (switchError.code === 4902) {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [SOMNIA_NETWORK_CONFIG],
-          });
-        } else {
-          throw switchError;
-        }
-      }
-    }
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: SOMNIA_CHAIN_ID }],
+    });
     return true;
-  } catch (e) {
-    console.error("Gagal beralih jaringan:", e);
-    return false;
+  } catch (err) {
+    if (err.code === 4902) {
+      await window.ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [SOMNIA_NETWORK_CONFIG],
+      });
+      return true;
+    }
+    throw err;
   }
 }
 
 async function connectWallet() {
   if (!window.ethereum) {
-    alert("Dompet tidak terdeteksi. Gunakan Browser di dalam OKX/MetaMask!");
+    alert("Gunakan OKX / MetaMask Browser");
     return false;
   }
-  
-  try {
-    // Memicu pop-up koneksi dompet
-    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    userAddress = accounts[0];
-    
-    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-    
-    // Pastikan jaringan sudah di Somnia
-    const isCorrectNetwork = await switchNetwork(provider);
-    if (!isCorrectNetwork) return false;
 
-    signer = provider.getSigner();
-    
-    // Inisialisasi kontrak
-    readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-    
-    // Ambil info biaya
-    try {
-      startFeeWei = await readContract.startFeeWei();
-    } catch {
-      startFeeWei = ethers.utils.parseEther("0.001");
-    }
-    
-    const balance = await provider.getBalance(userAddress);
-    updateWalletUI(userAddress, ethers.utils.formatEther(balance));
-    updateTopScores();
-    
-    // Beritahu Iframe untuk mengizinkan suara
-    const gameFrame = document.getElementById("gameFrame");
-    if (gameFrame && gameFrame.contentWindow) {
-      gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
-    }
-    
-    return true;
-  } catch (e) {
-    console.error("Koneksi gagal:", e);
-    return false;
+  const accounts = await window.ethereum.request({
+    method: "eth_requestAccounts"
+  });
+
+  userAddress = accounts[0];
+  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+  await switchNetwork();
+
+  signer = provider.getSigner();
+  readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+  gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+  try {
+    startFeeWei = await readContract.startFeeWei();
+  } catch {
+    startFeeWei = ethers.utils.parseEther("0.001");
   }
+
+  const balance = await provider.getBalance(userAddress);
+
+  window.postMessage({
+    type: "walletInfo",
+    address: userAddress,
+    balance: Number(ethers.utils.formatEther(balance)).toFixed(4)
+  }, "*");
+
+  updateTopScores();
+  return true;
 }
+
+/* ================= PLAY ================= */
 
 async function payToPlay() {
-    // Jika belum konek, coba konek dulu
-    if (!signer) {
-        const ok = await connectWallet(); 
-        if (!ok) return;
-    }
-    
-    const gameFrame = document.getElementById("gameFrame");
-
-    // Re-trigger Audio setiap kali tombol Play diklik (untuk keamanan browser)
-    if (gameFrame && gameFrame.contentWindow) {
-        gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
-    }
-
-    try {
-        window.postMessage({ type: 'showWaiting', message: 'Memproses Pembayaran...' }, '*');
-        
-        // Eksekusi startGame ke kontrak
-        const tx = await gameContract.startGame({ value: startFeeWei });
-        await tx.wait();
-        
-        window.postMessage({ type: 'clearWaiting' }, '*');
-        
-        // Beritahu game pembayaran sukses agar bisa mulai
-        if (gameFrame && gameFrame.contentWindow) {
-            gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
-        }
-    } catch (e) {
-        console.error("Pembayaran Gagal:", e);
-        window.postMessage({ type: 'clearWaiting' }, '*');
-        alert("Transaksi gagal: " + (e.data?.message || e.message));
-    }
-}
-
-async function submitScoreTx(score) {
-  if (!gameContract || !signer) {
-      alert("Wallet tidak terhubung!");
-      return;
+  if (!signer) {
+    const ok = await connectWallet();
+    if (!ok) return;
   }
-  
+
+  const gameFrame = document.getElementById("gameFrame");
+
+  /* 🔊 AUDIO UNLOCK (MUST BE USER CLICK) */
+  if (gameFrame?.contentWindow) {
+    gameFrame.contentWindow.postMessage(
+      { type: "initAudio" },
+      location.origin
+    );
+  }
+
   try {
-    window.postMessage({ type: 'showWaiting', message: 'Menyimpan Skor ke Blockchain...' }, '*');
-    
-    const tx = await gameContract.submitScore(ethers.BigNumber.from(score));
+    window.postMessage({ type: "showWaiting", message: "Processing Payment..." }, "*");
+
+    const tx = await gameContract.startGame({ value: startFeeWei });
     await tx.wait();
 
-    alert("Skor Berhasil Disimpan!");
-    updateTopScores();
-    window.postMessage({ type: 'showLeaderboard' }, '*'); 
-  } catch (e) { 
-    console.error("Gagal submit skor:", e);
-    alert("Gagal menyimpan skor ke blockchain.");
-  } finally {
-    window.postMessage({ type: 'clearWaiting' }, '*');
+    window.postMessage({ type: "clearWaiting" }, "*");
+
+    if (gameFrame?.contentWindow) {
+      gameFrame.contentWindow.postMessage(
+        { type: "paySuccess" },
+        location.origin
+      );
+    }
+  } catch (e) {
+    window.postMessage({ type: "clearWaiting" }, "*");
+    alert("Transaction failed");
   }
 }
+
+/* ================= SCORE ================= */
+
+async function submitScoreTx(score) {
+  if (!gameContract) return;
+
+  try {
+    window.postMessage({ type: "showWaiting", message: "Saving Score..." }, "*");
+
+    const tx = await gameContract.submitScore(score);
+    await tx.wait();
+
+    updateTopScores();
+    window.postMessage({ type: "showLeaderboard" }, "*");
+  } catch (e) {
+    alert("Submit score failed");
+  } finally {
+    window.postMessage({ type: "clearWaiting" }, "*");
+  }
+}
+
+/* ================= LEADERBOARD / JACKPOT ================= */
 
 async function updateTopScores() {
+  if (!provider || !readContract) return;
+
   try {
-    if (!readContract) return;
-    
-    // Ambil saldo jackpot (saldo kontrak)
-    const contractBalance = await provider.getBalance(CONTRACT_ADDRESS);
-    
-    // Ambil data top 10
-    const [topPlayers, scores] = await readContract.getTop10();
-    const topScoreValue = scores.length > 0 ? Number(scores[0]) : 0;
+    const jackpotWei = await provider.getBalance(CONTRACT_ADDRESS);
+    const [players, scores] = await readContract.getTop10();
 
     window.postMessage({
-      type: 'updateSummary',
-      jackpot: parseFloat(ethers.utils.formatEther(contractBalance)).toFixed(4), 
-      topScore: topScoreValue
-    }, '*');
-  } catch (e) { 
-      console.error("Gagal update Leaderboard UI:", e); 
+      type: "updateSummary",
+      jackpot: Number(ethers.utils.formatEther(jackpotWei)).toFixed(4),
+      topScore: scores.length ? Number(scores[0]) : 0
+    }, "*");
+  } catch (e) {
+    console.warn("Leaderboard update failed");
   }
-}
-
+  }
