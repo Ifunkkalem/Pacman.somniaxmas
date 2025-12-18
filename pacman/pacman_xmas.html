@@ -2,20 +2,17 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Somnia Christmas Carnival - Santa Edition</title>
+    <title>Somnia Christmas Carnival - Final Stable</title>
     <style>
         body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
         #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
         canvas { border: 4px solid #b91c1c; border-radius: 12px; background: #000; box-shadow: 0 0 30px rgba(185, 28, 28, 0.4); max-width: 95vw; }
-        
         .controls { display: grid; grid-template-areas: ". up ." "left center right" ". down ."; gap: 12px; margin: 20px 0; }
         .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; user-select: none; }
         .btn:active { transform: translateY(4px); box-shadow: 0 2px #7f1d1d; }
-
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
         #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 110; font-size: 120px; color: #fbbf24; font-weight: bold; }
         .msg-box { padding: 40px; border: 3px solid #fbbf24; border-radius: 20px; text-align: center; background: #010409; max-width: 80%; }
-        .active { display: flex !important; }
     </style>
 </head>
 <body>
@@ -26,7 +23,6 @@
     <div class="msg-box">
         <h2 id="status-text">Menunggu Pembayaran...</h2>
         <p style="color: #94a3b8;">Selesaikan transaksi untuk mulai bermain</p>
-        <button id="audio-init-btn" style="margin-top:20px; padding:12px 25px; background:#fbbf24; border:none; border-radius:10px; font-weight:bold; cursor:pointer; font-size:16px;">Aktifkan Suara 🔊</button>
     </div>
 </div>
 
@@ -50,8 +46,8 @@
     const ctx = canvas.getContext("2d");
     const bgm = document.getElementById("bgm");
     const TILE = 24;
+    let gameRunning = false;
     let isPaid = false;
-    let audioAllowed = false;
 
     const MAP = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,3,1],
@@ -64,40 +60,35 @@
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
 
-    let mapData = MAP.map(row => [...row]);
-    let pacman = { x: 1, y: 1, dir: "right", next: "right", pTime: 0 };
-    let ghosts = [
-        { x: 8, y: 7, color: "#ef4444", ox: 8, oy: 7, sc: false },
-        { x: 9, y: 7, color: "#f472b6", ox: 9, oy: 7, sc: false },
-        { x: 10, y: 7, color: "#22d3ee", ox: 10, oy: 7, sc: false },
-        { x: 9, y: 8, color: "#fb923c", ox: 9, oy: 8, sc: false }
-    ];
-    let score = 0, gameRunning = false, frameCounter = 0;
+    let mapData = [];
+    let pacman = { x: 1, y: 1, next: "right", dir: "right", pTime: 0 };
+    let ghosts = [];
+    let score = 0;
+    let frameCounter = 0;
 
-    // --- AUDIO LOGIC ---
-    function tryPlayAudio() {
-        bgm.play().then(() => { audioAllowed = true; }).catch(() => {});
-    }
-    document.getElementById("audio-init-btn").onclick = (e) => { 
-        tryPlayAudio(); 
-        e.target.innerText = "Audio Ready ✅";
-        e.target.style.background = "#22c55e";
-    };
-
-    function resetGame() {
+    function initActors() {
         mapData = MAP.map(row => [...row]);
-        score = 0; document.getElementById("score").innerText = "0";
-        pacman = { x: 1, y: 1, dir: "right", next: "right", pTime: 0 };
-        ghosts.forEach(g => { g.x = g.ox; g.y = g.oy; g.sc = false; });
-        document.getElementById("pwr").style.display = "none";
+        pacman = { x: 1, y: 1, next: "right", dir: "right", pTime: 0 };
+        ghosts = [
+            { x: 8, y: 7, color: "#ef4444", ox: 8, oy: 7, sc: false },
+            { x: 9, y: 7, color: "#f472b6", ox: 9, oy: 7, sc: false },
+            { x: 10, y: 7, color: "#22d3ee", ox: 10, oy: 7, sc: false },
+            { x: 9, y: 8, color: "#fb923c", ox: 9, oy: 8, sc: false }
+        ];
+        score = 0;
+        document.getElementById("score").innerText = "0";
+    }
+
+    function startAudio() {
+        bgm.play().catch(() => console.log("Audio waiting for trigger"));
     }
 
     function startCountdown() {
         const cd = document.getElementById("countdown-overlay");
         document.getElementById("overlay").style.display = "none";
         cd.style.display = "flex";
-        let count = 3; cd.innerText = count;
-        gameRunning = false;
+        let count = 3;
+        cd.innerText = count;
         
         const timer = setInterval(() => {
             count--;
@@ -107,12 +98,23 @@
                 clearInterval(timer);
                 cd.style.display = "none";
                 gameRunning = true;
-                tryPlayAudio();
+                startAudio();
             }
         }, 1000);
     }
 
-    // --- DRAWING ---
+    // --- MESSAGE LISTENER ---
+    window.addEventListener("message", (e) => {
+        if (e.data.type === 'initAudio') {
+            startAudio(); // Memicu audio saat wallet connect
+        }
+        if (e.data.type === "paySuccess" && !isPaid) {
+            isPaid = true;
+            initActors();
+            startCountdown();
+        }
+    });
+
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         // Map
@@ -131,7 +133,7 @@
             ctx.fillStyle = "white"; // Eyes
             ctx.beginPath(); ctx.arc(g.x*TILE+8, g.y*TILE+10, 2, 0, 7); ctx.arc(g.x*TILE+16, g.y*TILE+10, 2, 0, 7); ctx.fill();
         });
-        // Santa (Main Character)
+        // Santa
         const sx = pacman.x*TILE+TILE/2, sy = pacman.y*TILE+TILE/2;
         ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.arc(sx, sy, TILE/2-2, 0, 7); ctx.fill(); // Face
         ctx.fillStyle = "#dc2626"; ctx.beginPath(); ctx.moveTo(sx-8, sy-4); ctx.lineTo(sx+8, sy-4); ctx.lineTo(sx, sy-15); ctx.fill(); // Hat
@@ -141,8 +143,7 @@
     function update() {
         if (!gameRunning) return;
         frameCounter++;
-        
-        // Move Santa
+
         let nx = pacman.x, ny = pacman.y;
         if (pacman.next === "up") ny--; else if (pacman.next === "down") ny++;
         else if (pacman.next === "left") nx--; else if (pacman.next === "right") nx++;
@@ -151,27 +152,28 @@
             pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next; 
         }
 
-        // Eat
         if (mapData[pacman.y][pacman.x] === 2) { mapData[pacman.y][pacman.x] = 0; score += 10; }
         if (mapData[pacman.y][pacman.x] === 3) { 
             mapData[pacman.y][pacman.x] = 0; score += 50; pacman.pTime = 40; 
             ghosts.forEach(g => g.sc = true); document.getElementById("pwr").style.display = "inline";
         }
-        if (pacman.pTime > 0) { pacman.pTime--; if(pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; } }
 
-        // Ghost AI (Move every 2 frames)
+        if (pacman.pTime > 0) { 
+            pacman.pTime--; 
+            if(pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; } 
+        }
+
         if (frameCounter % 2 === 0) {
             ghosts.forEach(g => {
                 const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
                 const valid = dirs.filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
-                if (!g.sc) { // Chasing Santa
+                if (!g.sc) { 
                     valid.sort((a,b) => Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y) - Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y));
                 }
                 const m = valid[0]; if(m) { g.x += m[0]; g.y += m[1]; }
             });
         }
 
-        // Collision
         ghosts.forEach(g => {
             if (g.x === pacman.x && g.y === pacman.y) {
                 if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
@@ -180,35 +182,25 @@
                     document.getElementById("overlay").style.display = "flex";
                     document.getElementById("status-text").innerText = "GAME OVER!";
                     window.parent.postMessage({ type: "submitScore", score: score }, "*");
-                    isPaid = false; // Reset status agar bisa bayar lagi
+                    isPaid = false; 
                 }
             }
         });
         document.getElementById("score").innerText = score;
     }
 
-    function gameLoop() {
+    function main() {
         update();
         draw();
-        setTimeout(() => requestAnimationFrame(gameLoop), 180);
+        setTimeout(() => requestAnimationFrame(main), 180);
     }
 
-    window.handleInput = (d) => { 
-        pacman.next = d; 
-        if(!audioAllowed) tryPlayAudio(); 
-    };
-
-    window.addEventListener("message", (e) => {
-        if (e.data.type === "paySuccess" && !isPaid) { 
-            isPaid = true; 
-            resetGame(); 
-            startCountdown(); 
-        }
-    });
-
+    window.handleInput = (d) => { pacman.next = d; startAudio(); };
     canvas.width = 19 * TILE; canvas.height = 15 * TILE;
-    gameLoop();
+    initActors();
+    main();
 })();
 </script>
 </body>
 </html>
+
