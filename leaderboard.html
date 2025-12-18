@@ -170,32 +170,48 @@ async function init() {
         const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
         const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-        // Load Jackpot
+        // 1. Ambil Data Jackpot
         const balance = await provider.getBalance(CONTRACT_ADDRESS);
         const jackpotFormatted = Number(ethers.utils.formatEther(balance)).toFixed(4);
         document.getElementById("jackpot").innerText = jackpotFormatted + " SOMI";
 
-        // Load Leaderboard
+        // 2. Ambil Data dari Blockchain
         const [players, scores] = await contract.getTop10();
         const tbody = document.getElementById("leaderboardBody");
         tbody.innerHTML = "";
 
         if (!players.length) {
-            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">No legends yet. Be the first!</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:40px;">No legends yet. Be the first!</td></tr>';
             return;
         }
 
-        // Mapping data
-        const list = players.map((addr, i) => ({ 
-            addr, 
-            score: Number(scores[i]) 
-        })).sort((a,b) => b.score - a.score).slice(0, 10);
+        // 3. LOGIKA AKUMULASI (Satu Wallet = Total Semua Skor)
+        const totalPointsMap = {};
+        
+        players.forEach((addr, i) => {
+            const currentScore = Number(scores[i]);
+            // Jika wallet sudah ada, tambahkan skornya. Jika belum, buat baru.
+            if (totalPointsMap[addr]) {
+                totalPointsMap[addr] += currentScore;
+            } else {
+                totalPointsMap[addr] = currentScore;
+            }
+        });
 
-        // Update Top Score Header
-        document.getElementById("topScore").innerText = "Highest Score: " + list[0].score;
+        // 4. Ubah Map menjadi Array dan Urutkan dari yang Terbesar
+        const sortedLeaderboard = Object.entries(totalPointsMap)
+            .map(([wallet, totalScore]) => ({ 
+                addr: wallet, 
+                score: totalScore 
+            }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 10); // Ambil Top 10 Wallet
 
-        // Render Table
-        list.forEach((item, i) => {
+        // 5. Update UI Header (Top Score sekarang adalah Total Poin Tertinggi)
+        document.getElementById("topScore").innerText = "Highest Total Points: " + sortedLeaderboard[0].score.toLocaleString();
+
+        // 6. Render ke Tabel
+        sortedLeaderboard.forEach((item, i) => {
             const tr = document.createElement("tr");
             let rankClass = "";
             let rankIcon = i + 1;
@@ -214,22 +230,21 @@ async function init() {
 
         document.getElementById("connectionStatus").innerText = "Live Data • Last sync: " + new Date().toLocaleTimeString();
 
-        // Broadcast to Index
+        // Broadcast data terbaru ke Parent
         window.parent.postMessage({
             type: "updateSummary",
             jackpot: jackpotFormatted,
-            topScore: list[0].score.toString()
+            topScore: sortedLeaderboard[0].score.toString()
         }, "*");
 
     } catch (e) {
-        console.error(e);
+        console.error("Leaderboard Error:", e);
         document.getElementById("connectionStatus").innerText = "Connection lost. Retrying...";
     }
 }
 
 document.addEventListener("DOMContentLoaded", init);
-// Auto refresh setiap 1 menit
-setInterval(init, 60000);
+setInterval(init, 30000); // Refresh data setiap 30 detik
 </script>
 </body>
 </html>
