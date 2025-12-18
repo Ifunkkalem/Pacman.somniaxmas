@@ -65,35 +65,30 @@ async function connectWallet(){
 async function payToPlay(){
   if(!signer){const ok=await connectWallet(); if(!ok)return;}
   
-  const bal=await provider.getBalance(userAddress);
-  if(bal.lt(startFeeWei)){ alert("Insufficient balance."); return; }
-  
   try {
-    // 1. Beri tahu index.html untuk menunjukkan loading
-    window.postMessage({ type: 'showWaiting', message: 'Confirm in Wallet...' }, '*'); 
-
-    // 2. Kirim Transaksi
-    const tx=await gameContract.startGame({value:startFeeWei});
-    
-    window.postMessage({ type: 'showWaiting', message: 'Confirming on Blockchain...' }, '*'); 
+    window.postMessage({ type: 'showWaiting', message: 'Confirming...' }, '*'); 
+    const tx=await gameContract.startGame({value: startFeeWei});
     await tx.wait();
 
-    // 3. KRITIKAL: Kirim sinyal paySuccess ke DUA tempat
-    // A. Ke index.html (agar showMain('gameFrame') dipanggil)
-    window.postMessage({ type: 'paySuccess' }, '*');
-    
-    // B. Ke DALAM Iframe Game (agar overlay di dalam game hilang dan 3-2-1 mulai)
+    // SINKRONISASI TOTAL
+    // 1. Tampilkan frame game di parent
+    if (typeof showMain === "function") showMain("gameFrame");
+
+    // 2. Kirim pesan ke Iframe
     const gameFrame = document.getElementById("gameFrame");
     if(gameFrame && gameFrame.contentWindow){
         gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
     }
 
-    await connectWallet(); 
+    // 3. Bersihkan status waiting di parent
+    window.postMessage({ type: 'clearWaiting' }, '*');
+
   } catch (e) {
-    alert("Transaction failed.");
+    console.error(e);
     window.postMessage({ type: 'clearWaiting' }, '*');
   }
 }
+
 
 async function submitScoreTx(score){
   if(!gameContract||!signer)return;
