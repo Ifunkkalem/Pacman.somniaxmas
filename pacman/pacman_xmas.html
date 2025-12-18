@@ -85,36 +85,55 @@
         isPaid = false;
     }
 
-    // LISTENER DARI WALLET/APP.JS
-    window.addEventListener("message", (e) => {
-        console.log("Game menerima pesan:", e.data.type); // Untuk debug
-        
-        if (e.data.type === 'initAudio') { 
-            if(bgm) bgm.load(); 
+   /* LISTENER TERUPDATE - LEBIH KETAT */
+window.addEventListener("message", (e) => {
+    // 1. Abaikan jika data kosong atau bukan objek
+    if (!e.data || typeof e.data !== 'object') return;
+
+    console.log("Game menerima sinyal valid:", e.data.type);
+
+    // 2. Sinyal Audio
+    if (e.data.type === 'initAudio') { 
+        if(bgm) {
+            bgm.load();
+            // Pancing play lalu pause untuk unlock browser
+            bgm.play().then(() => bgm.pause()).catch(() => {});
         }
+    }
+    
+    // 3. Sinyal Mulai Game (Pastikan variabel isPaid di-reset setiap GameOver)
+    if (e.data.type === "paySuccess") {
+        if (isPaid) return; // Mencegah double trigger
         
-        if (e.data.type === "paySuccess" && !isPaid) {
-            isPaid = true; 
-            initActors();
-            const cd = document.getElementById("countdown-overlay");
-            document.getElementById("overlay").style.display = "none";
+        isPaid = true; 
+        initActors(); // Reset posisi Santa dan Ghost
+        
+        const cd = document.getElementById("countdown-overlay");
+        const overlay = document.getElementById("overlay");
+        
+        if(overlay) overlay.style.display = "none";
+        if(cd) {
             cd.style.display = "flex";
-            
             let c = 3; 
             cd.innerText = c;
+            
             let t = setInterval(() => {
                 c--;
-                if(c > 0) cd.innerText = c;
-                else if(c === 0) cd.innerText = "GO!";
-                else { 
+                if(c > 0) {
+                    cd.innerText = c;
+                } else if(c === 0) {
+                    cd.innerText = "GO!";
+                    if(bgm) bgm.play().catch(err => console.warn("Music play blocked")); 
+                } else { 
                     clearInterval(t); 
                     cd.style.display = "none"; 
-                    gameRunning = true; 
-                    if(bgm) bgm.play().catch(err => console.log("Music blocked")); 
+                    gameRunning = true; // MULAI GAME DISINI
+                    console.log("Game Running: TRUE");
                 }
             }, 1000);
         }
-    });
+    }
+});
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
