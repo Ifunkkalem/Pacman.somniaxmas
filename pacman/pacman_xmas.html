@@ -112,29 +112,53 @@
         document.getElementById("pwr").style.display = "none";
     }
 
-    function startCountdown() {
-        const cdOverlay = document.getElementById("countdown-overlay");
-        const mainOverlay = document.getElementById("overlay");
-        mainOverlay.classList.remove("active");
-        cdOverlay.classList.add("active");
-        
-        let count = 3;
-        cdOverlay.innerText = count;
-        
-        const timer = setInterval(() => {
-            count--;
-            if (count > 0) {
-                cdOverlay.innerText = count;
-            } else if (count === 0) {
-                cdOverlay.innerText = "GO!";
-            } else {
-                clearInterval(timer);
-                cdOverlay.classList.remove("active");
-                gameRunning = true;
-                startAudio();
-            }
-        }, 1000);
+    // --- PERBAIKAN LOGIKA COUNTDOWN ---
+function startCountdown() {
+    const cdOverlay = document.getElementById("countdown-overlay");
+    const mainOverlay = document.getElementById("overlay");
+    
+    // 1. Sembunyikan overlay pembayaran secara instan
+    if(mainOverlay) mainOverlay.style.display = "none";
+    
+    // 2. Tampilkan overlay countdown
+    cdOverlay.style.display = "flex";
+    cdOverlay.classList.add("active");
+    
+    let count = 3;
+    cdOverlay.innerText = count;
+    
+    // Pastikan game benar-benar BERHENTI saat countdown
+    gameRunning = false; 
+
+    const timer = setInterval(() => {
+        count--;
+        if (count > 0) {
+            cdOverlay.innerText = count;
+        } else if (count === 0) {
+            cdOverlay.innerText = "GO!";
+            // Sedikit delay agar tulisan "GO!" sempat terlihat tapi tidak mengganggu
+        } else {
+            clearInterval(timer);
+            cdOverlay.style.display = "none"; // Hapus total dari layar
+            cdOverlay.classList.remove("active");
+            
+            // 3. GAME BARU DIMULAI DI SINI (Setelah GO hilang)
+            gameRunning = true; 
+            startAudio();
+            console.log("Game Started Safely!");
+        }
+    }, 1000);
+}
+
+// --- PERBAIKAN LISTENER PESAN ---
+window.addEventListener("message", (e) => {
+    if (e.data.type === "paySuccess") { 
+        // Reset posisi dan data sebelum countdown dimulai
+        resetGame(); 
+        startCountdown();
     }
+});
+
 
     async function handleGameOver() {
         gameRunning = false;
