@@ -120,12 +120,37 @@
         }, 1000);
     }
 
-    window.addEventListener("message", (e) => {
-        if (e.data.type === "paySuccess") { 
-            resetGame(); 
+    let isPaid = false; // Tambahkan flag status pembayaran
+
+window.addEventListener("message", (e) => {
+    // Jika pembayaran sukses diterima
+    if (e.data.type === "paySuccess") { 
+        isPaid = true; // Kunci status sudah bayar
+        
+        const mainOverlay = document.getElementById("overlay");
+        const cdOverlay = document.getElementById("countdown-overlay");
+        
+        if(mainOverlay) {
+            mainOverlay.style.display = "none";
+            mainOverlay.classList.remove("active");
+        }
+
+        resetGame();
+        
+        if(cdOverlay) {
+            cdOverlay.style.display = "flex";
             startCountdown();
         }
-    });
+    }
+
+    // PROTEKSI: Jika status sudah bayar (isPaid), abaikan semua perintah 
+    // yang mencoba menampilkan status pembayaran lagi
+    if (isPaid && (e.data.type === "showWaiting" || e.data.message?.includes("Pembayaran"))) {
+        const mainOverlay = document.getElementById("overlay");
+        if(mainOverlay) mainOverlay.style.display = "none";
+    }
+});
+
 
     // --- CONTROLS ---
     window.handleInput = (d) => { 
