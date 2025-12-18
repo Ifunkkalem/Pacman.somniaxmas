@@ -7,17 +7,12 @@
         body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
         #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
         canvas { border: 4px solid #b91c1c; border-radius: 12px; background: #000; box-shadow: 0 0 30px rgba(185, 28, 28, 0.4); max-width: 95vw; }
-        
-        /* Kontrol D-Pad */
         .controls { display: grid; grid-template-areas: ". up ." "left center right" ". down ."; gap: 12px; margin: 20px 0; }
         .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; user-select: none; }
         .btn:active { transform: translateY(4px); box-shadow: 0 2px #7f1d1d; }
-
-        /* Overlay System */
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
         #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 110; font-size: 120px; color: #fbbf24; font-weight: bold; text-shadow: 0 0 20px #dc2626; }
         .msg-box { padding: 40px; border: 3px solid #fbbf24; border-radius: 20px; text-align: center; background: #010409; max-width: 80%; }
-        
         .active { display: flex !important; }
     </style>
 </head>
@@ -29,31 +24,29 @@
     <div class="msg-box">
         <h2 id="status-text">Menunggu Pembayaran...</h2>
         <p style="color: #94a3b8;">Selesaikan transaksi untuk mulai bermain</p>
+        <button id="unlock-audio" style="margin-top:20px; padding:10px; background:#fbbf24; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">Enable Sound 🔊</button>
     </div>
 </div>
 
 <div id="countdown-overlay">3</div>
-
 <canvas id="gameCanvas"></canvas>
 
 <div class="controls">
-    <button class="btn" style="grid-area:up" onmousedown="handleInput('up')" ontouchstart="handleInput('up')">↑</button>
-    <button class="btn" style="grid-area:left" onmousedown="handleInput('left')" ontouchstart="handleInput('left')">←</button>
-    <button class="btn" style="grid-area:right" onmousedown="handleInput('right')" ontouchstart="handleInput('right')">→</button>
-    <button class="btn" style="grid-area:down" onmousedown="handleInput('down')" ontouchstart="handleInput('down')">↓</button>
+    <button class="btn" style="grid-area:up" onclick="handleInput('up')">↑</button>
+    <button class="btn" style="grid-area:left" onclick="handleInput('left')">←</button>
+    <button class="btn" style="grid-area:right" onclick="handleInput('right')">→</button>
+    <button class="btn" style="grid-area:down" onclick="handleInput('down')">↓</button>
 </div>
 
-<audio id="bgm" loop preload="auto">
+<audio id="gameBgm" loop preload="auto">
     <source src="assets/music_background.mp3" type="audio/mpeg">
 </audio>
 
-<script>>
-
-    
+<script>
 (() => {
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    const bgm = document.getElementById("bgm");
+    const bgm = document.getElementById("gameBgm");
     const TILE = 24;
 
     const MAP = [
@@ -75,161 +68,84 @@
     ];
 
     let mapData = MAP.map(row => [...row]);
-    const MAP_H = mapData.length;
-    const MAP_W = mapData[0].length;
+    let pacman = { x: 1, y: 1, dir: "right", next: "right", pTime: 0 };
+    let ghosts = [
+        { x: 8, y: 7, color: "#ef4444", ox: 8, oy: 7, sc: false },
+        { x: 9, y: 7, color: "#f472b6", ox: 9, oy: 7, sc: false },
+        { x: 10, y: 7, color: "#22d3ee", ox: 10, oy: 7, sc: false },
+        { x: 9, y: 8, color: "#fb923c", ox: 9, oy: 8, sc: false }
+    ];
+    let score = 0, gameRunning = false, frameCounter = 0;
 
-    const START_POS = {
-        pacman: { x: 1, y: 1, dir: "right" },
-        ghosts: [
-            { x: 8, y: 7, color: "#ef4444", ox: 8, oy: 7 },
-            { x: 9, y: 7, color: "#f472b6", ox: 9, oy: 7 },
-            { x: 10, y: 7, color: "#22d3ee", ox: 10, oy: 7 },
-            { x: 9, y: 8, color: "#fb923c", ox: 9, oy: 8 }
-        ]
-    };
-
-    let pacman = { ...START_POS.pacman, next: "right", pTime: 0 };
-    let ghosts = START_POS.ghosts.map(g => ({ ...g, sc: false }));
-    let score = 0;
-    let gameRunning = false;
-    let frameCounter = 0;
-    let audioStarted = false;
-
-    // --- AUDIO LOGIC ---
-    function startAudio() {
-        if (!audioStarted) {
-            bgm.play().catch(e => console.log("Audio play deferred"));
-            audioStarted = true;
+    // --- AUDIO FIX ---
+    function playBgm() {
+        if (bgm) {
+            bgm.play().catch(e => console.warn("Autoplay blocked. Need interaction."));
         }
     }
 
-    // --- GAME LOGIC ---
+    // Listener Tombol Enable Sound (Hanya cadangan)
+    document.getElementById("unlock-audio").addEventListener("click", () => {
+        playBgm();
+        document.getElementById("unlock-audio").style.display = "none";
+    });
+
     function resetGame() {
         mapData = MAP.map(row => [...row]);
-        score = 0;
-        document.getElementById("score").innerText = "0";
-        pacman = { ...START_POS.pacman, next: "right", pTime: 0 };
-        ghosts = START_POS.ghosts.map(g => ({ ...g, sc: false }));
-        frameCounter = 0;
+        score = 0; document.getElementById("score").innerText = "0";
+        pacman = { x: 1, y: 1, dir: "right", next: "right", pTime: 0 };
+        ghosts.forEach(g => { g.x = g.ox; g.y = g.oy; g.sc = false; });
         document.getElementById("pwr").style.display = "none";
     }
 
-    // --- PERBAIKAN LOGIKA COUNTDOWN ---
-function startCountdown() {
-    const cdOverlay = document.getElementById("countdown-overlay");
-    const mainOverlay = document.getElementById("overlay");
-    
-    // 1. Sembunyikan overlay pembayaran secara instan
-    if(mainOverlay) mainOverlay.style.display = "none";
-    
-    // 2. Tampilkan overlay countdown
-    cdOverlay.style.display = "flex";
-    cdOverlay.classList.add("active");
-    
-    let count = 3;
-    cdOverlay.innerText = count;
-    
-    // Pastikan game benar-benar BERHENTI saat countdown
-    gameRunning = false; 
-
-    const timer = setInterval(() => {
-        count--;
-        if (count > 0) {
-            cdOverlay.innerText = count;
-        } else if (count === 0) {
-            cdOverlay.innerText = "GO!";
-            // Sedikit delay agar tulisan "GO!" sempat terlihat tapi tidak mengganggu
-        } else {
-            clearInterval(timer);
-            cdOverlay.style.display = "none"; // Hapus total dari layar
-            cdOverlay.classList.remove("active");
-            
-            // 3. GAME BARU DIMULAI DI SINI (Setelah GO hilang)
-            gameRunning = true; 
-            startAudio();
-            console.log("Game Started Safely!");
-        }
-    }, 1000);
-}
-
-// --- PERBAIKAN LISTENER PESAN ---
-window.addEventListener("message", (e) => {
-    if (e.data.type === "paySuccess") { 
-        // Reset posisi dan data sebelum countdown dimulai
-        resetGame(); 
-        startCountdown();
-    }
-});
-
-
-    async function handleGameOver() {
+    function startCountdown() {
+        const cd = document.getElementById("countdown-overlay");
+        const ov = document.getElementById("overlay");
+        ov.style.display = "none";
+        cd.style.display = "flex";
+        let count = 3;
+        cd.innerText = count;
         gameRunning = false;
-        bgm.pause();
-        bgm.currentTime = 0;
         
-        const finalScore = score;
-        document.getElementById("overlay").classList.add("active");
-        document.getElementById("status-text").innerText = "GAME OVER!";
-        
-        // SINKRONISASI: type harus "submitScore" agar terbaca di app.js
-        window.parent.postMessage({ type: "submitScore", score: finalScore }, "*");
+        const timer = setInterval(() => {
+            count--;
+            if (count > 0) cd.innerText = count;
+            else if (count === 0) cd.innerText = "GO!";
+            else {
+                clearInterval(timer);
+                cd.style.display = "none";
+                gameRunning = true;
+                playBgm(); // Coba mainkan musik lagi di sini
+            }
+        }, 1000);
     }
 
-    function checkCollision() {
-        ghosts.forEach((g) => {
-            if (g.x === pacman.x && g.y === pacman.y) {
-                if (g.sc) { 
-                    score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; 
-                } else { 
-                    handleGameOver(); 
-                }
-            }
-        });
-    }
-
-    // --- DRAWING ---
-    function drawMap() {
-        for(let y=0; y<MAP_H; y++){
-            for(let x=0; x<MAP_W; x++){
-                const t = mapData[y][x];
-                if(t===1){
-                    ctx.fillStyle="#b91c1c"; ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
-                    ctx.strokeStyle="rgba(255,255,255,0.15)"; ctx.strokeRect(x*TILE+0.5, y*TILE+0.5, TILE-1, TILE-1);
-                } else if(t===2){
-                    ctx.fillStyle="#ffd700"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 2, 0, 7); ctx.fill();
-                } else if(t===3){
-                    ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 5, 0, 7); ctx.fill();
-                }
-            }
+    window.addEventListener("message", (e) => {
+        if (e.data.type === "paySuccess") { 
+            resetGame(); 
+            startCountdown();
         }
-    }
+    });
 
-    function drawSanta() {
-        const x = pacman.x*TILE + TILE/2;
-        const y = pacman.y*TILE + TILE/2 + (Math.sin(Date.now()/150)*1.5);
-        const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
-        const angle = {right:0, left:Math.PI, up:-Math.PI/2, down:Math.PI/2}[pacman.dir] || 0;
-        ctx.fillStyle="#facc15"; ctx.beginPath(); ctx.moveTo(x,y);
-        ctx.arc(x,y,TILE/2-2, angle+mouth*0.6, angle-mouth*0.6+Math.PI*2); ctx.fill();
-        ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(x, y+3, 6, 0, 7); ctx.fill(); 
-        ctx.fillStyle="#cc0000"; ctx.beginPath(); ctx.moveTo(x-8, y-5); ctx.lineTo(x+8, y-5); ctx.lineTo(x, y-16); ctx.fill();
-    }
+    // --- CONTROLS ---
+    window.handleInput = (d) => { 
+        pacman.next = d; 
+        playBgm(); // Setiap pencet tombol, pancing browser untuk izinkan audio
+    };
 
-    function drawGhosts() {
-        ghosts.forEach((g, i) => {
-            const x = g.x*TILE + TILE/2;
-            const y = g.y*TILE + TILE/2 + (Math.sin(Date.now()/150 + i)*1.5);
-            ctx.fillStyle = g.sc ? "#1e40af" : g.color;
-            ctx.beginPath(); ctx.roundRect(x-9, y-9, 18, 18, 4); ctx.fill();
-            ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(x-3, y-3, 2, 0, 7); ctx.arc(x+3, y-3, 2, 0, 7); ctx.fill();
-        });
-    }
+    // Keyboard support
+    window.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (k.includes("arrowup") || k === "w") handleInput("up");
+        if (k.includes("arrowdown") || k === "s") handleInput("down");
+        if (k.includes("arrowleft") || k === "a") handleInput("left");
+        if (k.includes("arrowright") || k === "d") handleInput("right");
+    });
 
+    // --- RENDER LOGIC (Sederhana) ---
     function update() {
         if (!gameRunning) return;
         frameCounter++;
-
-        // Move Pacman
         let nx = pacman.x, ny = pacman.y;
         if (pacman.next === "up") ny--; if (pacman.next === "down") ny++;
         if (pacman.next === "left") nx--; if (pacman.next === "right") nx++;
@@ -238,98 +154,53 @@ window.addEventListener("message", (e) => {
             pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next;
         }
 
-        // Eat items
         if (mapData[pacman.y][pacman.x] === 2) { mapData[pacman.y][pacman.x] = 0; score += 10; }
         if (mapData[pacman.y][pacman.x] === 3) { 
             mapData[pacman.y][pacman.x] = 0; score += 50; 
             pacman.pTime = 40; ghosts.forEach(g => g.sc = true);
             document.getElementById("pwr").style.display = "inline";
         }
-
-        if (pacman.pTime > 0) {
-            pacman.pTime--;
-            if (pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; }
+        if (pacman.pTime > 0) { 
+            pacman.pTime--; 
+            if(pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; }
         }
 
-        // Pergerakan Ghost
-        ghosts.forEach((g, i) => {
-            if (frameCounter < i * 5) return; // Ghost keluar bertahap
-            
-            const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
-            const valid = dirs.filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
-            
-            if (valid.length > 0) {
-                let chosen;
-                if (Math.random() < 0.6 && !g.sc) { // AI Cerdas
-                    valid.sort((a, b) => {
-                        const distA = Math.hypot(g.x + a[0] - pacman.x, g.y + a[1] - pacman.y);
-                        const distB = Math.hypot(g.x + b[0] - pacman.x, g.y + b[1] - pacman.y);
-                        return distA - distB;
-                    });
-                    chosen = valid[0];
-                } else {
-                    chosen = valid[Math.floor(Math.random() * valid.length)];
+        ghosts.forEach(g => {
+            if (g.x === pacman.x && g.y === pacman.y) {
+                if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
+                else { 
+                    gameRunning = false; 
+                    document.getElementById("overlay").style.display = "flex";
+                    document.getElementById("status-text").innerText = "GAME OVER!";
+                    window.parent.postMessage({ type: "submitScore", score: score }, "*");
                 }
-                g.x += chosen[0]; g.y += chosen[1];
             }
         });
-
-        checkCollision(); // Cek tabrakan setelah semua bergerak
         document.getElementById("score").innerText = score;
     }
 
     function loop() {
         update();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawMap(); drawSanta(); drawGhosts();
-        
-        // Timing 240ms untuk vibe Pacman retro
-        setTimeout(() => requestAnimationFrame(loop), 240);
+        // Draw Walls
+        for(let y=0; y<mapData.length; y++){
+            for(let x=0; x<mapData[0].length; x++){
+                if(mapData[y][x] === 1) { ctx.fillStyle="#b91c1c"; ctx.fillRect(x*TILE, y*TILE, TILE, TILE); }
+                else if(mapData[y][x] === 2) { ctx.fillStyle="#ffd700"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 2, 0, 7); ctx.fill(); }
+                else if(mapData[y][x] === 3) { ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 5, 0, 7); ctx.fill(); }
+            }
+        }
+        // Draw Pacman
+        ctx.fillStyle="#facc15"; ctx.beginPath(); ctx.arc(pacman.x*TILE+TILE/2, pacman.y*TILE+TILE/2, TILE/2-2, 0, 7); ctx.fill();
+        // Draw Ghosts
+        ghosts.forEach(g => {
+            ctx.fillStyle = g.sc ? "#1e40af" : g.color;
+            ctx.fillRect(g.x*TILE+4, g.y*TILE+4, TILE-8, TILE-8);
+        });
+        setTimeout(() => requestAnimationFrame(loop), 200);
     }
 
-    // --- INTERFACE ---
-    window.handleInput = (d) => { 
-        pacman.next = d; 
-        startAudio(); // Start audio on first interaction
-    };
-
-    window.addEventListener("message", (e) => {
-    if (e.data.type === "paySuccess") { 
-        // 1. Paksa hapus semua overlay secara instan melalui CSS inline
-        const mainOverlay = document.getElementById("overlay");
-        const cdOverlay = document.getElementById("countdown-overlay");
-        
-        if(mainOverlay) {
-            mainOverlay.style.display = "none";
-            mainOverlay.classList.remove("active");
-        }
-
-        // 2. Jalankan reset dan countdown
-        resetGame();
-        
-        // Memastikan countdown overlay tampil
-        if(cdOverlay) {
-            cdOverlay.style.display = "flex";
-            startCountdown();
-        } else {
-            // Jika countdown gagal tampil, langsung jalankan game agar tidak stuck
-            gameRunning = true;
-            startAudio();
-        }
-    }
-});
-
-
-    // Keyboard support
-    window.addEventListener("keydown", (e) => {
-        const k = e.key.toLowerCase();
-        if (k === "arrowup" || k === "w") handleInput("up");
-        if (k === "arrowdown" || k === "s") handleInput("down");
-        if (k === "arrowleft" || k === "a") handleInput("left");
-        if (k === "arrowright" || k === "d") handleInput("right");
-    });
-
-    canvas.width = MAP_W * TILE; canvas.height = MAP_H * TILE;
+    canvas.width = 19 * TILE; canvas.height = 15 * TILE;
     loop();
 })();
 </script>
