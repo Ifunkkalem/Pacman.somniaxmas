@@ -1,19 +1,14 @@
 /* ================= CONFIG ================= */
-
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
 const CONTRACT_ABI = [
   {"inputs":[{"internalType":"address","name":"_treasury","type":"address"},{"internalType":"uint256","name":"_startFeeWei","type":"uint256"},{"internalType":"uint256","name":"_maxScorePerSubmit","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},
-  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newFee","type":"uint256"}],"name":"FeeUpdated","type":"event"},
-  {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"player","type":"address"},{"indexed":false,"internalType":"uint256","name":"fee","type":"uint256"}],"name":"GameStarted","type":"event"},
-  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"newMaxScore","type":"uint256"}],"name":"MaxScoreUpdated","type":"event"},
-  {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"score","type":"uint256"}],"name":"ScoreSubmitted","type":"event"},
   {"inputs":[],"name":"getTop10","outputs":[{"internalType":"address[]","name":"topPlayers","type":"address[]"},{"internalType":"uint256[]","name":"scores","type":"uint256[]"}],"stateMutability":"view","type":"function"},
   {"inputs":[],"name":"startFeeWei","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
   {"inputs":[],"name":"startGame","outputs":[],"stateMutability":"payable","type":"function"},
   {"inputs":[{"internalType":"uint256","name":"score","type":"uint256"}],"name":"submitScore","outputs":[],"stateMutability":"nonpayable","type":"function"}
 ];
 
-const SOMNIA_CHAIN_ID = "0x13a7"; // 5031
+const SOMNIA_CHAIN_ID = "0x13a7"; 
 const SOMNIA_NETWORK_CONFIG = {
   chainId: SOMNIA_CHAIN_ID,
   chainName: "Somnia Mainnet",
@@ -23,32 +18,28 @@ const SOMNIA_NETWORK_CONFIG = {
 };
 
 /* ================= STATE ================= */
-
 let provider, signer, userAddress;
 let readContract, gameContract;
 let startFeeWei;
 
 /* ================= IFRAME MESSAGE LISTENER ================= */
-/* ONLY accept messages from game iframe */
-
+// Memperbaiki listener agar sinkron dengan file game (submitScoreOnChain)
 window.addEventListener("message", async (e) => {
   const gameFrame = document.getElementById("gameFrame");
   if (!gameFrame || e.source !== gameFrame.contentWindow) return;
 
-  if (e.data?.type === "submitScore") {
+  // Sesuaikan dengan event.type di file HTML game kita sebelumnya
+  if (e.data?.type === "submitScoreOnChain" || e.data?.type === "submitScore") {
     await submitScoreTx(e.data.score);
   }
 });
 
-/* ================= WALLET ================= */
-
+/* ================= WALLET LOGIC ================= */
 async function switchNetwork() {
-  const network = await provider.getNetwork();
-  const targetChain = parseInt(SOMNIA_CHAIN_ID, 16);
-
-  if (network.chainId === targetChain) return true;
-
   try {
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId === SOMNIA_CHAIN_ID) return true;
+
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: SOMNIA_CHAIN_ID }],
@@ -62,50 +53,54 @@ async function switchNetwork() {
       });
       return true;
     }
-    throw err;
+    return false;
   }
 }
 
 async function connectWallet() {
   if (!window.ethereum) {
-    alert("Gunakan OKX / MetaMask Browser");
+    alert("Wallet tidak terdeteksi. Gunakan OKX atau MetaMask!");
     return false;
   }
 
-  const accounts = await window.ethereum.request({
-    method: "eth_requestAccounts"
-  });
-
-  userAddress = accounts[0];
-  provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-
-  await switchNetwork();
-
-  signer = provider.getSigner();
-  readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-  gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
   try {
-    startFeeWei = await readContract.startFeeWei();
-  } catch {
-    startFeeWei = ethers.utils.parseEther("0.001");
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    
+    userAddress = accounts[0];
+    const isNetworkOk = await switchNetwork();
+    if (!isNetworkOk) return false;
+
+    signer = provider.getSigner();
+    readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    gameContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    // Ambil start fee dari contract
+    try {
+      startFeeWei = await readContract.startFeeWei();
+    } catch (e) {
+      startFeeWei = ethers.utils.parseEther("0.001");
+    }
+
+    // Update info ke UI
+    const balance = await provider.getBalance(userAddress);
+    window.postMessage({
+      type: "walletInfo",
+      address: userAddress,
+      balance: Number(ethers.utils.formatEther(balance)).toFixed(4)
+    }, "*");
+
+    updateTopScores();
+    return true;
+  } catch (e) {
+    console.error("Connection error:", e);
+    return false;
   }
-
-  const balance = await provider.getBalance(userAddress);
-
-  window.postMessage({
-    type: "walletInfo",
-    address: userAddress,
-    balance: Number(ethers.utils.formatEther(balance)).toFixed(4)
-  }, "*");
-
-  updateTopScores();
-  return true;
 }
 
-/* ================= PLAY ================= */
-
+/* ================= GAME ACTION ================= */
 async function payToPlay() {
+  // 1. Pastikan wallet terkoneksi
   if (!signer) {
     const ok = await connectWallet();
     if (!ok) return;
@@ -113,56 +108,55 @@ async function payToPlay() {
 
   const gameFrame = document.getElementById("gameFrame");
 
-  /* 🔊 AUDIO UNLOCK (MUST BE USER CLICK) */
-  if (gameFrame?.contentWindow) {
-    gameFrame.contentWindow.postMessage(
-      { type: "initAudio" },
-      location.origin
-    );
-  }
-
   try {
-    window.postMessage({ type: "showWaiting", message: "Processing Payment..." }, "*");
+    // 2. Beri sinyal menunggu ke UI
+    window.postMessage({ type: "showWaiting", message: "Confirming Transaction..." }, "*");
 
+    // 3. Eksekusi Pembayaran On-Chain
     const tx = await gameContract.startGame({ value: startFeeWei });
     await tx.wait();
 
+    // 4. Sukses! Hilangkan tunggu dan mulai musik/game
     window.postMessage({ type: "clearWaiting" }, "*");
 
     if (gameFrame?.contentWindow) {
-      gameFrame.contentWindow.postMessage(
-        { type: "paySuccess" },
-        location.origin
-      );
+      // Inisialisasi Audio (Sangat penting setelah interaksi user)
+      gameFrame.contentWindow.postMessage({ type: "initAudio" }, "*");
+      // Sinyal sukses untuk hilangkan overlay game dan mulai hitung mundur
+      gameFrame.contentWindow.postMessage({ type: "paySuccess" }, "*");
     }
+
   } catch (e) {
     window.postMessage({ type: "clearWaiting" }, "*");
-    alert("Transaction failed");
+    console.error(e);
+    alert("Pembayaran Gagal atau Dibatalkan");
   }
 }
 
-/* ================= SCORE ================= */
-
 async function submitScoreTx(score) {
-  if (!gameContract) return;
+  if (!gameContract) {
+    alert("Hubungkan wallet terlebih dahulu!");
+    return;
+  }
 
   try {
-    window.postMessage({ type: "showWaiting", message: "Saving Score..." }, "*");
-
+    window.postMessage({ type: "showWaiting", message: "Submitting Score to Somnia..." }, "*");
+    
     const tx = await gameContract.submitScore(score);
     await tx.wait();
 
+    alert("Skor Berhasil Disimpan On-Chain!");
     updateTopScores();
     window.postMessage({ type: "showLeaderboard" }, "*");
   } catch (e) {
-    alert("Submit score failed");
+    console.error(e);
+    alert("Gagal menyimpan skor on-chain");
   } finally {
     window.postMessage({ type: "clearWaiting" }, "*");
   }
 }
 
-/* ================= LEADERBOARD / JACKPOT ================= */
-
+/* ================= UPDATE DATA ================= */
 async function updateTopScores() {
   if (!provider || !readContract) return;
 
@@ -176,6 +170,6 @@ async function updateTopScores() {
       topScore: scores.length ? Number(scores[0]) : 0
     }, "*");
   } catch (e) {
-    console.warn("Leaderboard update failed");
+    console.warn("Leaderboard failed to update");
   }
-  }
+}
