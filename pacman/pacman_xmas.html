@@ -2,10 +2,10 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Pacman Somnia Christmas - Official</title>
+    <title>Pacman Somnia Christmas - Fixed Connection</title>
     <style>
-        body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
-        #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); display: flex; gap: 20px; }
+        body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
+        #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; display: flex; gap: 20px; }
         canvas { border: 4px solid #b91c1c; border-radius: 12px; background: #000; box-shadow: 0 0 30px rgba(185, 28, 28, 0.4); max-width: 95vw; }
         .controls { display: grid; grid-template-areas: ". up ." "left center right" ". down ."; gap: 12px; margin: 20px 0; }
         .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
@@ -13,21 +13,16 @@
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
         #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 110; font-size: 120px; color: #fbbf24; font-weight: bold; }
         .msg-box { padding: 40px; border: 3px solid #fbbf24; border-radius: 20px; text-align: center; background: #010409; max-width: 80%; }
-        #pwr { color: #60a5fa; animation: blink 0.5s infinite; }
-        @keyframes blink { 0% {opacity:1} 50% {opacity:0.3} 100% {opacity:1} }
     </style>
 </head>
 <body>
 
-<div id="ui">
-    <div>🎅 Skor: <span id="score">0</span></div>
-    <div id="pwr" style="display:none">⚡ POWER!</div>
-</div>
+<div id="ui">🎅 Skor: <span id="score">0</span> <span id="pwr" style="display:none; color:#60a5fa"> | ⚡ POWER!</span></div>
 
 <div id="overlay">
     <div class="msg-box">
         <h2 id="status-text">Menunggu Pembayaran...</h2>
-        <p style="color: #94a3b8;">Selesaikan transaksi di Wallet untuk mulai bermain</p>
+        <p style="color: #94a3b8;">Klik tombol Bayar di Wallet untuk mulai</p>
     </div>
 </div>
 
@@ -42,7 +37,7 @@
 </div>
 
 <audio id="bgm" loop preload="auto">
-    <source src="assets/music_background.mp3" type="audio/mpeg">
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
 </audio>
 
 <script>
@@ -54,20 +49,13 @@
     let gameRunning = false, isPaid = false, frameCounter = 0, score = 0;
 
     const MAP_TEMPLATE = [
-        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-        [1,3,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,3,1],
-        [1,2,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,2,1],
-        [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-        [1,2,1,1,2,1,2,1,1,1,1,1,2,1,2,1,1,2,1],
-        [1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,1],
-        [1,1,1,1,2,1,1,1,0,1,0,1,1,1,2,1,1,1,1],
-        [0,0,0,1,2,1,0,0,0,0,0,0,0,1,2,1,0,0,0],
-        [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],
-        [1,2,2,2,2,2,2,1,0,0,0,1,2,2,2,2,2,2,1],
-        [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],
-        [1,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,1],
-        [1,3,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,3,1],
-        [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,3,1],
+        [1,2,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,2,1],[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+        [1,2,1,1,2,1,2,1,1,1,1,1,2,1,2,1,1,2,1],[1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,1],
+        [1,1,1,1,2,1,1,1,0,1,0,1,1,1,2,1,1,1,1],[0,0,0,1,2,1,0,0,0,0,0,0,0,1,2,1,0,0,0],
+        [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],[1,2,2,2,2,2,2,1,0,0,0,1,2,2,2,2,2,2,1],
+        [1,1,1,1,2,1,0,1,1,1,1,1,0,1,2,1,1,1,1],[1,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,1],
+        [1,3,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,3,1],[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
 
@@ -76,8 +64,7 @@
 
     function initActors() {
         mapData = MAP_TEMPLATE.map(row => [...row]);
-        score = 0; 
-        document.getElementById("score").innerText = "0";
+        score = 0; document.getElementById("score").innerText = "0";
         pacman = { x: 1, y: 1, next: "right", dir: "right", pTime: 0 };
         ghosts = [
             { x: 8, y: 7, color: "#ef4444", ox: 8, oy: 7, sc: false },
@@ -93,23 +80,28 @@
         document.getElementById("overlay").style.display = "flex";
         document.getElementById("status-text").innerText = "GAME OVER!";
         
-        // PENTING: Kirim skor ke parent (app.js)
+        // PENTING: Gunakan window.parent.postMessage dengan origin "*" agar tembus domain
         window.parent.postMessage({ type: "submitScore", score: score }, "*");
         isPaid = false;
     }
 
-    /* Message Listener dari app.js */
+    // LISTENER DARI WALLET/APP.JS
     window.addEventListener("message", (e) => {
+        console.log("Game menerima pesan:", e.data.type); // Untuk debug
+        
         if (e.data.type === 'initAudio') { 
             if(bgm) bgm.load(); 
         }
+        
         if (e.data.type === "paySuccess" && !isPaid) {
             isPaid = true; 
             initActors();
             const cd = document.getElementById("countdown-overlay");
             document.getElementById("overlay").style.display = "none";
             cd.style.display = "flex";
-            let c = 3; cd.innerText = c;
+            
+            let c = 3; 
+            cd.innerText = c;
             let t = setInterval(() => {
                 c--;
                 if(c > 0) cd.innerText = c;
@@ -118,7 +110,7 @@
                     clearInterval(t); 
                     cd.style.display = "none"; 
                     gameRunning = true; 
-                    if(bgm) bgm.play().catch(err => console.log("Music 404/Blocked")); 
+                    if(bgm) bgm.play().catch(err => console.log("Music blocked")); 
                 }
             }, 1000);
         }
@@ -126,103 +118,51 @@
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw Map
         for(let y=0; y<mapData.length; y++){
             for(let x=0; x<mapData[0].length; x++){
                 const t = mapData[y][x];
-                if(t===1) { 
-                    ctx.fillStyle="#b91c1c"; 
-                    ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
-                    ctx.strokeStyle="rgba(255,255,255,0.1)";
-                    ctx.strokeRect(x*TILE+0.5, y*TILE+0.5, TILE-1, TILE-1);
-                }
-                else if(t===2) { 
-                    ctx.fillStyle="#ffd700"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 2.5, 0, 7); ctx.fill(); 
-                }
-                else if(t===3) { 
-                    ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 6, 0, 7); ctx.fill(); 
-                }
+                if(t===1) { ctx.fillStyle="#b91c1c"; ctx.fillRect(x*TILE, y*TILE, TILE, TILE); }
+                else if(t===2) { ctx.fillStyle="#ffd700"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 2, 0, 7); ctx.fill(); }
+                else if(t===3) { ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 5, 0, 7); ctx.fill(); }
             }
         }
-
-        // Draw Ghosts
-        ghosts.forEach((g, i) => {
-            const w = Math.sin(Date.now() / 150 + i) * 2;
+        ghosts.forEach(g => {
             ctx.fillStyle = g.sc ? "#1e40af" : g.color;
-            ctx.beginPath(); 
-            ctx.roundRect(g.x*TILE+4, g.y*TILE+4+w, TILE-8, TILE-8, 6); 
-            ctx.fill();
-            ctx.fillStyle = "white"; 
-            ctx.beginPath(); ctx.arc(g.x*TILE+8, g.y*TILE+10+w, 2, 0, 7); ctx.arc(g.x*TILE+16, g.y*TILE+10+w, 2, 0, 7); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(g.x*TILE+4, g.y*TILE+4, TILE-8, TILE-8, 6); ctx.fill();
         });
-
-        // Draw Santa
-        const sw = Math.sin(Date.now() / 150) * 2;
-        const sx = pacman.x*TILE+TILE/2, sy = pacman.y*TILE+TILE/2 + sw;
-        const mouth = Math.abs(Math.sin(Date.now()/120))*0.5;
-        const angle = {right:0, left:Math.PI, up:-Math.PI/2, down:Math.PI/2}[pacman.dir] || 0;
-
-        ctx.fillStyle = "#facc15"; 
-        ctx.beginPath(); ctx.moveTo(sx, sy);
-        ctx.arc(sx, sy, TILE/2-2, angle+mouth, angle-mouth+Math.PI*2); ctx.fill();
-        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(sx, sy+4, 6, 0, 7); ctx.fill();
-        ctx.fillStyle = "#dc2626"; ctx.beginPath(); ctx.moveTo(sx-8, sy-4); ctx.lineTo(sx+8, sy-4); ctx.lineTo(sx, sy-16); ctx.fill();
+        const sx = pacman.x*TILE+TILE/2, sy = pacman.y*TILE+TILE/2;
+        ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.arc(sx, sy, TILE/2-2, 0, 7); ctx.fill();
     }
 
     function update() {
         if (!gameRunning) return;
         frameCounter++;
-        
-        // Movement Logic
         let nx = pacman.x, ny = pacman.y;
-        if (pacman.next === "up") ny--; 
-        else if (pacman.next === "down") ny++;
-        else if (pacman.next === "left") nx--; 
-        else if (pacman.next === "right") nx++;
+        if (pacman.next === "up") ny--; else if (pacman.next === "down") ny++;
+        else if (pacman.next === "left") nx--; else if (pacman.next === "right") nx++;
         
-        if (mapData[ny] && mapData[ny][nx] !== 1) { 
-            pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next;
-        } else {
-            let cx = pacman.x, cy = pacman.y;
-            if (pacman.dir === "up") cy--; else if (pacman.dir === "down") cy++;
-            else if (pacman.dir === "left") cx--; else if (pacman.dir === "right") cx++;
-            if (mapData[cy] && mapData[cy][cx] !== 1) { pacman.x = cx; pacman.y = cy; }
-        }
+        if (mapData[ny] && mapData[ny][nx] !== 1) { pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next; }
 
-        // Scoring
         if (mapData[pacman.y][pacman.x] === 2) { mapData[pacman.y][pacman.x] = 0; score += 10; }
         if (mapData[pacman.y][pacman.x] === 3) { 
-            mapData[pacman.y][pacman.x] = 0; score += 50; pacman.pTime = 50; 
-            ghosts.forEach(g => g.sc = true); document.getElementById("pwr").style.display = "inline";
+            mapData[pacman.y][pacman.x] = 0; score += 50; pacman.pTime = 60; 
+            ghosts.forEach(g => g.sc = true); 
         }
 
         if (pacman.pTime > 0) { 
             pacman.pTime--; 
-            if(pacman.pTime === 0) { 
-                ghosts.forEach(g => g.sc = false); 
-                document.getElementById("pwr").style.display = "none"; 
-            } 
+            if(pacman.pTime === 0) ghosts.forEach(g => g.sc = false); 
         }
 
-        // Ghost AI (Every 2nd frame)
         if (frameCounter % 2 === 0) {
             ghosts.forEach((g, i) => {
                 if (frameCounter < i * 50) return;
                 const dirs = [[0,1],[0,-1],[1,0],[-1,0]].filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
-                
-                if (g.sc) {
-                    dirs.sort((a,b) => Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y) - Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y));
-                } else {
-                    if(Math.random() < 0.75) {
-                        dirs.sort((a,b) => Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y) - Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y));
-                    }
-                }
+                dirs.sort((a,b) => Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y) - Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y));
                 if(dirs[0]) { g.x += dirs[0][0]; g.y += dirs[0][1]; }
             });
         }
 
-        // Collision Check
         ghosts.forEach(g => {
             if (g.x === pacman.x && g.y === pacman.y) {
                 if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
@@ -232,20 +172,11 @@
         document.getElementById("score").innerText = score;
     }
 
-    function loop() { 
-        update(); draw(); 
-        setTimeout(() => requestAnimationFrame(loop), 220); 
-    }
-    
+    function loop() { update(); draw(); setTimeout(() => requestAnimationFrame(loop), 220); }
     window.handleInput = (d) => { pacman.next = d; };
-    window.addEventListener("keydown", (e) => {
-        if(e.key.includes("Arrow")) handleInput(e.key.replace("Arrow","").toLowerCase());
-    });
-
     canvas.width = 19 * TILE; canvas.height = 15 * TILE;
     initActors(); loop();
 })();
 </script>
 </body>
 </html>
-
