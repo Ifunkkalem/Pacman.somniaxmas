@@ -7,37 +7,51 @@
         body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
         #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
         canvas { border: 4px solid #b91c1c; border-radius: 12px; background: #000; box-shadow: 0 0 30px rgba(185, 28, 28, 0.4); max-width: 95vw; }
+        
+        /* Kontrol D-Pad */
         .controls { display: grid; grid-template-areas: ". up ." "left center right" ". down ."; gap: 12px; margin: 20px 0; }
-        .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; }
+        .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; user-select: none; }
         .btn:active { transform: translateY(4px); box-shadow: 0 2px #7f1d1d; }
+
+        /* Overlay System */
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
-        .msg-box { padding: 40px; border: 3px solid #fbbf24; border-radius: 20px; text-align: center; background: #010409; }
+        #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 110; font-size: 120px; color: #fbbf24; font-weight: bold; text-shadow: 0 0 20px #dc2626; }
+        .msg-box { padding: 40px; border: 3px solid #fbbf24; border-radius: 20px; text-align: center; background: #010409; max-width: 80%; }
+        
+        .active { display: flex !important; }
     </style>
 </head>
 <body>
 
 <div id="ui">🎅 Skor: <span id="score">0</span> <span id="pwr" style="display:none; color:#60a5fa"> | ⚡ POWER!</span></div>
 
-<div id="overlay">
+<div id="overlay" class="active">
     <div class="msg-box">
         <h2 id="status-text">Menunggu Pembayaran...</h2>
         <p style="color: #94a3b8;">Selesaikan transaksi untuk mulai bermain</p>
     </div>
 </div>
 
+<div id="countdown-overlay">3</div>
+
 <canvas id="gameCanvas"></canvas>
 
 <div class="controls">
-    <button class="btn" style="grid-area:up" onmousedown="setDir('up')" ontouchstart="setDir('up')">↑</button>
-    <button class="btn" style="grid-area:left" onmousedown="setDir('left')" ontouchstart="setDir('left')">←</button>
-    <button class="btn" style="grid-area:right" onmousedown="setDir('right')" ontouchstart="setDir('right')">→</button>
-    <button class="btn" style="grid-area:down" onmousedown="setDir('down')" ontouchstart="setDir('down')">↓</button>
+    <button class="btn" style="grid-area:up" onmousedown="handleInput('up')" ontouchstart="handleInput('up')">↑</button>
+    <button class="btn" style="grid-area:left" onmousedown="handleInput('left')" ontouchstart="handleInput('left')">←</button>
+    <button class="btn" style="grid-area:right" onmousedown="handleInput('right')" ontouchstart="handleInput('right')">→</button>
+    <button class="btn" style="grid-area:down" onmousedown="handleInput('down')" ontouchstart="handleInput('down')">↓</button>
 </div>
+
+<audio id="bgm" loop>
+    <source src="assets/music_background.mp3" type="audio/mpeg">
+</audio>
 
 <script>
 (() => {
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
+    const bgm = document.getElementById("bgm");
     const TILE = 24;
 
     const MAP = [
@@ -77,28 +91,77 @@
     let score = 0;
     let gameRunning = false;
     let frameCounter = 0;
+    let audioStarted = false;
 
-    function resetPositions() {
-        pacman.x = START_POS.pacman.x; pacman.y = START_POS.pacman.y;
-        pacman.dir = START_POS.pacman.dir; pacman.next = START_POS.pacman.dir;
-        pacman.pTime = 0;
-        ghosts.forEach((g, i) => { g.x = START_POS.ghosts[i].ox; g.y = START_POS.ghosts[i].oy; g.sc = false; });
+    // --- AUDIO LOGIC ---
+    function startAudio() {
+        if (!audioStarted) {
+            bgm.play().catch(e => console.log("Audio play deferred"));
+            audioStarted = true;
+        }
+    }
+
+    // --- GAME LOGIC ---
+    function resetGame() {
+        mapData = MAP.map(row => [...row]);
+        score = 0;
+        document.getElementById("score").innerText = "0";
+        pacman = { ...START_POS.pacman, next: "right", pTime: 0 };
+        ghosts = START_POS.ghosts.map(g => ({ ...g, sc: false }));
         frameCounter = 0;
         document.getElementById("pwr").style.display = "none";
     }
 
-    async function handleGameOver() {
-        gameRunning = false;
-        const finalScore = score;
-        document.getElementById("overlay").style.display = "flex";
-        document.getElementById("status-text").innerText = "Submitting Score On-Chain...";
-        window.postMessage({ type: "submitScoreOnChain", score: finalScore }, "*");
-        score = 0;
-        document.getElementById("score").innerText = "0";
-        mapData = MAP.map(row => [...row]);
-        resetPositions();
+    function startCountdown() {
+        const cdOverlay = document.getElementById("countdown-overlay");
+        const mainOverlay = document.getElementById("overlay");
+        mainOverlay.classList.remove("active");
+        cdOverlay.classList.add("active");
+        
+        let count = 3;
+        cdOverlay.innerText = count;
+        
+        const timer = setInterval(() => {
+            count--;
+            if (count > 0) {
+                cdOverlay.innerText = count;
+            } else if (count === 0) {
+                cdOverlay.innerText = "GO!";
+            } else {
+                clearInterval(timer);
+                cdOverlay.classList.remove("active");
+                gameRunning = true;
+                startAudio();
+            }
+        }, 1000);
     }
 
+    async function handleGameOver() {
+        gameRunning = false;
+        bgm.pause();
+        bgm.currentTime = 0;
+        
+        const finalScore = score;
+        document.getElementById("overlay").classList.add("active");
+        document.getElementById("status-text").innerText = "GAME OVER!";
+        
+        // SINKRONISASI: type harus "submitScore" agar terbaca di app.js
+        window.parent.postMessage({ type: "submitScore", score: finalScore }, "*");
+    }
+
+    function checkCollision() {
+        ghosts.forEach((g) => {
+            if (g.x === pacman.x && g.y === pacman.y) {
+                if (g.sc) { 
+                    score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; 
+                } else { 
+                    handleGameOver(); 
+                }
+            }
+        });
+    }
+
+    // --- DRAWING ---
     function drawMap() {
         for(let y=0; y<MAP_H; y++){
             for(let x=0; x<MAP_W; x++){
@@ -140,6 +203,7 @@
         if (!gameRunning) return;
         frameCounter++;
 
+        // Move Pacman
         let nx = pacman.x, ny = pacman.y;
         if (pacman.next === "up") ny--; if (pacman.next === "down") ny++;
         if (pacman.next === "left") nx--; if (pacman.next === "right") nx++;
@@ -148,10 +212,11 @@
             pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next;
         }
 
+        // Eat items
         if (mapData[pacman.y][pacman.x] === 2) { mapData[pacman.y][pacman.x] = 0; score += 10; }
         if (mapData[pacman.y][pacman.x] === 3) { 
             mapData[pacman.y][pacman.x] = 0; score += 50; 
-            pacman.pTime = 60; ghosts.forEach(g => g.sc = true);
+            pacman.pTime = 40; ghosts.forEach(g => g.sc = true);
             document.getElementById("pwr").style.display = "inline";
         }
 
@@ -160,16 +225,16 @@
             if (pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; }
         }
 
+        // Pergerakan Ghost
         ghosts.forEach((g, i) => {
-            if (frameCounter < i * 50) return;
+            if (frameCounter < i * 5) return; // Ghost keluar bertahap
             
             const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
             const valid = dirs.filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
             
             if (valid.length > 0) {
-                // KEPINTARAN GHOST: 60% Mengejar Santa, 40% Acak
                 let chosen;
-                if (Math.random() < 0.6 && !g.sc) {
+                if (Math.random() < 0.6 && !g.sc) { // AI Cerdas
                     valid.sort((a, b) => {
                         const distA = Math.hypot(g.x + a[0] - pacman.x, g.y + a[1] - pacman.y);
                         const distB = Math.hypot(g.x + b[0] - pacman.x, g.y + b[1] - pacman.y);
@@ -181,12 +246,9 @@
                 }
                 g.x += chosen[0]; g.y += chosen[1];
             }
-
-            if (g.x === pacman.x && g.y === pacman.y) {
-                if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
-                else { handleGameOver(); }
-            }
         });
+
+        checkCollision(); // Cek tabrakan setelah semua bergerak
         document.getElementById("score").innerText = score;
     }
 
@@ -194,17 +256,37 @@
         update();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawMap(); drawSanta(); drawGhosts();
-        // KECEPATAN DIPERLAMBAT (240ms)
+        
+        // Timing 240ms untuk vibe Pacman retro
         setTimeout(() => requestAnimationFrame(loop), 240);
     }
 
-    window.setDir = (d) => { pacman.next = d; };
+    // --- INTERFACE ---
+    window.handleInput = (d) => { 
+        pacman.next = d; 
+        startAudio(); // Start audio on first interaction
+    };
+
     window.addEventListener("message", (e) => {
-        if (e.data.type === "paySuccess") { gameRunning = true; document.getElementById("overlay").style.display = "none"; }
+        if (e.data.type === "paySuccess") { 
+            resetGame();
+            startCountdown();
+        }
     });
+
+    // Keyboard support
+    window.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (k === "arrowup" || k === "w") handleInput("up");
+        if (k === "arrowdown" || k === "s") handleInput("down");
+        if (k === "arrowleft" || k === "a") handleInput("left");
+        if (k === "arrowright" || k === "d") handleInput("right");
+    });
+
     canvas.width = MAP_W * TILE; canvas.height = MAP_H * TILE;
     loop();
 })();
 </script>
 </body>
 </html>
+
