@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Somnia Christmas Carnival - Final Edition</title>
+    <title>Pacman Somnia Christmas</title>
     <style>
         body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
         #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
@@ -80,16 +80,20 @@
         bgm.currentTime = 0;
         document.getElementById("overlay").style.display = "flex";
         document.getElementById("status-text").innerText = "GAME OVER!";
+        
+        // --- SUBMIT SKOR KE BLOCKCHAIN ---
         window.parent.postMessage({ type: "submitScore", score: score }, "*");
         isPaid = false;
     }
 
     window.addEventListener("message", (e) => {
         if (e.data.type === 'initAudio') { 
+            // Browser memberikan izin karena ini dipicu klik user di parent
             bgm.play().then(() => bgm.pause()).catch(() => {}); 
         }
         if (e.data.type === "paySuccess" && !isPaid) {
-            isPaid = true; initActors();
+            isPaid = true; 
+            initActors();
             const cd = document.getElementById("countdown-overlay");
             document.getElementById("overlay").style.display = "none";
             cd.style.display = "flex";
@@ -98,13 +102,19 @@
                 c--;
                 if(c>0) cd.innerText = c;
                 else if(c===0) cd.innerText = "GO!";
-                else { clearInterval(t); cd.style.display="none"; gameRunning=true; bgm.play(); }
+                else { 
+                    clearInterval(t); 
+                    cd.style.display="none"; 
+                    gameRunning=true; 
+                    bgm.play(); 
+                }
             }, 1000);
         }
     });
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Gambar Map
         for(let y=0; y<mapData.length; y++){
             for(let x=0; x<mapData[0].length; x++){
                 const t = mapData[y][x];
@@ -113,11 +123,13 @@
                 else if(t===3) { ctx.fillStyle="#fbbf24"; ctx.beginPath(); ctx.arc(x*TILE+TILE/2, y*TILE+TILE/2, 5, 0, 7); ctx.fill(); }
             }
         }
+        // Gambar Ghosts
         ghosts.forEach(g => {
             ctx.fillStyle = g.sc ? "#1e40af" : g.color;
             ctx.beginPath(); ctx.roundRect(g.x*TILE+4, g.y*TILE+4, TILE-8, TILE-8, 6); ctx.fill();
             ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(g.x*TILE+8, g.y*TILE+10, 2, 0, 7); ctx.arc(g.x*TILE+16, g.y*TILE+10, 2, 0, 7); ctx.fill();
         });
+        // Gambar Santa
         const sx = pacman.x*TILE+TILE/2, sy = pacman.y*TILE+TILE/2;
         ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.arc(sx, sy, TILE/2-2, 0, 7); ctx.fill();
         ctx.fillStyle = "#dc2626"; ctx.beginPath(); ctx.moveTo(sx-8, sy-4); ctx.lineTo(sx+8, sy-4); ctx.lineTo(sx, sy-15); ctx.fill();
@@ -130,13 +142,25 @@
         let nx = pacman.x, ny = pacman.y;
         if (pacman.next === "up") ny--; else if (pacman.next === "down") ny++;
         else if (pacman.next === "left") nx--; else if (pacman.next === "right") nx++;
-        if (mapData[ny] && mapData[ny][nx] !== 1) { pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next; }
+        
+        if (mapData[ny] && mapData[ny][nx] !== 1) { 
+            pacman.x = nx; pacman.y = ny; 
+        }
+
         if (mapData[pacman.y][pacman.x] === 2) { mapData[pacman.y][pacman.x] = 0; score += 10; }
         if (mapData[pacman.y][pacman.x] === 3) { 
             mapData[pacman.y][pacman.x] = 0; score += 50; pacman.pTime = 40; 
             ghosts.forEach(g => g.sc = true); document.getElementById("pwr").style.display = "inline";
         }
-        if (pacman.pTime > 0) { pacman.pTime--; if(pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; } }
+
+        if (pacman.pTime > 0) { 
+            pacman.pTime--; 
+            if(pacman.pTime === 0) { 
+                ghosts.forEach(g => g.sc = false); 
+                document.getElementById("pwr").style.display = "none"; 
+            } 
+        }
+
         if (frameCounter % 2 === 0) {
             ghosts.forEach(g => {
                 const dirs = [[0,1],[0,-1],[1,0],[-1,0]].filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
@@ -144,6 +168,7 @@
                 if(dirs[0]) { g.x += dirs[0][0]; g.y += dirs[0][1]; }
             });
         }
+
         ghosts.forEach(g => {
             if (g.x === pacman.x && g.y === pacman.y) {
                 if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
@@ -154,7 +179,7 @@
     }
 
     function loop() { update(); draw(); setTimeout(() => requestAnimationFrame(loop), 180); }
-    window.handleInput = (d) => { pacman.next = d; if(bgm.paused && isPaid) bgm.play(); };
+    window.handleInput = (d) => { pacman.next = d; };
     canvas.width = 19 * TILE; canvas.height = 15 * TILE;
     initActors(); loop();
 })();
