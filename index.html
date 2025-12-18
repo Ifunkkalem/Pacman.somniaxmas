@@ -84,104 +84,102 @@ const logoPlaceholder = document.getElementById('logoPlaceholder');
 const overlayStart = document.getElementById('overlayStart');
 const posterImg = document.getElementById('posterImg');
 
+/* --- FEEDBACK UI --- */
 function showWaitingFeedback(message = 'Requesting... check wallet.'){
-  const existingWaiting = document.getElementById('__waiting_req');
-  if(existingWaiting) existingWaiting.remove();
-  const gm = document.createElement('div');
-  gm.id = '__waiting_req';
-  gm.style.position='fixed'; 
-  gm.style.left='50%';
-  gm.style.top='8px';
-  gm.style.transform='translateX(-50%)';
-  gm.style.background='rgba(0,0,0,0.8)';
-  gm.style.color='#fff';
-  gm.style.padding='6px 12px';
-  gm.style.borderRadius='8px';
-  gm.style.zIndex='999';
-  gm.textContent = message;
-  document.body.appendChild(gm);
-  setTimeout(()=> { const w = document.getElementById('__waiting_req'); if(w) w.remove(); }, 8000);
+    const existingWaiting = document.getElementById('__waiting_req');
+    if(existingWaiting) existingWaiting.remove();
+    const gm = document.createElement('div');
+    gm.id = '__waiting_req';
+    gm.style.cssText = 'position:fixed; left:50%; top:8px; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:#fff; padding:6px 12px; border-radius:8px; z-index:999; border: 1px solid #fbbf24;';
+    gm.textContent = message;
+    document.body.appendChild(gm);
 }
 
 function clearWaitingFeedback(){
-  const w = document.getElementById('__waiting_req'); 
-  if(w) w.remove();
+    const w = document.getElementById('__waiting_req'); 
+    if(w) w.remove();
 }
 
 function showMain(id){
-  logoPlaceholder.style.display='none';
-  gameFrame.style.display='none';
-  leaderFrame.style.display='none';
-  const el=document.getElementById(id);
-  if(el) el.style.display='block';
+    logoPlaceholder.style.display='none';
+    gameFrame.style.display='none';
+    leaderFrame.style.display='none';
+    const el=document.getElementById(id);
+    if(el) el.style.display='block';
 }
 
-function requestStartGame(){
-  showWaitingFeedback('Requesting game start...');
-  window.postMessage({ type: 'requestStartGame' }, '*');
+/* --- ACTION TRIGGERS --- */
+async function triggerConnect() {
+    showWaitingFeedback('Membuka Wallet...');
+    // Memanggil fungsi langsung di app.js
+    if (typeof connectWallet === 'function') {
+        await connectWallet();
+    } else {
+        window.postMessage({ type: 'requestConnectWallet' }, '*');
+    }
 }
 
-btnPlay.addEventListener('click', ev=>{ ev.preventDefault(); requestStartGame(); });
-overlayStart.addEventListener('click', ev=>{ ev.preventDefault(); requestStartGame(); });
-btnHome.addEventListener('click', ()=>{ showMain('logoPlaceholder'); });
-btnLeaderboard.addEventListener('click', ()=>{
-  leaderFrame.src="leaderboard.html?"+Date.now();
-  showMain('leaderFrame');
-});
-btnConnect.addEventListener('click', ()=>{
-  showWaitingFeedback('Requesting wallet connection...');
-  window.postMessage({ type: 'requestConnectWallet' }, '*');
-});
-
-// Listener pesan tunggal yang sudah diperbaiki
-window.addEventListener("message", async (ev)=>{
-  const d = ev.data || {};
-  if(!d || typeof d !== "object") return;
-  
-  if(d.type === 'showWaiting'){ showWaitingFeedback(d.message); }
-  if(d.type === 'clearWaiting'){ clearWaitingFeedback(); }
-
-  if(d.type === "walletInfo"){
-    clearWaitingFeedback();
-    if(d.address){
-      walletAddrEl.textContent = 'Wallet: ' + d.address.substring(0,6) + '...' + d.address.slice(-4);
-      walletAddrEl.title = d.address;
+async function triggerStartGame() {
+    showWaitingFeedback('Menyiapkan Transaksi...');
+    // Memanggil fungsi langsung di app.js
+    if (typeof payToPlay === 'function') {
+        await payToPlay();
     } else {
-      walletAddrEl.textContent = 'Wallet: -';
+        window.postMessage({ type: 'requestStartGame' }, '*');
     }
-    if(typeof d.balance !== 'undefined'){
-      walletBalEl.textContent = d.balance + " SOMI";
-      walletBalEl.title = d.balance + " SOMI";
-    } else {
-      walletBalEl.textContent = 'SOMI: -';
-    }
-  }
+}
 
-  if(d.type === "paySuccess"){ 
-    clearWaitingFeedback();
-    showMain('gameFrame'); 
-    if(gameFrame && gameFrame.contentWindow){
-      setTimeout(() => {
-        gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
-        console.log("Sinyal paySuccess diteruskan ke Iframe Game");
-      }, 500);
-    }
-  }
-
-  if(d.type === "updateSummary"){
-    const poolEl = document.getElementById('poolValue');
-    const scoreEl = document.getElementById('topScoreValue');
-    if(d.jackpot && poolEl) poolEl.textContent = d.jackpot + ' SOMI';
-    if(d.topScore && scoreEl) scoreEl.textContent = d.topScore;
-  }
-  
-  if(d.type === "showLeaderboard"){
+/* --- EVENT LISTENERS --- */
+btnConnect.addEventListener('click', triggerConnect);
+btnPlay.addEventListener('click', triggerStartGame);
+overlayStart.addEventListener('click', triggerStartGame);
+btnHome.addEventListener('click', () => showMain('logoPlaceholder'));
+btnLeaderboard.addEventListener('click', () => {
     leaderFrame.src = "leaderboard.html?" + Date.now();
     showMain('leaderFrame');
-  }
-  if(d.type === "playAgain"){ requestStartGame(); }
-  if(d.type === "backToDashboard"){ showMain('logoPlaceholder'); }
-  if(d.type === "forceShowLogo"){ showMain('logoPlaceholder'); }
+});
+
+/* --- MESSAGE HUB (SINKRONISASI) --- */
+window.addEventListener("message", (ev) => {
+    const d = ev.data || {};
+    
+    // 1. Handle UI Feedback dari app.js
+    if(d.type === 'showWaiting'){ showWaitingFeedback(d.message); }
+    if(d.type === 'clearWaiting'){ clearWaitingFeedback(); }
+
+    // 2. Update Informasi Wallet
+    if(d.type === "walletInfo"){
+        clearWaitingFeedback();
+        walletAddrEl.textContent = d.address ? 'Addr: ' + d.address.substring(0,6) + '...' + d.address.slice(-4) : 'Wallet: -';
+        walletBalEl.textContent = d.balance ? d.balance + " SOMI" : 'SOMI: -';
+    }
+
+    // 3. Handle Transaksi Sukses (PENTING!)
+    if(d.type === "paySuccess"){ 
+        clearWaitingFeedback();
+        showMain('gameFrame'); 
+        
+        // Teruskan sinyal ke dalam IFRAME Pacman
+        if(gameFrame && gameFrame.contentWindow){
+            // Gunakan sedikit delay agar iframe siap menerima
+            setTimeout(() => {
+                gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
+                gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
+                console.log("Sinyal permainan dikirim ke Pacman");
+            }, 800);
+        }
+    }
+
+    // 4. Update Global Jackpot & Score
+    if(d.type === "updateSummary"){
+        if(d.jackpot) document.getElementById('poolValue').textContent = d.jackpot + ' SOMI';
+        if(d.topScore) document.getElementById('topScoreValue').textContent = d.topScore;
+    }
+    
+    if(d.type === "showLeaderboard"){
+        leaderFrame.src = "leaderboard.html?" + Date.now();
+        showMain('leaderFrame');
+    }
 });
 
 posterImg.addEventListener('error', ()=>{ posterImg.src='assets/logo.png'; });
