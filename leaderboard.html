@@ -1,214 +1,235 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>SOMNIA Leaderboard</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>SOMNIA Christmas Leaderboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="libs/ethers.min.js"></script>
+    <style>
+        :root {
+            --gold: #ffcf33;
+            --silver: #e2e8f0;
+            --bronze: #cd7f32;
+            --neon-green: #00ffae;
+            --christmas-red: #b91c1c;
+        }
 
-<script src="libs/ethers.min.js"></script>
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at top, #450a0a, #020617);
+            color: #fff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
 
-<style>
-/* ... (Gaya CSS tidak berubah) ... */
-body {
-  font-family: Trebuchet MS, sans-serif;
-  background: #800000;
-  color: #fff;
-  margin: 0;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+        h2 {
+            color: var(--neon-green);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 15px rgba(0, 255, 174, 0.5);
+            font-size: 24px;
+            text-align: center;
+        }
 
-h2 {
-  color: #00ffae;
-  margin-bottom: 6px;
-}
+        #headerBox {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
-#headerBox {
-  background: rgba(0,0,0,.35);
-  padding: 10px 14px;
-  border-radius: 10px;
-  margin-bottom: 14px;
-  text-align: center;
-  min-width: 280px;
-}
+        #jackpot {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--gold);
+            text-shadow: 0 0 20px rgba(255, 207, 51, 0.4);
+            margin-bottom: 5px;
+        }
 
-#jackpot {
-  font-size: 18px;
-  font-weight: bold;
-  color: #ffd700;
-}
+        #topScore {
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
 
-#topScore {
-  font-size: 14px;
-  margin-top: 4px;
-}
+        .table-container {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-#connectionStatus {
-  font-size: 12px;
-  margin-bottom: 10px;
-  opacity: .9;
-}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-table {
-  width: 100%;
-  max-width: 520px;
-  border-collapse: collapse;
-  background: rgba(255,255,255,.08);
-  border-radius: 10px;
-  overflow: hidden;
-}
+        th {
+            background: rgba(185, 28, 28, 0.3);
+            color: #f87171;
+            padding: 15px;
+            font-size: 12px;
+            text-transform: uppercase;
+            text-align: left;
+        }
 
-th, td {
-  padding: 10px;
-  border-bottom: 1px solid rgba(255,255,255,.2);
-}
+        td {
+            padding: 16px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 15px;
+        }
 
-th {
-  background: rgba(0,0,0,.45);
-  color: #ff4d4d;
-}
+        .rank { 
+            width: 60px; 
+            text-align: center; 
+            font-weight: 800;
+        }
 
-td {
-  font-size: 14px;
-}
+        /* Badge untuk Juara */
+        .rank-1 { color: var(--gold); font-size: 20px; }
+        .rank-2 { color: var(--silver); font-size: 18px; }
+        .rank-3 { color: var(--bronze); font-size: 18px; }
 
-.rank { width: 50px; text-align: center; }
-.score { text-align: right; font-weight: bold; }
+        .wallet { font-family: 'Courier New', monospace; color: #cbd5e1; }
+        
+        .score { 
+            text-align: right; 
+            font-weight: bold; 
+            color: var(--neon-green);
+            font-size: 18px;
+        }
 
-tr:nth-child(even) { background: rgba(255,255,255,.05); }
-</style>
+        tr:hover { background: rgba(255, 255, 255, 0.03); }
+        
+        #connectionStatus {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        /* Animasi Berkedip untuk Jackpot */
+        .pulse { animation: pulse-animation 2s infinite; }
+        @keyframes pulse-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>🏆 SOMNIA LEADERBOARD</h2>
+<h2>🏆 Somnia Christmas Hall of Fame</h2>
 
 <div id="headerBox">
-  <div id="jackpot">Jackpot: Loading...</div>
-  <div id="topScore">Top Score: -</div>
+    <div id="jackpot" class="pulse">0.0000 SOMI</div>
+    <div id="topScore">Highest Score: -</div>
 </div>
 
-<div id="connectionStatus">Connecting to blockchain...</div>
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th class="rank">Rank</th>
+                <th>Player Wallet</th>
+                <th style="text-align:right">Score</th>
+            </tr>
+        </thead>
+        <tbody id="leaderboardBody">
+            <tr><td colspan="3" style="text-align:center; padding:40px;">Magical loading...</td></tr>
+        </tbody>
+    </table>
+</div>
 
-<table>
-<thead>
-<tr>
-  <th class="rank">#</th>
-  <th>Wallet</th>
-  <th class="score">Score</th>
-</tr>
-</thead>
-<tbody id="leaderboardBody">
-<tr><td colspan="3" style="text-align:center">Loading...</td></tr>
-</tbody>
-</table>
+<div id="connectionStatus">Syncing with Somnia Mainnet...</div>
 
 <script>
 const CONTRACT_ADDRESS = "0x35a7f3eE9A2b5fdEE717099F9253Ae90e1248AE3";
 const RPC_URL = "https://somnia-rpc.publicnode.com";
-const TRUSTED_ORIGIN = window.location.origin || "*"; // Target origin untuk parent
 
 const ABI = [
-  "function getTop10() view returns (address[], uint256[])",
-  "function startFeeWei() view returns (uint256)" // ABI tambahan untuk keamanan
+    "function getTop10() view returns (address[], uint256[])"
 ];
 
-let provider, contract;
-let globalJackpotValue = '0.000000';
-
 async function init() {
-  try {
-    provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
+    try {
+        const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, provider);
 
-    await loadJackpot();
-    await loadLeaderboard();
+        // Load Jackpot
+        const balance = await provider.getBalance(CONTRACT_ADDRESS);
+        const jackpotFormatted = Number(ethers.utils.formatEther(balance)).toFixed(4);
+        document.getElementById("jackpot").innerText = jackpotFormatted + " SOMI";
 
-    document.getElementById("connectionStatus").innerText = 
-      "Last updated: " + new Date().toLocaleTimeString();
+        // Load Leaderboard
+        const [players, scores] = await contract.getTop10();
+        const tbody = document.getElementById("leaderboardBody");
+        tbody.innerHTML = "";
 
-  } catch (e) {
-    console.error("Initialization error:", e);
-    document.getElementById("jackpot").innerText = "Jackpot: Error";
-    document.getElementById("connectionStatus").innerText = "Connection failed.";
-  }
-}
+        if (!players.length) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center">No legends yet. Be the first!</td></tr>';
+            return;
+        }
 
-// ================= JACKPOT =================
-async function loadJackpot() {
-  try {
-    const balanceWei = await provider.getBalance(CONTRACT_ADDRESS);
-    const jackpot = ethers.utils.formatEther(balanceWei);
-    
-    globalJackpotValue = Number(jackpot).toFixed(6); // Simpan nilai jackpot
-    document.getElementById("jackpot").innerText =
-      "Jackpot: " + globalJackpotValue + " SOMI";
+        // Mapping data
+        const list = players.map((addr, i) => ({ 
+            addr, 
+            score: Number(scores[i]) 
+        })).sort((a,b) => b.score - a.score).slice(0, 10);
 
-  } catch (e) {
-    console.error("Jackpot error:", e);
-    document.getElementById("jackpot").innerText = "Jackpot: 0 SOMI";
-    globalJackpotValue = '0.000000';
-  }
-}
+        // Update Top Score Header
+        document.getElementById("topScore").innerText = "Highest Score: " + list[0].score;
 
-// ================= LEADERBOARD =================
-async function loadLeaderboard() {
-  const tbody = document.getElementById("leaderboardBody");
-  tbody.innerHTML = "";
+        // Render Table
+        list.forEach((item, i) => {
+            const tr = document.createElement("tr");
+            let rankClass = "";
+            let rankIcon = i + 1;
 
-  try {
-    const [players, scores] = await contract.getTop10();
+            if(i === 0) { rankClass = "rank-1"; rankIcon = "🥇"; }
+            else if(i === 1) { rankClass = "rank-2"; rankIcon = "🥈"; }
+            else if(i === 2) { rankClass = "rank-3"; rankIcon = "🥉"; }
 
-    if (!players.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="3" style="text-align:center">No data</td></tr>';
-      return;
-    }
+            tr.innerHTML = `
+                <td class="rank ${rankClass}">${rankIcon}</td>
+                <td class="wallet">${item.addr.slice(0,6)}...${item.addr.slice(-4)}</td>
+                <td class="score">${item.score.toLocaleString()}</td>
+            `;
+            tbody.appendChild(tr);
+        });
 
-    // DEDUPE WALLET (ambil skor tertinggi per wallet)
-    const best = {};
-    players.forEach((addr, i) => {
-      const s = Number(scores[i]);
-      if (!best[addr] || s > best[addr]) best[addr] = s;
-    });
+        document.getElementById("connectionStatus").innerText = "Live Data • Last sync: " + new Date().toLocaleTimeString();
 
-    const finalList = Object.entries(best)
-      .map(([addr, score]) => ({ addr, score }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
+        // Broadcast to Index
+        window.parent.postMessage({
+            type: "updateSummary",
+            jackpot: jackpotFormatted,
+            topScore: list[0].score.toString()
+        }, "*");
 
-    // TOP SCORE GLOBAL
-    const topScore = finalList.length ? finalList[0].score : 0;
-    document.getElementById("topScore").innerText =
-      "Top Score: " + topScore;
-
-    // Kirim ke parent (index/app.js) - Menggunakan TRUSTED_ORIGIN
-    window.parent.postMessage({
-      type: "updateSummary",
-      jackpot: globalJackpotValue, // Menggunakan nilai global
-      topScore: topScore.toString()
-    }, TRUSTED_ORIGIN); 
-
-    finalList.forEach((item, i) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td class="rank">${i + 1}</td>
-        <td>${item.addr.slice(0,6)}...${item.addr.slice(-4)}</td>
-        <td class="score">${item.score}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-
-  } catch (e) {
-    console.error("Leaderboard error:", e);
-    tbody.innerHTML =
-      '<tr><td colspan="3" style="text-align:center">Failed to load</td></tr>';
-  }
+    } catch (e) {
+        console.error(e);
+        document.getElementById("connectionStatus").innerText = "Connection lost. Retrying...";
+    }
 }
 
 document.addEventListener("DOMContentLoaded", init);
+// Auto refresh setiap 1 menit
+setInterval(init, 60000);
 </script>
 </body>
 </html>
