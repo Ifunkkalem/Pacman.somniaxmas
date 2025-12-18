@@ -44,6 +44,14 @@ async function connectWallet(){
   provider=new ethers.providers.Web3Provider(window.ethereum,"any");
   try {
     await provider.send("eth_requestAccounts",[]);
+    
+    // --- TAMBAHKAN KODE INI DI SINI ---
+    const gameFrame = document.getElementById("gameFrame");
+    if (gameFrame && gameFrame.contentWindow) {
+        gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
+    }
+    // ---------------------------------
+
     signer=provider.getSigner();
     userAddress=await signer.getAddress();
     const ok=await switchNetwork(provider);
@@ -61,6 +69,7 @@ async function connectWallet(){
     return false;
   }
 }
+
 
 async function payToPlay(){
   if(!signer){const ok=await connectWallet(); if(!ok)return;}
