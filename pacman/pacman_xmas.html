@@ -2,13 +2,13 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Pacman Somnia Christmas - Fixed Connection</title>
+    <title>Pacman Somnia Christmas - Turbo</title>
     <style>
         body { background: #020617; color: white; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; margin: 0; touch-action: manipulation; overflow: hidden; }
-        #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; display: flex; gap: 20px; }
+        #ui { font-size: 24px; font-weight: bold; margin: 15px 0; color: #fbbf24; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
         canvas { border: 4px solid #b91c1c; border-radius: 12px; background: #000; box-shadow: 0 0 30px rgba(185, 28, 28, 0.4); max-width: 95vw; }
         .controls { display: grid; grid-template-areas: ". up ." "left center right" ". down ."; gap: 12px; margin: 20px 0; }
-        .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+        .btn { width: 70px; height: 70px; border-radius: 20px; border: none; background: linear-gradient(145deg, #dc2626, #991b1b); color: white; font-size: 28px; font-weight: bold; box-shadow: 0 6px #7f1d1d; cursor: pointer; user-select: none; }
         .btn:active { transform: translateY(4px); box-shadow: 0 2px #7f1d1d; }
         #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
         #countdown-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 110; font-size: 120px; color: #fbbf24; font-weight: bold; }
@@ -22,7 +22,7 @@
 <div id="overlay">
     <div class="msg-box">
         <h2 id="status-text">Menunggu Pembayaran...</h2>
-        <p style="color: #94a3b8;">Klik tombol Bayar di Wallet untuk mulai</p>
+        <p style="color: #94a3b8;">Selesaikan transaksi untuk mulai bermain</p>
     </div>
 </div>
 
@@ -36,7 +36,7 @@
     <button class="btn" style="grid-area:down" onmousedown="handleInput('down')" ontouchstart="handleInput('down')">↓</button>
 </div>
 
-<audio id="bgm" loop preload="auto">
+<audio id="bgm" loop>
     <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
 </audio>
 
@@ -46,9 +46,13 @@
     const ctx = canvas.getContext("2d");
     const bgm = document.getElementById("bgm");
     const TILE = 24;
+    
+    // SPEED TUNING: 130ms membuat game jauh lebih cepat dibanding 220ms
+    const GAME_SPEED = 130; 
+    
     let gameRunning = false, isPaid = false, frameCounter = 0, score = 0;
 
-    const MAP_TEMPLATE = [
+    const MAP = [
         [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[1,3,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,3,1],
         [1,2,1,1,2,1,1,1,2,1,2,1,1,1,2,1,1,2,1],[1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
         [1,2,1,1,2,1,2,1,1,1,1,1,2,1,2,1,1,2,1],[1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,2,2,1],
@@ -63,14 +67,14 @@
     let pacman = { x: 1, y: 1, next: "right", dir: "right", pTime: 0 };
 
     function initActors() {
-        mapData = MAP_TEMPLATE.map(row => [...row]);
+        mapData = MAP.map(row => [...row]);
         score = 0; document.getElementById("score").innerText = "0";
         pacman = { x: 1, y: 1, next: "right", dir: "right", pTime: 0 };
         ghosts = [
-            { x: 8, y: 7, color: "#ef4444", ox: 8, oy: 7, sc: false },
-            { x: 9, y: 7, color: "#f472b6", ox: 9, oy: 7, sc: false },
-            { x: 10, y: 7, color: "#22d3ee", ox: 10, oy: 7, sc: false },
-            { x: 9, y: 8, color: "#fb923c", ox: 9, oy: 8, sc: false }
+            { x: 9, y: 7, color: "#ef4444", ox: 9, oy: 7, sc: false, speed: 1 },
+            { x: 9, y: 7, color: "#f472b6", ox: 9, oy: 7, sc: false, speed: 1 },
+            { x: 9, y: 7, color: "#22d3ee", ox: 9, oy: 7, sc: false, speed: 1 },
+            { x: 9, y: 8, color: "#fb923c", ox: 9, oy: 8, sc: false, speed: 1 }
         ];
     }
 
@@ -79,61 +83,27 @@
         if(bgm) { bgm.pause(); bgm.currentTime = 0; }
         document.getElementById("overlay").style.display = "flex";
         document.getElementById("status-text").innerText = "GAME OVER!";
-        
-        // PENTING: Gunakan window.parent.postMessage dengan origin "*" agar tembus domain
         window.parent.postMessage({ type: "submitScore", score: score }, "*");
         isPaid = false;
     }
 
-   /* LISTENER TERUPDATE - LEBIH KETAT */
-window.addEventListener("message", (e) => {
-    // 1. Abaikan jika data kosong atau bukan objek
-    if (!e.data || typeof e.data !== 'object') return;
-
-    console.log("Game menerima sinyal valid:", e.data.type);
-
-    // 2. Sinyal Audio
-    if (e.data.type === 'initAudio') { 
-        if(bgm) {
-            bgm.load();
-            // Pancing play lalu pause untuk unlock browser
-            bgm.play().then(() => bgm.pause()).catch(() => {});
-        }
-    }
-    
-    // 3. Sinyal Mulai Game (Pastikan variabel isPaid di-reset setiap GameOver)
-    if (e.data.type === "paySuccess") {
-        if (isPaid) return; // Mencegah double trigger
-        
-        isPaid = true; 
-        initActors(); // Reset posisi Santa dan Ghost
-        
-        const cd = document.getElementById("countdown-overlay");
-        const overlay = document.getElementById("overlay");
-        
-        if(overlay) overlay.style.display = "none";
-        if(cd) {
+    window.addEventListener("message", (e) => {
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === "paySuccess" && !isPaid) {
+            isPaid = true; 
+            initActors();
+            const cd = document.getElementById("countdown-overlay");
+            document.getElementById("overlay").style.display = "none";
             cd.style.display = "flex";
-            let c = 3; 
-            cd.innerText = c;
-            
+            let c = 3; cd.innerText = c;
             let t = setInterval(() => {
                 c--;
-                if(c > 0) {
-                    cd.innerText = c;
-                } else if(c === 0) {
-                    cd.innerText = "GO!";
-                    if(bgm) bgm.play().catch(err => console.warn("Music play blocked")); 
-                } else { 
-                    clearInterval(t); 
-                    cd.style.display = "none"; 
-                    gameRunning = true; // MULAI GAME DISINI
-                    console.log("Game Running: TRUE");
-                }
+                if(c>0) cd.innerText = c;
+                else if(c===0) cd.innerText = "GO!";
+                else { clearInterval(t); cd.style.display="none"; gameRunning=true; if(bgm) bgm.play().catch(()=>{}); }
             }, 1000);
         }
-    }
-});
+    });
 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -147,52 +117,90 @@ window.addEventListener("message", (e) => {
         }
         ghosts.forEach(g => {
             ctx.fillStyle = g.sc ? "#1e40af" : g.color;
-            ctx.beginPath(); ctx.roundRect(g.x*TILE+4, g.y*TILE+4, TILE-8, TILE-8, 6); ctx.fill();
+            ctx.beginPath(); ctx.roundRect(g.x*TILE+3, g.y*TILE+3, TILE-6, TILE-6, 4); ctx.fill();
+            ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(g.x*TILE+8, g.y*TILE+10, 2, 0, 7); ctx.arc(g.x*TILE+16, g.y*TILE+10, 2, 0, 7); ctx.fill();
         });
         const sx = pacman.x*TILE+TILE/2, sy = pacman.y*TILE+TILE/2;
         ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.arc(sx, sy, TILE/2-2, 0, 7); ctx.fill();
+        ctx.fillStyle = "#dc2626"; ctx.beginPath(); ctx.moveTo(sx-8, sy-4); ctx.lineTo(sx+8, sy-4); ctx.lineTo(sx, sy-15); ctx.fill();
+        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(sx, sy+4, 5, 0, 7); ctx.fill();
     }
 
     function update() {
         if (!gameRunning) return;
         frameCounter++;
+        
+        // 1. Logika Gerak Santa (Cepat & Smooth)
         let nx = pacman.x, ny = pacman.y;
         if (pacman.next === "up") ny--; else if (pacman.next === "down") ny++;
         else if (pacman.next === "left") nx--; else if (pacman.next === "right") nx++;
         
-        if (mapData[ny] && mapData[ny][nx] !== 1) { pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next; }
+        if (mapData[ny] && mapData[ny][nx] !== 1) { 
+            pacman.x = nx; pacman.y = ny; pacman.dir = pacman.next;
+        } else {
+            let cx = pacman.x, cy = pacman.y;
+            if (pacman.dir === "up") cy--; else if (pacman.dir === "down") cy++;
+            else if (pacman.dir === "left") cx--; else if (pacman.dir === "right") cx++;
+            if (mapData[cy] && mapData[cy][cx] !== 1) { pacman.x = cx; pacman.y = cy; }
+        }
 
         if (mapData[pacman.y][pacman.x] === 2) { mapData[pacman.y][pacman.x] = 0; score += 10; }
         if (mapData[pacman.y][pacman.x] === 3) { 
-            mapData[pacman.y][pacman.x] = 0; score += 50; pacman.pTime = 60; 
-            ghosts.forEach(g => g.sc = true); 
+            mapData[pacman.y][pacman.x] = 0; score += 50; pacman.pTime = 40; 
+            ghosts.forEach(g => g.sc = true); document.getElementById("pwr").style.display = "inline"; 
         }
 
         if (pacman.pTime > 0) { 
             pacman.pTime--; 
-            if(pacman.pTime === 0) ghosts.forEach(g => g.sc = false); 
+            if(pacman.pTime === 0) { ghosts.forEach(g => g.sc = false); document.getElementById("pwr").style.display = "none"; } 
         }
 
-        if (frameCounter % 2 === 0) {
-            ghosts.forEach((g, i) => {
-                if (frameCounter < i * 50) return;
-                const dirs = [[0,1],[0,-1],[1,0],[-1,0]].filter(d => mapData[g.y+d[1]] && mapData[g.y+d[1]][g.x+d[0]] !== 1);
-                dirs.sort((a,b) => Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y) - Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y));
-                if(dirs[0]) { g.x += dirs[0][0]; g.y += dirs[0][1]; }
+        // 2. SMART AI GHOST - Hantu mengejar secara agresif
+        ghosts.forEach((g, i) => {
+            // Hantu keluar satu per satu dari rumah
+            if (frameCounter < i * 15) return; 
+
+            const dirs = [[0,1],[0,-1],[1,0],[-1,0]].filter(d => {
+                const tx = g.x + d[0], ty = g.y + d[1];
+                return mapData[ty] && mapData[ty][tx] !== 1;
             });
-        }
 
-        ghosts.forEach(g => {
-            if (g.x === pacman.x && g.y === pacman.y) {
-                if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; }
-                else { gameOver(); }
+            if (dirs.length > 0) {
+                if (g.sc) {
+                    // Lari menjauh dari Santa
+                    dirs.sort((a,b) => Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y) - Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y));
+                } else {
+                    // Kejar Santa (90% Akurasi agar tidak mustahil dikalahkan)
+                    if (Math.random() < 0.9) {
+                        dirs.sort((a,b) => Math.hypot(g.x+a[0]-pacman.x, g.y+a[1]-pacman.y) - Math.hypot(g.x+b[0]-pacman.x, g.y+b[1]-pacman.y));
+                    }
+                }
+                g.x += dirs[0][0]; g.y += dirs[0][1];
             }
+        });
+
+        ghosts.forEach(g => { 
+            if (g.x === pacman.x && g.y === pacman.y) { 
+                if (g.sc) { score += 200; g.x = g.ox; g.y = g.oy; g.sc = false; } else { gameOver(); } 
+            } 
         });
         document.getElementById("score").innerText = score;
     }
 
-    function loop() { update(); draw(); setTimeout(() => requestAnimationFrame(loop), 220); }
+    function loop() { 
+        update(); 
+        draw(); 
+        setTimeout(() => requestAnimationFrame(loop), GAME_SPEED); 
+    }
+    
     window.handleInput = (d) => { pacman.next = d; };
+    window.addEventListener("keydown", (e) => {
+        if(e.key === "ArrowUp") handleInput("up");
+        if(e.key === "ArrowDown") handleInput("down");
+        if(e.key === "ArrowLeft") handleInput("left");
+        if(e.key === "ArrowRight") handleInput("right");
+    });
+
     canvas.width = 19 * TILE; canvas.height = 15 * TILE;
     initActors(); loop();
 })();
