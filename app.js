@@ -71,33 +71,36 @@ async function connectWallet(){
 }
 
 
+// 2. Fungsi Pembayaran & Pemicu Audio
 async function payToPlay(){
-  if(!signer){const ok=await connectWallet(); if(!ok)return;}
-  
-  try {
-    window.postMessage({ type: 'showWaiting', message: 'Confirming...' }, '*'); 
-    const tx=await gameContract.startGame({value: startFeeWei});
-    await tx.wait();
-
-    // SINKRONISASI TOTAL
-    // 1. Tampilkan frame game di parent
-    if (typeof showMain === "function") showMain("gameFrame");
-
-    // 2. Kirim pesan ke Iframe
+    if(!signer){const ok=await connectWallet(); if(!ok)return;}
+    
     const gameFrame = document.getElementById("gameFrame");
+
+    // AKTIFKAN AUDIO: Dikirim saat klik tombol untuk memicu izin browser
     if(gameFrame && gameFrame.contentWindow){
-        gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
+        gameFrame.contentWindow.postMessage({ type: 'initAudio' }, '*');
     }
 
-    // 3. Bersihkan status waiting di parent
-    window.postMessage({ type: 'clearWaiting' }, '*');
-
-  } catch (e) {
-    console.error(e);
-    window.postMessage({ type: 'clearWaiting' }, '*');
-  }
+    try {
+        window.postMessage({ type: 'showWaiting', message: 'Memproses Pembayaran...' }, '*');
+        
+        // Transaksi Smart Contract
+        const tx = await gameContract.startGame({value: startFeeWei});
+        await tx.wait();
+        
+        window.postMessage({ type: 'clearWaiting' }, '*');
+        
+        // Mulai Game setelah bayar sukses
+        if(gameFrame && gameFrame.contentWindow){
+            gameFrame.contentWindow.postMessage({ type: 'paySuccess' }, '*');
+        }
+    } catch (e) {
+        console.error("Pembayaran Gagal:", e);
+        window.postMessage({ type: 'clearWaiting' }, '*');
+        alert("Transaksi gagal atau dibatalkan.");
+    }
 }
-
 
 async function submitScoreTx(score){
   if(!gameContract||!signer)return;
@@ -129,17 +132,19 @@ async function updateTopScores() {
   } catch (e) { console.error(e); }
 }
 
-// Global Message Listener
-window.addEventListener("message",async(ev)=>{
-  const d=ev.data||{}; 
-  if(d.type==="requestConnectWallet") await connectWallet();
-  if(d.type==="requestStartGame") await payToPlay();
-  if(d.type==="submitScore") await submitScoreTx(d.score);
-  if(d.type==="playAgain") await payToPlay();
+// 1. Listener untuk menerima skor dari Game (Iframe)
+window.addEventListener("message", async (e) => {
+    if (e.data.type === "submitScore") {
+        console.log("Submit score ke Contract:", e.data.score);
+        try {
+            // Memanggil fungsi submitScore pada Smart Contract Anda
+            const tx = await gameContract.submitScore(e.data.score);
+            await tx.wait();
+            alert("Skor Berhasil Disimpan di Blockchain!");
+            if(typeof updateTopScores === 'function') updateTopScores();
+        } catch (err) {
+            console.error("Gagal submit skor:", err);
+            alert("Gagal menyimpan skor ke blockchain.");
+        }
+    }
 });
-
-document.addEventListener("DOMContentLoaded", () => {
-    connectWallet();
-    updateTopScores();
-});
-
