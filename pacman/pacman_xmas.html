@@ -43,11 +43,13 @@
     <button class="btn" style="grid-area:down" onmousedown="handleInput('down')" ontouchstart="handleInput('down')">↓</button>
 </div>
 
-<audio id="bgm" loop>
+<audio id="bgm" loop preload="auto">
     <source src="assets/music_background.mp3" type="audio/mpeg">
 </audio>
 
-<script>
+<script>>
+
+    
 (() => {
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
