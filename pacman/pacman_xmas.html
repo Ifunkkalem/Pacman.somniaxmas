@@ -268,11 +268,31 @@
     };
 
     window.addEventListener("message", (e) => {
-        if (e.data.type === "paySuccess") { 
-            resetGame();
-            startCountdown();
+    if (e.data.type === "paySuccess") { 
+        // 1. Paksa hapus semua overlay secara instan melalui CSS inline
+        const mainOverlay = document.getElementById("overlay");
+        const cdOverlay = document.getElementById("countdown-overlay");
+        
+        if(mainOverlay) {
+            mainOverlay.style.display = "none";
+            mainOverlay.classList.remove("active");
         }
-    });
+
+        // 2. Jalankan reset dan countdown
+        resetGame();
+        
+        // Memastikan countdown overlay tampil
+        if(cdOverlay) {
+            cdOverlay.style.display = "flex";
+            startCountdown();
+        } else {
+            // Jika countdown gagal tampil, langsung jalankan game agar tidak stuck
+            gameRunning = true;
+            startAudio();
+        }
+    }
+});
+
 
     // Keyboard support
     window.addEventListener("keydown", (e) => {
